@@ -232,6 +232,10 @@ export default function ReportBuilderPage() {
     setIsMenuOpen(true);
   };
   
+  // Panel collapse state
+  const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
+  const [centerPanelCollapsed, setCenterPanelCollapsed] = useState(false);
+  
   // Formula editor state
   const [showFormulaBuilder, setShowFormulaBuilder] = useState(false);
   const [formulaName, setFormulaName] = useState("");
@@ -387,143 +391,40 @@ export default function ReportBuilderPage() {
       {/* Main Content Area */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left Panel - Fields */}
-        <div className="w-64 bg-white border-r border-gray-200 flex flex-col overflow-hidden">
-          <div className="p-3 border-b border-gray-200">
-            <div className="relative">
-              <Input 
-                className="pl-8 text-sm" 
-                placeholder="Search all fields..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+        <div className={`${leftPanelCollapsed ? 'w-12' : 'w-64'} bg-white border-r border-gray-200 flex flex-col overflow-hidden transition-all duration-300`}>
+          {/* Collapse Control */}
+          <div className="flex justify-end p-1">
+            <button 
+              onClick={() => setLeftPanelCollapsed(!leftPanelCollapsed)}
+              className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+              title={leftPanelCollapsed ? "Expand fields panel" : "Collapse fields panel"}
+            >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                width="14"
-                height="14"
+                width="16"
+                height="16"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"
+                className={`transition-transform ${leftPanelCollapsed ? 'rotate-180' : ''}`}
               >
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.3-4.3" />
+                <path d="M15 18l-6-6 6-6" />
               </svg>
-            </div>
+            </button>
           </div>
-
-          <div className="overflow-y-auto flex-1">
-            <div className="p-2 border-b border-gray-200 flex justify-between items-center">
-              <div className="text-xs font-semibold text-gray-500">SUMMARY FORMULAS (0)</div>
-              <button className="text-blue-600 text-xs">Add</button>
-            </div>
-
-            {Object.entries(fieldsByCategory).map(([category, fields]) => (
-              <div key={category} className="border-b border-gray-200">
-                <div 
-                  className="p-2 flex justify-between items-center cursor-pointer hover:bg-gray-50"
-                  onClick={() => toggleCategory(category)}
-                >
-                  <div className="text-xs font-semibold text-gray-500 uppercase">
-                    {category} FIELDS ({fields.length})
-                  </div>
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className={`transition-transform ${expandedCategories[category as keyof typeof expandedCategories] ? 'rotate-180' : ''}`}
-                  >
-                    <path d="m6 9 6 6 6-6" />
-                  </svg>
-                </div>
-                
-                {expandedCategories[category as keyof typeof expandedCategories] && (
-                  <div className="pl-2">
-                    {fields
-                      .filter(field => 
-                        !searchTerm.trim() || 
-                        field.name.toLowerCase().includes(searchTerm.toLowerCase())
-                      )
-                      .map(field => (
-                        <div 
-                          key={field.id}
-                          className="pl-2 pr-3 py-1.5 text-sm hover:bg-blue-50 flex items-center justify-between cursor-pointer group"
-                          onClick={() => addColumn(field)}
-                          draggable
-                          onDragStart={() => {/* Handle field drag if needed */}}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className={`w-4 h-4 flex items-center justify-center rounded-sm text-xs ${field.type === 'number' || field.type === 'currency' ? 'bg-purple-100 text-purple-700' : 'bg-indigo-100 text-indigo-700'}`}>
-                              {field.icon}
-                            </span>
-                            <span>{field.name}</span>
-                          </div>
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="14"
-                            height="14"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="text-blue-600 opacity-0 group-hover:opacity-100"
-                          >
-                            <path d="M5 12h14" />
-                            <path d="M12 5v14" />
-                          </svg>
-                        </div>
-                      ))}
-                    {fields.filter(field => 
-                      !searchTerm.trim() || 
-                      field.name.toLowerCase().includes(searchTerm.toLowerCase())
-                    ).length === 0 && searchTerm.trim() !== "" && (
-                      <div className="p-2 text-sm text-gray-500">No matching fields found</div>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Center Panel - Report Builder */}
-        <div className="flex-1 flex flex-col bg-white border-r border-gray-200">
-          <Tabs defaultValue="outline" className="flex flex-col flex-1">
-            <div className="border-b border-gray-200">
-              <TabsList className="p-0 bg-transparent border-b-0">
-                <TabsTrigger 
-                  value="outline" 
-                  className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 data-[state=active]:shadow-none"
-                >
-                  Outline
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="filters" 
-                  className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 data-[state=active]:shadow-none"
-                >
-                  Filters (2)
-                </TabsTrigger>
-              </TabsList>
-            </div>
-
-            <TabsContent value="outline" className="flex-1 flex flex-col m-0 data-[state=active]:p-0">
-              {/* Groups Section */}
-              <div className="border-b border-gray-200 p-4">
-                <div className="text-xs font-semibold text-gray-500 mb-2">GROUP ROWS</div>
+          
+          {!leftPanelCollapsed ? (
+            <>
+              <div className="p-3 border-b border-gray-200">
                 <div className="relative">
                   <Input 
-                    className="pl-8 text-sm bg-gray-50" 
-                    placeholder="Add group..."
+                    className="pl-8 text-sm" 
+                    placeholder="Search all fields..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
                   />
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -543,15 +444,21 @@ export default function ReportBuilderPage() {
                 </div>
               </div>
 
-              {/* Columns Section */}
-              <div className="p-4 flex-1">
-                <div className="flex justify-between items-center mb-3">
-                  <div className="text-xs font-semibold text-gray-500">COLUMNS</div>
-                  <div className="relative">
-                    <button 
-                      className="text-sm text-blue-600 flex items-center"
-                      onClick={openColumnMenu}
+              <div className="overflow-y-auto flex-1">
+                <div className="p-2 border-b border-gray-200 flex justify-between items-center">
+                  <div className="text-xs font-semibold text-gray-500">SUMMARY FORMULAS (0)</div>
+                  <button className="text-blue-600 text-xs">Add</button>
+                </div>
+
+                {Object.entries(fieldsByCategory).map(([category, fields]) => (
+                  <div key={category} className="border-b border-gray-200">
+                    <div 
+                      className="p-2 flex justify-between items-center cursor-pointer hover:bg-gray-50"
+                      onClick={() => toggleCategory(category)}
                     >
+                      <div className="text-xs font-semibold text-gray-500 uppercase">
+                        {category} FIELDS ({fields.length})
+                      </div>
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         width="14"
@@ -562,152 +469,346 @@ export default function ReportBuilderPage() {
                         strokeWidth="2"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        className="mr-1"
-                      >
-                        <path d="M5 12h14" />
-                        <path d="M12 5v14" />
-                      </svg>
-                      Add Column
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="ml-1"
+                        className={`transition-transform ${expandedCategories[category as keyof typeof expandedCategories] ? 'rotate-180' : ''}`}
                       >
                         <path d="m6 9 6 6 6-6" />
                       </svg>
-                    </button>
+                    </div>
                     
-                    {/* Column Menu Dropdown */}
-                    {isMenuOpen && (
-                      <div 
-                        ref={menuRef}
-                        className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-10 w-48"
-                        style={{ 
-                          top: menuPosition.top - 250, 
-                          left: menuPosition.left - 100,
-                          position: 'fixed'
-                        }}
-                      >
-                        <div className="py-1">
-                          <button
-                            className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left flex items-center"
-                            onClick={() => setIsMenuOpen(false)}
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="14"
-                              height="14"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              className="mr-2"
+                    {expandedCategories[category as keyof typeof expandedCategories] && (
+                      <div className="pl-2">
+                        {fields
+                          .filter(field => 
+                            !searchTerm.trim() || 
+                            field.name.toLowerCase().includes(searchTerm.toLowerCase())
+                          )
+                          .map(field => (
+                            <div 
+                              key={field.id}
+                              className="pl-2 pr-3 py-1.5 text-sm hover:bg-blue-50 flex items-center justify-between cursor-pointer group"
+                              onClick={() => addColumn(field)}
+                              draggable
+                              onDragStart={() => {/* Handle field drag if needed */}}
                             >
-                              <path d="M3 6h18" />
-                              <path d="M3 12h18" />
-                              <path d="M3 18h18" />
-                            </svg>
-                            Add Bucket Column
-                          </button>
-                          <button
-                            className="px-4 py-2 text-sm text-gray-400 w-full text-left flex items-center cursor-not-allowed"
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="14"
-                              height="14"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              className="mr-2"
-                            >
-                              <circle cx="12" cy="12" r="10" />
-                              <line x1="8" y1="12" x2="16" y2="12" />
-                            </svg>
-                            Add Summary Formula
-                          </button>
-                          <button
-                            className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left flex items-center"
-                            onClick={addFormulaColumn}
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="14"
-                              height="14"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              className="mr-2"
-                            >
-                              <path d="M4 19h16" />
-                              <path d="M4 14h16" />
-                              <path d="M4 9h16" />
-                              <path d="M4 4h16" />
-                            </svg>
-                            Add Row-Level Formula
-                          </button>
-                          <div className="border-t border-gray-200 my-1"></div>
-                          <button
-                            className="px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full text-left flex items-center"
-                            onClick={() => {
-                              setSelectedColumns([]);
-                              setIsMenuOpen(false);
-                            }}
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="14"
-                              height="14"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              className="mr-2"
-                            >
-                              <path d="M3 6h18" />
-                              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                              <line x1="10" y1="11" x2="10" y2="17" />
-                              <line x1="14" y1="11" x2="14" y2="17" />
-                            </svg>
-                            Remove All Columns
-                          </button>
-                        </div>
+                              <div className="flex items-center gap-2">
+                                <span className={`w-4 h-4 flex items-center justify-center rounded-sm text-xs ${field.type === 'number' || field.type === 'currency' ? 'bg-purple-100 text-purple-700' : 'bg-indigo-100 text-indigo-700'}`}>
+                                  {field.icon}
+                                </span>
+                                <span>{field.name}</span>
+                              </div>
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="text-blue-600 opacity-0 group-hover:opacity-100"
+                              >
+                                <path d="M5 12h14" />
+                                <path d="M12 5v14" />
+                              </svg>
+                            </div>
+                          ))}
+                        {fields.filter(field => 
+                          !searchTerm.trim() || 
+                          field.name.toLowerCase().includes(searchTerm.toLowerCase())
+                        ).length === 0 && searchTerm.trim() !== "" && (
+                          <div className="p-2 text-sm text-gray-500">No matching fields found</div>
+                        )}
                       </div>
                     )}
                   </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            // Collapsed view - shows only icons and minimal information
+            <div className="flex flex-col items-center pt-4 space-y-4 overflow-y-auto">
+              {Object.entries(fieldsByCategory).map(([category]) => (
+                <div 
+                  key={category}
+                  className="p-2 cursor-pointer hover:bg-gray-50 rounded"
+                  title={`${category.toUpperCase()} fields`}
+                  onClick={() => {
+                    setLeftPanelCollapsed(false);
+                    setTimeout(() => toggleCategory(category), 300);
+                  }}
+                >
+                  <div className="w-6 h-6 bg-indigo-100 text-indigo-700 rounded-sm flex items-center justify-center text-xs font-medium">
+                    {category.charAt(0).toUpperCase()}
+                  </div>
                 </div>
-                
-                <div className="space-y-2">
-                  {selectedColumns.map((column, index) => (
-                    <div 
-                      key={column.id}
-                      ref={el => columnRefs.current[index] = el}
-                      className={`bg-white border border-gray-200 rounded p-2 flex items-center justify-between group hover:border-gray-300 shadow-sm ${draggedItem === index ? 'opacity-50 border-dashed' : ''}`}
-                      draggable
-                      onDragStart={() => handleDragStart(index)}
-                      onDragOver={(e) => handleDragOver(e, index)}
-                      onDragEnd={() => setDraggedItem(null)}
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Center Panel - Report Builder */}
+        <div className={`${centerPanelCollapsed ? 'w-12' : 'flex-1'} flex flex-col bg-white border-r border-gray-200 transition-all duration-300`}>
+          {/* Collapse Control */}
+          <div className="flex justify-end p-1">
+            <button 
+              onClick={() => setCenterPanelCollapsed(!centerPanelCollapsed)}
+              className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+              title={centerPanelCollapsed ? "Expand builder panel" : "Collapse builder panel"}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={`transition-transform ${centerPanelCollapsed ? 'rotate-180' : ''}`}
+              >
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
+          </div>
+
+          {!centerPanelCollapsed ? (
+            <Tabs defaultValue="outline" className="flex flex-col flex-1">
+              <div className="border-b border-gray-200">
+                <TabsList className="p-0 bg-transparent border-b-0">
+                  <TabsTrigger 
+                    value="outline" 
+                    className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 data-[state=active]:shadow-none"
+                  >
+                    Outline
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="filters" 
+                    className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 data-[state=active]:shadow-none"
+                  >
+                    Filters (2)
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+
+              <TabsContent value="outline" className="flex-1 flex flex-col m-0 data-[state=active]:p-0">
+                {/* Groups Section */}
+                <div className="border-b border-gray-200 p-4">
+                  <div className="text-xs font-semibold text-gray-500 mb-2">GROUP ROWS</div>
+                  <div className="relative">
+                    <Input 
+                      className="pl-8 text-sm bg-gray-50" 
+                      placeholder="Add group..."
+                    />
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"
                     >
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray-400 cursor-move">
+                      <circle cx="11" cy="11" r="8" />
+                      <path d="m21 21-4.3-4.3" />
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Columns Section */}
+                <div className="p-4 flex-1">
+                  <div className="flex justify-between items-center mb-3">
+                    <div className="text-xs font-semibold text-gray-500">COLUMNS</div>
+                    <div className="relative">
+                      <button 
+                        className="text-sm text-blue-600 flex items-center"
+                        onClick={openColumnMenu}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="mr-1"
+                        >
+                          <path d="M5 12h14" />
+                          <path d="M12 5v14" />
+                        </svg>
+                        Add Column
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="ml-1"
+                        >
+                          <path d="m6 9 6 6 6-6" />
+                        </svg>
+                      </button>
+                      
+                      {/* Column Menu Dropdown */}
+                      {isMenuOpen && (
+                        <div 
+                          ref={menuRef}
+                          className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-10 w-48"
+                          style={{ 
+                            top: menuPosition.top - 250, 
+                            left: menuPosition.left - 100,
+                            position: 'fixed'
+                          }}
+                        >
+                          <div className="py-1">
+                            <button
+                              className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left flex items-center"
+                              onClick={() => setIsMenuOpen(false)}
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="mr-2"
+                              >
+                                <path d="M3 6h18" />
+                                <path d="M3 12h18" />
+                                <path d="M3 18h18" />
+                              </svg>
+                              Add Bucket Column
+                            </button>
+                            <button
+                              className="px-4 py-2 text-sm text-gray-400 w-full text-left flex items-center cursor-not-allowed"
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="mr-2"
+                              >
+                                <circle cx="12" cy="12" r="10" />
+                                <line x1="8" y1="12" x2="16" y2="12" />
+                              </svg>
+                              Add Summary Formula
+                            </button>
+                            <button
+                              className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left flex items-center"
+                              onClick={addFormulaColumn}
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="mr-2"
+                              >
+                                <path d="M4 19h16" />
+                                <path d="M4 14h16" />
+                                <path d="M4 9h16" />
+                                <path d="M4 4h16" />
+                              </svg>
+                              Add Row-Level Formula
+                            </button>
+                            <div className="border-t border-gray-200 my-1"></div>
+                            <button
+                              className="px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full text-left flex items-center"
+                              onClick={() => {
+                                setSelectedColumns([]);
+                                setIsMenuOpen(false);
+                              }}
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="mr-2"
+                              >
+                                <path d="M3 6h18" />
+                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                                <line x1="10" y1="11" x2="10" y2="17" />
+                                <line x1="14" y1="11" x2="14" y2="17" />
+                              </svg>
+                              Remove All Columns
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    {selectedColumns.map((column, index) => (
+                      <div 
+                        key={column.id}
+                        ref={el => columnRefs.current[index] = el}
+                        className={`bg-white border border-gray-200 rounded p-2 flex items-center justify-between group hover:border-gray-300 shadow-sm ${draggedItem === index ? 'opacity-50 border-dashed' : ''}`}
+                        draggable
+                        onDragStart={() => handleDragStart(index)}
+                        onDragOver={(e) => handleDragOver(e, index)}
+                        onDragEnd={() => setDraggedItem(null)}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-400 cursor-move">
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <line x1="21" x2="3" y1="6" y2="6" />
+                              <line x1="21" x2="3" y1="12" y2="12" />
+                              <line x1="21" x2="3" y1="18" y2="18" />
+                            </svg>
+                          </span>
+                          <span className="text-sm">{column.name}</span>
+                          {'formula' in column && (
+                            <span className="ml-1 px-1.5 py-0.5 text-xs bg-blue-100 text-blue-800 rounded">Formula</span>
+                          )}
+                        </div>
+                        <button 
+                          className="text-gray-400 hover:text-gray-600"
+                          onClick={() => removeColumn(column.id)}
+                        >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             width="14"
@@ -719,20 +820,46 @@ export default function ReportBuilderPage() {
                             strokeLinecap="round"
                             strokeLinejoin="round"
                           >
-                            <line x1="21" x2="3" y1="6" y2="6" />
-                            <line x1="21" x2="3" y1="12" y2="12" />
-                            <line x1="21" x2="3" y1="18" y2="18" />
+                            <path d="M18 6 6 18" />
+                            <path d="m6 6 12 12" />
                           </svg>
-                        </span>
-                        <span className="text-sm">{column.name}</span>
-                        {'formula' in column && (
-                          <span className="ml-1 px-1.5 py-0.5 text-xs bg-blue-100 text-blue-800 rounded">Formula</span>
-                        )}
+                        </button>
                       </div>
-                      <button 
-                        className="text-gray-400 hover:text-gray-600"
-                        onClick={() => removeColumn(column.id)}
-                      >
+                    ))}
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="filters" className="m-0 data-[state=active]:p-4">
+                <div className="space-y-4">
+                  <div className="bg-white border border-gray-200 rounded-md p-4">
+                    <h3 className="font-medium mb-2">Last Activity</h3>
+                    <div className="flex items-center gap-2">
+                      <Select defaultValue="equals">
+                        <SelectTrigger className="w-[120px]">
+                          <SelectValue placeholder="Operator" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="equals">equals</SelectItem>
+                          <SelectItem value="not_equals">not equals</SelectItem>
+                          <SelectItem value="greater_than">greater than</SelectItem>
+                          <SelectItem value="less_than">less than</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select defaultValue="last_30_days">
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="Value" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="today">Today</SelectItem>
+                          <SelectItem value="yesterday">Yesterday</SelectItem>
+                          <SelectItem value="last_7_days">Last 7 Days</SelectItem>
+                          <SelectItem value="last_30_days">Last 30 Days</SelectItem>
+                          <SelectItem value="this_month">This Month</SelectItem>
+                          <SelectItem value="last_month">Last Month</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button variant="outline" size="icon" className="h-9 w-9">
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           width="14"
@@ -747,131 +874,140 @@ export default function ReportBuilderPage() {
                           <path d="M18 6 6 18" />
                           <path d="m6 6 12 12" />
                         </svg>
-                      </button>
+                      </Button>
                     </div>
-                  ))}
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="filters" className="m-0 data-[state=active]:p-4">
-              <div className="space-y-4">
-                <div className="bg-white border border-gray-200 rounded-md p-4">
-                  <h3 className="font-medium mb-2">Last Activity</h3>
-                  <div className="flex items-center gap-2">
-                    <Select defaultValue="equals">
-                      <SelectTrigger className="w-[120px]">
-                        <SelectValue placeholder="Operator" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="equals">equals</SelectItem>
-                        <SelectItem value="not_equals">not equals</SelectItem>
-                        <SelectItem value="greater_than">greater than</SelectItem>
-                        <SelectItem value="less_than">less than</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select defaultValue="last_30_days">
-                      <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Value" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="today">Today</SelectItem>
-                        <SelectItem value="yesterday">Yesterday</SelectItem>
-                        <SelectItem value="last_7_days">Last 7 Days</SelectItem>
-                        <SelectItem value="last_30_days">Last 30 Days</SelectItem>
-                        <SelectItem value="this_month">This Month</SelectItem>
-                        <SelectItem value="last_month">Last Month</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Button variant="outline" size="icon" className="h-9 w-9">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M18 6 6 18" />
-                        <path d="m6 6 12 12" />
-                      </svg>
-                    </Button>
                   </div>
-                </div>
 
-                <div className="bg-white border border-gray-200 rounded-md p-4">
-                  <h3 className="font-medium mb-2">Account Owner</h3>
-                  <div className="flex items-center gap-2">
-                    <Select defaultValue="equals">
-                      <SelectTrigger className="w-[120px]">
-                        <SelectValue placeholder="Operator" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="equals">equals</SelectItem>
-                        <SelectItem value="not_equals">not equals</SelectItem>
-                        <SelectItem value="contains">contains</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select defaultValue="current_user">
-                      <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Value" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="current_user">Current User</SelectItem>
-                        <SelectItem value="role">Role</SelectItem>
-                        <SelectItem value="role_subordinates">Role & Subordinates</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Button variant="outline" size="icon" className="h-9 w-9">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M18 6 6 18" />
-                        <path d="m6 6 12 12" />
-                      </svg>
-                    </Button>
+                  <div className="bg-white border border-gray-200 rounded-md p-4">
+                    <h3 className="font-medium mb-2">Account Owner</h3>
+                    <div className="flex items-center gap-2">
+                      <Select defaultValue="equals">
+                        <SelectTrigger className="w-[120px]">
+                          <SelectValue placeholder="Operator" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="equals">equals</SelectItem>
+                          <SelectItem value="not_equals">not equals</SelectItem>
+                          <SelectItem value="contains">contains</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select defaultValue="current_user">
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="Value" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="current_user">Current User</SelectItem>
+                          <SelectItem value="role">Role</SelectItem>
+                          <SelectItem value="role_subordinates">Role & Subordinates</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button variant="outline" size="icon" className="h-9 w-9">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M18 6 6 18" />
+                          <path d="m6 6 12 12" />
+                        </svg>
+                      </Button>
+                    </div>
                   </div>
-                </div>
 
-                <Button variant="outline" className="w-full">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="mr-1"
-                  >
-                    <path d="M5 12h14" />
-                    <path d="M12 5v14" />
-                  </svg>
-                  Add Filter
-                </Button>
+                  <Button variant="outline" className="w-full">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="mr-1"
+                    >
+                      <path d="M5 12h14" />
+                      <path d="M12 5v14" />
+                    </svg>
+                    Add Filter
+                  </Button>
+                </div>
+              </TabsContent>
+            </Tabs>
+          ) : (
+            // Collapsed view for center panel
+            <div className="flex flex-col items-center pt-4 space-y-4 overflow-hidden">
+              {/* Simple icon indicators for collapsed center panel */}
+              <div 
+                className="p-2 cursor-pointer hover:bg-gray-50 rounded"
+                title="Report columns"
+                onClick={() => setCenterPanelCollapsed(false)}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="text-blue-600"
+                >
+                  <path d="M4 19h16" />
+                  <path d="M4 14h16" />
+                  <path d="M4 9h16" />
+                  <path d="M4 4h16" />
+                </svg>
               </div>
-            </TabsContent>
-          </Tabs>
+              <div className="text-xs font-medium text-gray-500 rotate-90 mt-2 whitespace-nowrap">
+                {selectedColumns.length} columns
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right Panel - Preview */}
-        <div className="flex-1 bg-gray-50 flex flex-col">
-          <div className="p-3 bg-white border-b border-gray-200 flex justify-end">
+        <div className={`${leftPanelCollapsed || centerPanelCollapsed ? 'flex-[2]' : 'flex-1'} bg-gray-50 flex flex-col transition-all duration-300`}>
+          <div className="p-3 bg-white border-b border-gray-200 flex justify-between">
+            <div className="flex items-center">
+              <button 
+                className="mr-2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                onClick={() => {
+                  setLeftPanelCollapsed(true);
+                  setCenterPanelCollapsed(true);
+                }}
+                title="Expand preview"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="15 3 21 3 21 9" />
+                  <polyline points="9 21 3 21 3 15" />
+                  <line x1="21" y1="3" x2="14" y2="10" />
+                  <line x1="3" y1="21" x2="10" y2="14" />
+                </svg>
+              </button>
+              <span className="text-sm font-medium text-gray-700">Preview</span>
+            </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500">Update Preview Automatically</span>
+              <span className="text-sm text-gray-500">Update Automatically</span>
               <div className="relative inline-flex items-center cursor-pointer">
                 <input type="checkbox" value="" className="sr-only peer" defaultChecked />
                 <div className="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
