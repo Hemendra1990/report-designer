@@ -1,13 +1,16 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 
 // Sample Account fields with type indicators
 const accountFields = [
@@ -50,6 +53,63 @@ const accountFields = [
   { id: "last_viewed_date", name: "Last Viewed Date", category: "system", type: "datetime", icon: "A" },
 ];
 
+// Sample formula functions
+const formulaFunctions = [
+  {
+    category: "Text",
+    functions: [
+      { name: "CONCATENATE", description: "Joins text values into one string" },
+      { name: "LEFT", description: "Returns the specified number of characters from the start of a text string" },
+      { name: "RIGHT", description: "Returns the specified number of characters from the end of a text string" },
+      { name: "MID", description: "Returns characters from the middle of a text string" },
+      { name: "FIND", description: "Returns the position of a text string within another text string" },
+      { name: "LEN", description: "Returns the number of characters in a text string" },
+      { name: "LOWER", description: "Converts all characters to lowercase" },
+      { name: "UPPER", description: "Converts all characters to uppercase" },
+      { name: "TRIM", description: "Removes spaces from both ends of a text string" },
+    ]
+  },
+  {
+    category: "Date & Time",
+    functions: [
+      { name: "DATE", description: "Returns a date value from year, month, and day values" },
+      { name: "DATEVALUE", description: "Converts a text date to a date value" },
+      { name: "DAY", description: "Returns the day of the month (1-31)" },
+      { name: "MONTH", description: "Returns the month (1-12)" },
+      { name: "YEAR", description: "Returns the year as a four-digit number" },
+      { name: "NOW", description: "Returns the current date and time" },
+      { name: "TODAY", description: "Returns the current date" },
+    ]
+  },
+  {
+    category: "Math",
+    functions: [
+      { name: "ABS", description: "Returns the absolute value of a number" },
+      { name: "CEILING", description: "Rounds a number up to the nearest multiple of specified value" },
+      { name: "FLOOR", description: "Rounds a number down to the nearest multiple of specified value" },
+      { name: "ROUND", description: "Rounds a number to a specified number of digits" },
+      { name: "MAX", description: "Returns the maximum value from list of numbers" },
+      { name: "MIN", description: "Returns the minimum value from list of numbers" },
+      { name: "MOD", description: "Returns the remainder after a number is divided by a divisor" },
+      { name: "POWER", description: "Returns a number raised to a power" },
+      { name: "SQRT", description: "Returns the square root of a number" },
+      { name: "SUM", description: "Adds all the numbers in a range of cells" },
+    ]
+  },
+  {
+    category: "Logical",
+    functions: [
+      { name: "AND", description: "Returns TRUE if all arguments are TRUE" },
+      { name: "OR", description: "Returns TRUE if any argument is TRUE" },
+      { name: "NOT", description: "Reverses the logical value of its argument" },
+      { name: "IF", description: "Returns one value if a condition is TRUE and another value if FALSE" },
+      { name: "ISBLANK", description: "Returns TRUE if the value is blank" },
+      { name: "ISNUMBER", description: "Returns TRUE if the value is a number" },
+      { name: "ISTEXT", description: "Returns TRUE if the value is text" },
+    ]
+  }
+];
+
 // Group fields by category
 const fieldsByCategory = accountFields.reduce((acc, field) => {
   acc[field.category] = acc[field.category] || [];
@@ -59,31 +119,70 @@ const fieldsByCategory = accountFields.reduce((acc, field) => {
 
 // Sample selected columns for the report
 const initialSelectedColumns = [
-  { id: "last_activity", name: "Last Activity" },
-  { id: "account_owner", name: "Account Owner" },
-  { id: "account_name", name: "Account Name" },
-  { id: "billing_state", name: "Billing State/Province" },
-  { id: "type", name: "Type" },
-  { id: "rating", name: "Rating" },
-  { id: "last_modified_date", name: "Last Modified Date" },
+  { id: "last_activity", name: "Last Activity", type: "datetime" },
+  { id: "account_owner", name: "Account Owner", type: "user" },
+  { id: "account_name", name: "Account Name", type: "text" },
+  { id: "billing_state", name: "Billing State/Province", type: "text" },
+  { id: "type", name: "Type", type: "picklist" },
+  { id: "rating", name: "Rating", type: "picklist" },
+  { id: "last_modified_date", name: "Last Modified Date", type: "datetime" },
 ];
+
+// Drag and drop helper function
+const reorder = (list: any[], startIndex: number, endIndex: number) => {
+  const result = Array.from(list);
+  const [removed] = result.splice(startIndex, 1);
+  result.splice(endIndex, 0, removed);
+  return result;
+};
 
 export default function ReportBuilderPage() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [formulaSearchTerm, setFormulaSearchTerm] = useState("");
   const [selectedColumns, setSelectedColumns] = useState(initialSelectedColumns);
   const [expandedCategories, setExpandedCategories] = useState({
     general: true,
     address: false,
     system: false,
   });
-
+  
+  // Context menu state
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+  
+  // Dragging state
+  const [draggedItem, setDraggedItem] = useState<null | number>(null);
+  const columnRefs = useRef<(HTMLDivElement | null)[]>([]);
+  
+  // Reference for click outside menu
+  const menuRef = useRef<HTMLDivElement>(null);
+  
+  // Initialize column refs
+  useEffect(() => {
+    columnRefs.current = columnRefs.current.slice(0, selectedColumns.length);
+  }, [selectedColumns]);
+  
+  // Handle click outside to close menu
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    }
+    
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+  
   // Filter fields based on search term
   const filteredFields = searchTerm.trim() === "" 
     ? accountFields 
     : accountFields.filter(field => 
         field.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
-
+      
   // Toggle category expansion
   const toggleCategory = (category: string) => {
     setExpandedCategories(prev => ({
@@ -91,19 +190,108 @@ export default function ReportBuilderPage() {
       [category]: !prev[category]
     }));
   };
-
+  
   // Handle adding a column to the report
   const addColumn = (field: typeof accountFields[0]) => {
     if (!selectedColumns.some(col => col.id === field.id)) {
-      setSelectedColumns([...selectedColumns, { id: field.id, name: field.name }]);
+      setSelectedColumns([...selectedColumns, { id: field.id, name: field.name, type: field.type }]);
     }
   };
-
+  
   // Handle removing a column from the report
   const removeColumn = (fieldId: string) => {
     setSelectedColumns(selectedColumns.filter(col => col.id !== fieldId));
   };
+  
+  // Handle dragging start
+  const handleDragStart = (index: number) => {
+    setDraggedItem(index);
+  };
+  
+  // Handle dragging over another column
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    
+    if (draggedItem === null) return;
+    if (draggedItem === index) return;
+    
+    const newSelectedColumns = reorder(
+      selectedColumns,
+      draggedItem,
+      index
+    );
+    
+    setSelectedColumns(newSelectedColumns);
+    setDraggedItem(index);
+  };
+  
+  // Handle context menu for columns
+  const openColumnMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setMenuPosition({ top: e.clientY, left: e.clientX });
+    setIsMenuOpen(true);
+  };
+  
+  // Formula editor state
+  const [showFormulaBuilder, setShowFormulaBuilder] = useState(false);
+  const [formulaName, setFormulaName] = useState("");
+  const [formulaDescription, setFormulaDescription] = useState("");
+  const [formulaEditorValue, setFormulaEditorValue] = useState("");
+  const [formulaOutputType, setFormulaOutputType] = useState("number");
+  const [decimalPoints, setDecimalPoints] = useState("2");
+  const [formulaDialogTab, setFormulaDialogTab] = useState("fields");
 
+  // Filter formula functions based on search term
+  const filteredFunctions = formulaSearchTerm.trim() === ""
+    ? formulaFunctions
+    : formulaFunctions.map(category => ({
+        category: category.category,
+        functions: category.functions.filter(func => 
+          func.name.toLowerCase().includes(formulaSearchTerm.toLowerCase()) ||
+          func.description.toLowerCase().includes(formulaSearchTerm.toLowerCase())
+        )
+      })).filter(category => category.functions.length > 0);
+  
+  // Handle adding a formula column
+  const addFormulaColumn = () => {
+    setIsMenuOpen(false);
+    setShowFormulaBuilder(true);
+  };
+  
+  // Handle formula dialog submission
+  const handleSubmitFormula = () => {
+    if (!formulaName.trim()) return;
+    
+    // Create a new formula column
+    const newFormulaColumn = {
+      id: `formula_${Date.now()}`,
+      name: formulaName,
+      type: formulaOutputType,
+      formula: formulaEditorValue,
+      description: formulaDescription,
+    };
+    
+    setSelectedColumns([...selectedColumns, newFormulaColumn]);
+    setShowFormulaBuilder(false);
+    
+    // Reset form
+    setFormulaName("");
+    setFormulaDescription("");
+    setFormulaEditorValue("");
+    setFormulaOutputType("number");
+    setDecimalPoints("2");
+  };
+  
+  // Insert a field into the formula editor
+  const insertFieldIntoFormula = (field: typeof accountFields[0]) => {
+    setFormulaEditorValue(prev => `${prev}[${field.name}]`);
+  };
+  
+  // Insert a function into the formula editor
+  const insertFunctionIntoFormula = (funcName: string) => {
+    setFormulaEditorValue(prev => `${prev}${funcName}()`);
+  };
+  
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Navigation Bar */}
@@ -267,8 +455,10 @@ export default function ReportBuilderPage() {
                       .map(field => (
                         <div 
                           key={field.id}
-                          className="pl-2 pr-3 py-1.5 text-sm hover:bg-blue-50 flex items-center justify-between cursor-pointer"
+                          className="pl-2 pr-3 py-1.5 text-sm hover:bg-blue-50 flex items-center justify-between cursor-pointer group"
                           onClick={() => addColumn(field)}
+                          draggable
+                          onDragStart={() => {/* Handle field drag if needed */}}
                         >
                           <div className="flex items-center gap-2">
                             <span className={`w-4 h-4 flex items-center justify-center rounded-sm text-xs ${field.type === 'number' || field.type === 'currency' ? 'bg-purple-100 text-purple-700' : 'bg-indigo-100 text-indigo-700'}`}>
@@ -355,16 +545,169 @@ export default function ReportBuilderPage() {
 
               {/* Columns Section */}
               <div className="p-4 flex-1">
-                <div className="text-xs font-semibold text-gray-500 mb-2">COLUMNS</div>
+                <div className="flex justify-between items-center mb-3">
+                  <div className="text-xs font-semibold text-gray-500">COLUMNS</div>
+                  <div className="relative">
+                    <button 
+                      className="text-sm text-blue-600 flex items-center"
+                      onClick={openColumnMenu}
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="mr-1"
+                      >
+                        <path d="M5 12h14" />
+                        <path d="M12 5v14" />
+                      </svg>
+                      Add Column
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="ml-1"
+                      >
+                        <path d="m6 9 6 6 6-6" />
+                      </svg>
+                    </button>
+                    
+                    {/* Column Menu Dropdown */}
+                    {isMenuOpen && (
+                      <div 
+                        ref={menuRef}
+                        className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-10 w-48"
+                        style={{ 
+                          top: menuPosition.top - 250, 
+                          left: menuPosition.left - 100,
+                          position: 'fixed'
+                        }}
+                      >
+                        <div className="py-1">
+                          <button
+                            className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left flex items-center"
+                            onClick={() => setIsMenuOpen(false)}
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="mr-2"
+                            >
+                              <path d="M3 6h18" />
+                              <path d="M3 12h18" />
+                              <path d="M3 18h18" />
+                            </svg>
+                            Add Bucket Column
+                          </button>
+                          <button
+                            className="px-4 py-2 text-sm text-gray-400 w-full text-left flex items-center cursor-not-allowed"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="mr-2"
+                            >
+                              <circle cx="12" cy="12" r="10" />
+                              <line x1="8" y1="12" x2="16" y2="12" />
+                            </svg>
+                            Add Summary Formula
+                          </button>
+                          <button
+                            className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left flex items-center"
+                            onClick={addFormulaColumn}
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="mr-2"
+                            >
+                              <path d="M4 19h16" />
+                              <path d="M4 14h16" />
+                              <path d="M4 9h16" />
+                              <path d="M4 4h16" />
+                            </svg>
+                            Add Row-Level Formula
+                          </button>
+                          <div className="border-t border-gray-200 my-1"></div>
+                          <button
+                            className="px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full text-left flex items-center"
+                            onClick={() => {
+                              setSelectedColumns([]);
+                              setIsMenuOpen(false);
+                            }}
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="mr-2"
+                            >
+                              <path d="M3 6h18" />
+                              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                              <line x1="10" y1="11" x2="10" y2="17" />
+                              <line x1="14" y1="11" x2="14" y2="17" />
+                            </svg>
+                            Remove All Columns
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
                 
                 <div className="space-y-2">
                   {selectedColumns.map((column, index) => (
                     <div 
                       key={column.id}
-                      className="bg-white border border-gray-200 rounded p-2 flex items-center justify-between group hover:border-gray-300 shadow-sm"
+                      ref={el => columnRefs.current[index] = el}
+                      className={`bg-white border border-gray-200 rounded p-2 flex items-center justify-between group hover:border-gray-300 shadow-sm ${draggedItem === index ? 'opacity-50 border-dashed' : ''}`}
+                      draggable
+                      onDragStart={() => handleDragStart(index)}
+                      onDragOver={(e) => handleDragOver(e, index)}
+                      onDragEnd={() => setDraggedItem(null)}
                     >
                       <div className="flex items-center gap-2">
-                        <span className="text-gray-400">
+                        <span className="text-gray-400 cursor-move">
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             width="14"
@@ -382,6 +725,9 @@ export default function ReportBuilderPage() {
                           </svg>
                         </span>
                         <span className="text-sm">{column.name}</span>
+                        {'formula' in column && (
+                          <span className="ml-1 px-1.5 py-0.5 text-xs bg-blue-100 text-blue-800 rounded">Formula</span>
+                        )}
                       </div>
                       <button 
                         className="text-gray-400 hover:text-gray-600"
@@ -617,6 +963,330 @@ export default function ReportBuilderPage() {
           </div>
         </div>
       </div>
+      
+      {/* Formula Builder Panel (shown conditionally) */}
+      {showFormulaBuilder && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+              <h2 className="text-xl font-semibold">Edit Row-Level Formula Column</h2>
+              <button 
+                onClick={() => setShowFormulaBuilder(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M18 6 6 18" />
+                  <path d="m6 6 12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="p-4 text-sm text-gray-600">
+              Create a custom formula to calculate values for each row in your report.
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Left Section: Fields & Functions */}
+                <div className="md:col-span-1 border border-gray-200 rounded-md overflow-hidden">
+                  <div className="border-b border-gray-200">
+                    <div className="flex w-full">
+                      <button 
+                        onClick={() => setFormulaDialogTab("fields")}
+                        className={`flex-1 px-4 py-2 text-center ${formulaDialogTab === "fields" 
+                          ? "bg-white border-b-2 border-blue-600 text-blue-600 font-medium" 
+                          : "bg-gray-50 text-gray-600"}`}
+                      >
+                        Fields
+                      </button>
+                      <button 
+                        onClick={() => setFormulaDialogTab("functions")}
+                        className={`flex-1 px-4 py-2 text-center ${formulaDialogTab === "functions" 
+                          ? "bg-white border-b-2 border-blue-600 text-blue-600 font-medium" 
+                          : "bg-gray-50 text-gray-600"}`}
+                      >
+                        Functions
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="p-2 border-b border-gray-200">
+                    <Input 
+                      placeholder={formulaDialogTab === "fields" ? "Search fields..." : "Search functions..."}
+                      value={formulaDialogTab === "fields" ? searchTerm : formulaSearchTerm}
+                      onChange={(e) => formulaDialogTab === "fields" 
+                        ? setSearchTerm(e.target.value) 
+                        : setFormulaSearchTerm(e.target.value)
+                      }
+                      className="text-sm"
+                    />
+                  </div>
+                  
+                  <div className="overflow-y-auto max-h-72">
+                    {formulaDialogTab === "fields" ? (
+                      // Fields Tab Content
+                      <div>
+                        {Object.entries(fieldsByCategory).map(([category, fields]) => (
+                          <div key={category} className="border-b border-gray-200 last:border-b-0">
+                            <div 
+                              className="p-2 flex justify-between items-center cursor-pointer hover:bg-gray-50"
+                              onClick={() => toggleCategory(category)}
+                            >
+                              <div className="text-xs font-semibold text-gray-500 uppercase">
+                                {category} ({fields.length})
+                              </div>
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className={`transition-transform ${expandedCategories[category as keyof typeof expandedCategories] ? 'rotate-180' : ''}`}
+                              >
+                                <path d="m6 9 6 6 6-6" />
+                              </svg>
+                            </div>
+                            
+                            {expandedCategories[category as keyof typeof expandedCategories] && (
+                              <div className="pl-2">
+                                {fields
+                                  .filter(field => 
+                                    !searchTerm.trim() || 
+                                    field.name.toLowerCase().includes(searchTerm.toLowerCase())
+                                  )
+                                  .map(field => (
+                                    <div 
+                                      key={field.id}
+                                      className="pl-2 pr-3 py-1.5 text-sm hover:bg-blue-50 flex items-center justify-between cursor-pointer"
+                                      onClick={() => insertFieldIntoFormula(field)}
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <span className={`w-4 h-4 flex items-center justify-center rounded-sm text-xs ${field.type === 'number' || field.type === 'currency' ? 'bg-purple-100 text-purple-700' : 'bg-indigo-100 text-indigo-700'}`}>
+                                          {field.icon}
+                                        </span>
+                                        <span>{field.name}</span>
+                                      </div>
+                                    </div>
+                                  ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      // Functions Tab Content
+                      <div>
+                        {filteredFunctions.map((category) => (
+                          <div key={category.category} className="border-b border-gray-200 last:border-b-0">
+                            <div className="p-2 bg-gray-50">
+                              <div className="text-xs font-semibold text-gray-500 uppercase">
+                                {category.category} ({category.functions.length})
+                              </div>
+                            </div>
+                            <div className="pl-2">
+                              {category.functions.map((func) => (
+                                <div 
+                                  key={func.name}
+                                  className="pl-2 pr-3 py-1.5 text-sm hover:bg-blue-50 flex items-center justify-between cursor-pointer"
+                                  onClick={() => insertFunctionIntoFormula(func.name)}
+                                >
+                                  <div>
+                                    <div className="font-medium text-blue-600">{func.name}</div>
+                                    <div className="text-xs text-gray-500">{func.description}</div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Right Section: Formula Builder */}
+                <div className="md:col-span-2">
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="formula-name" className="flex items-center text-sm font-medium">
+                          * Column Name
+                          <span className="text-red-500 ml-1">*</span>
+                        </Label>
+                        <Input 
+                          id="formula-name" 
+                          value={formulaName}
+                          onChange={(e) => setFormulaName(e.target.value)}
+                          placeholder="Enter a name for this column"
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="formula-description" className="text-sm font-medium">
+                          Description
+                        </Label>
+                        <Input 
+                          id="formula-description" 
+                          value={formulaDescription}
+                          onChange={(e) => setFormulaDescription(e.target.value)}
+                          placeholder="Optional description"
+                          className="mt-1"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="output-type" className="text-sm font-medium">
+                          Formula Output Type
+                        </Label>
+                        <Select 
+                          value={formulaOutputType} 
+                          onValueChange={setFormulaOutputType}
+                        >
+                          <SelectTrigger id="output-type" className="mt-1">
+                            <SelectValue placeholder="Select output type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="number">Number</SelectItem>
+                            <SelectItem value="text">Text</SelectItem>
+                            <SelectItem value="currency">Currency</SelectItem>
+                            <SelectItem value="percent">Percent</SelectItem>
+                            <SelectItem value="date">Date</SelectItem>
+                            <SelectItem value="datetime">Date/Time</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      {(formulaOutputType === 'number' || formulaOutputType === 'currency' || formulaOutputType === 'percent') && (
+                        <div>
+                          <Label htmlFor="decimal-points" className="text-sm font-medium">
+                            Decimal Points
+                          </Label>
+                          <Select 
+                            value={decimalPoints} 
+                            onValueChange={setDecimalPoints}
+                          >
+                            <SelectTrigger id="decimal-points" className="mt-1">
+                              <SelectValue placeholder="Select decimal points" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="0">0</SelectItem>
+                              <SelectItem value="1">1</SelectItem>
+                              <SelectItem value="2">2</SelectItem>
+                              <SelectItem value="3">3</SelectItem>
+                              <SelectItem value="4">4</SelectItem>
+                              <SelectItem value="5">5</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <Label className="text-sm font-medium">Formula</Label>
+                        <div className="flex items-center space-x-1">
+                          {['+', '-', '*', '/', '^', '(', ')'].map((op) => (
+                            <button
+                              key={op}
+                              className="w-6 h-6 flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-700 rounded"
+                              onClick={() => setFormulaEditorValue(prev => `${prev}${op}`)}
+                            >
+                              {op}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      <div className="relative border border-gray-300 rounded-md">
+                        <div className="absolute left-0 top-0 bottom-0 w-8 bg-gray-50 border-r border-gray-300 text-right">
+                          {Array.from({ length: Math.max((formulaEditorValue.match(/\n/g) || []).length + 1, 1) }).map((_, i) => (
+                            <div key={i} className="text-xs text-gray-400 px-1.5 h-6 leading-6">{i + 1}</div>
+                          ))}
+                        </div>
+                        <Textarea
+                          value={formulaEditorValue}
+                          onChange={(e) => setFormulaEditorValue(e.target.value)}
+                          className="min-h-[150px] pl-8 font-mono text-sm resize-none"
+                          placeholder="Enter your formula here..."
+                        />
+                      </div>
+                      
+                      <div className="flex justify-end mt-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          disabled={!formulaEditorValue.trim()}
+                        >
+                          Validate Formula
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-md border border-blue-100 text-sm text-blue-700">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="mt-0.5"
+                      >
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M12 16v-4" />
+                        <path d="M12 8h.01" />
+                      </svg>
+                      <div>
+                        <strong>Tips for creating formulas:</strong>
+                        <ul className="list-disc ml-5 mt-1">
+                          <li>Use square brackets to reference fields: [Field Name]</li>
+                          <li>Numeric operations: +, -, *, /, ^ (exponentiation)</li>
+                          <li>Use functions like SUM(), MAX(), IF() for advanced calculations</li>
+                          <li>Validate your formula before applying it</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-4 border-t border-gray-200 flex justify-end space-x-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowFormulaBuilder(false)}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleSubmitFormula} 
+                disabled={!formulaName.trim() || !formulaEditorValue.trim()}
+              >
+                Apply
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
