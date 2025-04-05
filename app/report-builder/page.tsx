@@ -154,19 +154,28 @@ export default function ReportBuilderPage() {
   const [draggedItem, setDraggedItem] = useState<null | number>(null);
   const columnRefs = useRef<(HTMLDivElement | null)[]>([]);
   
+  // Add group dropdown state
+  const [showGroupDropdown, setShowGroupDropdown] = useState(false);
+  const [groupSearchTerm, setGroupSearchTerm] = useState("");
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+  
   // Reference for click outside menu
   const menuRef = useRef<HTMLDivElement>(null);
+  const groupSearchRef = useRef<HTMLDivElement>(null);
   
   // Initialize column refs
   useEffect(() => {
     columnRefs.current = columnRefs.current.slice(0, selectedColumns.length);
   }, [selectedColumns]);
   
-  // Handle click outside to close menu
+  // Handle click outside to close menus
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setIsMenuOpen(false);
+      }
+      if (groupSearchRef.current && !groupSearchRef.current.contains(event.target as Node)) {
+        setShowGroupDropdown(false);
       }
     }
     
@@ -391,12 +400,12 @@ export default function ReportBuilderPage() {
       {/* Main Content Area */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left Panel - Fields */}
-        <div className={`${leftPanelCollapsed ? 'w-12' : 'w-64'} bg-white border-r border-gray-200 flex flex-col overflow-hidden transition-all duration-300`}>
+        <div className={`${leftPanelCollapsed ? 'w-12' : 'w-64'} bg-card border-r border-border flex flex-col overflow-hidden transition-all duration-300`}>
           {/* Collapse Control */}
           <div className="flex justify-end p-1">
             <button 
               onClick={() => setLeftPanelCollapsed(!leftPanelCollapsed)}
-              className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+              className="p-1 text-muted-foreground hover:text-foreground transition-colors"
               title={leftPanelCollapsed ? "Expand fields panel" : "Collapse fields panel"}
             >
               <svg
@@ -528,17 +537,18 @@ export default function ReportBuilderPage() {
           ) : (
             // Collapsed view - shows only icons and minimal information
             <div className="flex flex-col items-center pt-4 space-y-4 overflow-y-auto">
+              <div className="text-xs font-medium text-muted-foreground">Field</div>
               {Object.entries(fieldsByCategory).map(([category]) => (
                 <div 
                   key={category}
-                  className="p-2 cursor-pointer hover:bg-gray-50 rounded"
+                  className="p-2 cursor-pointer hover:bg-accent rounded-md"
                   title={`${category.toUpperCase()} fields`}
                   onClick={() => {
                     setLeftPanelCollapsed(false);
                     setTimeout(() => toggleCategory(category), 300);
                   }}
                 >
-                  <div className="w-6 h-6 bg-indigo-100 text-indigo-700 rounded-sm flex items-center justify-center text-xs font-medium">
+                  <div className="size-6 bg-primary/10 text-primary rounded-md flex items-center justify-center text-xs font-medium">
                     {category.charAt(0).toUpperCase()}
                   </div>
                 </div>
@@ -548,12 +558,12 @@ export default function ReportBuilderPage() {
         </div>
 
         {/* Center Panel - Report Builder */}
-        <div className={`${centerPanelCollapsed ? 'w-12' : 'flex-1'} flex flex-col bg-white border-r border-gray-200 transition-all duration-300`}>
+        <div className={`${centerPanelCollapsed ? 'w-12' : 'w-64'} flex flex-col bg-card border-r border-border transition-all duration-300`}>
           {/* Collapse Control */}
           <div className="flex justify-end p-1">
             <button 
               onClick={() => setCenterPanelCollapsed(!centerPanelCollapsed)}
-              className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+              className="p-1 text-muted-foreground hover:text-foreground transition-colors"
               title={centerPanelCollapsed ? "Expand builder panel" : "Collapse builder panel"}
             >
               <svg
@@ -595,11 +605,17 @@ export default function ReportBuilderPage() {
               <TabsContent value="outline" className="flex-1 flex flex-col m-0 data-[state=active]:p-0">
                 {/* Groups Section */}
                 <div className="border-b border-gray-200 p-4">
-                  <div className="text-xs font-semibold text-gray-500 mb-2">GROUP ROWS</div>
-                  <div className="relative">
+                  <div className="text-xs font-semibold text-muted-foreground mb-2">GROUP ROWS</div>
+                  <div className="relative" ref={groupSearchRef}>
                     <Input 
-                      className="pl-8 text-sm bg-gray-50" 
+                      className="pl-8 text-sm bg-background" 
                       placeholder="Add group..."
+                      value={groupSearchTerm}
+                      onChange={(e) => {
+                        setGroupSearchTerm(e.target.value);
+                        if (!showGroupDropdown) setShowGroupDropdown(true);
+                      }}
+                      onClick={() => setShowGroupDropdown(true)}
                     />
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -611,12 +627,75 @@ export default function ReportBuilderPage() {
                       strokeWidth="2"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"
+                      className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
                     >
                       <circle cx="11" cy="11" r="8" />
                       <path d="m21 21-4.3-4.3" />
                     </svg>
+                    
+                    {/* Group Dropdown */}
+                    {showGroupDropdown && (
+                      <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-md py-1 max-h-[300px] overflow-y-auto">
+                        {selectedColumns.filter(col => 
+                          !groupSearchTerm.trim() || col.name.toLowerCase().includes(groupSearchTerm.toLowerCase())
+                        ).length > 0 ? (
+                          selectedColumns
+                            .filter(col => 
+                              !groupSearchTerm.trim() || col.name.toLowerCase().includes(groupSearchTerm.toLowerCase())
+                            )
+                            .map(column => (
+                              <div 
+                                key={column.id}
+                                className="px-3 py-2 hover:bg-accent cursor-pointer flex items-center gap-2 text-sm"
+                                onClick={() => {
+                                  setSelectedGroup(column.id);
+                                  setGroupSearchTerm(column.name);
+                                  setShowGroupDropdown(false);
+                                }}
+                              >
+                                <span className={`size-4 flex items-center justify-center rounded-sm text-xs ${column.type === 'number' || column.type === 'currency' ? 'bg-primary/10 text-primary' : 'bg-accent/80 text-accent-foreground'}`}>
+                                  {column.name.charAt(0).toUpperCase()}
+                                </span>
+                                {column.name}
+                              </div>
+                            ))
+                        ) : (
+                          <div className="px-3 py-2 text-sm text-muted-foreground">
+                            No columns match your search
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
+                  
+                  {/* Selected Groups */}
+                  {selectedGroup && (
+                    <div className="mt-2 bg-accent/50 border rounded-md p-2 text-sm flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{selectedColumns.find(col => col.id === selectedGroup)?.name}</span>
+                        <span className="text-muted-foreground">Ascending</span>
+                      </div>
+                      <button 
+                        onClick={() => setSelectedGroup(null)}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M18 6 6 18" />
+                          <path d="m6 6 12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Columns Section */}
@@ -976,11 +1055,11 @@ export default function ReportBuilderPage() {
         </div>
 
         {/* Right Panel - Preview */}
-        <div className={`${leftPanelCollapsed || centerPanelCollapsed ? 'flex-[2]' : 'flex-1'} bg-gray-50 flex flex-col transition-all duration-300`}>
-          <div className="p-3 bg-white border-b border-gray-200 flex justify-between">
+        <div className="flex-1 bg-accent/10 flex flex-col transition-all duration-300">
+          <div className="p-3 bg-background border-b border-border flex justify-between">
             <div className="flex items-center">
               <button 
-                className="mr-2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                className="mr-2 p-1 text-muted-foreground hover:text-foreground transition-colors"
                 onClick={() => {
                   setLeftPanelCollapsed(true);
                   setCenterPanelCollapsed(true);
@@ -1004,13 +1083,13 @@ export default function ReportBuilderPage() {
                   <line x1="3" y1="21" x2="10" y2="14" />
                 </svg>
               </button>
-              <span className="text-sm font-medium text-gray-700">Preview</span>
+              <span className="text-sm font-medium">Preview</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500">Update Automatically</span>
+              <span className="text-sm text-muted-foreground">Update Automatically</span>
               <div className="relative inline-flex items-center cursor-pointer">
                 <input type="checkbox" value="" className="sr-only peer" defaultChecked />
-                <div className="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                <div className="w-9 h-5 bg-muted rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-background after:border-muted-foreground after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
               </div>
             </div>
           </div>
