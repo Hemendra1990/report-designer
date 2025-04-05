@@ -19,7 +19,7 @@ export default function Home() {
             <Link href="/reports">
               <Button size="lg">View Reports</Button>
             </Link>
-            <Link href="/report-types">
+            <Link href="/report-builder">
               <Button variant="outline" size="lg">Create New Report</Button>
             </Link>
           </div>

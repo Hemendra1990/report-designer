@@ -265,6 +265,9 @@ export default function ReportsPage() {
             <Link href="/reports">
               <Button variant="ghost">Reports</Button>
             </Link>
+            <Link href="/report-types">
+              <Button variant="ghost">Report Types</Button>
+            </Link>
           </div>
         </div>
       </nav>
@@ -278,7 +281,7 @@ export default function ReportsPage() {
             <p className="text-muted-foreground">Manage and create custom report types</p>
           </div>
           <div>
-            <Link href="/report-types">
+            <Link href="/report-builder">
               <Button>
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -295,7 +298,7 @@ export default function ReportsPage() {
                   <path d="M12 5v14" />
                   <path d="M5 12h14" />
                 </svg>
-                Create New Report Type
+                Create New Report
               </Button>
             </Link>
           </div>

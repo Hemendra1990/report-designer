@@ -72,6 +72,9 @@ export default function ReportTypesPage() {
             <Link href="/reports">
               <Button variant="ghost">Reports</Button>
             </Link>
+            <Link href="/report-builder">
+              <Button variant="ghost">Report Builder</Button>
+            </Link>
           </div>
         </div>
       </nav>
