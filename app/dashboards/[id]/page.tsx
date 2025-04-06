@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, use } from 'react';
 import { 
   Plus, 
   Filter, 
@@ -18,34 +18,19 @@ import {
   Type,
   Image as ImageIcon,
   ChevronDown,
-  Pencil
+  Pencil,
+  Eye
 } from 'lucide-react';
-import { Rnd } from 'react-rnd';
+import { Responsive, WidthProvider } from 'react-grid-layout';
+import 'react-grid-layout/css/styles.css';
+import 'react-resizable/css/styles.css';
 import { ChartPreview } from '@/components/ChartPreview';
+import { DashboardGrid } from '@/components/DashboardGrid';
+import { DashboardData, DashboardWidget, Layout } from '@/types/dashboard';
+
+const ResponsiveGridLayout = WidthProvider(Responsive);
 
 type ChartType = 'bar' | 'line' | 'pie' | 'grouped-bar' | 'stacked-bar' | 'funnel' | 'scatter' | 'gauge' | 'metric' | 'table';
-
-interface DashboardWidget {
-  id: string;
-  type: 'chart' | 'text' | 'image';
-  title: string;
-  position: { x: number; y: number };
-  size: { width: number; height: number };
-  reportId?: string;
-  chartType?: ChartType;
-  yAxisFields?: string[];
-  xAxisField?: string;
-  displayUnits?: string;
-  content?: string;
-  imageUrl?: string;
-}
-
-interface Report {
-  id: string;
-  name: string;
-  createdBy: string;
-  folder: string;
-}
 
 // Add mock data interface
 interface ChartData {
@@ -79,12 +64,15 @@ const fetchChartData = async (reportId: string): Promise<ChartData> => {
 interface WidgetProps {
   widget: DashboardWidget;
   onRemove: (id: string) => void;
+  isPreview?: boolean;
 }
 
-function Widget({ widget, onRemove }: WidgetProps) {
+function Widget({ widget, onRemove, isPreview = false }: WidgetProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [chartData, setChartData] = useState<ChartData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
     if (widget.type === 'chart' && widget.reportId) {
@@ -102,35 +90,48 @@ function Widget({ widget, onRemove }: WidgetProps) {
       };
 
       loadChartData();
+    } else {
+      setIsLoading(false);
     }
-  }, [widget.reportId]);
+  }, [widget.reportId, widget.type]);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const updateDimensions = () => {
+      if (containerRef.current) {
+        const { width, height } = containerRef.current.getBoundingClientRect();
+        setDimensions({ width, height });
+      }
+    };
+
+    updateDimensions();
+    const resizeObserver = new ResizeObserver(updateDimensions);
+    resizeObserver.observe(containerRef.current);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
 
   return (
-    <Rnd
-      default={{
-        x: widget.position.x,
-        y: widget.position.y,
-        width: widget.size.width,
-        height: widget.size.height,
-      }}
-      minWidth={200}
-      minHeight={150}
-      bounds="parent"
-    >
-      <div className="bg-white rounded-lg shadow-sm border h-full overflow-hidden">
-        <div className="absolute top-2 right-2 z-10 flex gap-1">
-          <button className="p-1 rounded-md hover:bg-gray-100">
-            <Pencil size={14} className="text-gray-500" />
-          </button>
-          <button 
-            onClick={() => onRemove(widget.id)}
-            className="p-1 rounded-md hover:bg-gray-100"
-          >
-            <X size={14} className="text-gray-500" />
-          </button>
-        </div>
+    <div className="h-full w-full">
+      <div className="bg-white rounded-lg shadow-sm border h-full w-full overflow-hidden relative">
+        {!isPreview && (
+          <div className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button 
+              onClick={() => onRemove(widget.id)}
+              className="p-1 rounded-md hover:bg-gray-100"
+            >
+              <X size={14} className="text-gray-500" />
+            </button>
+          </div>
+        )}
         
-        <div className="h-full">
+        <div 
+          ref={containerRef}
+          className="h-full w-full p-4 widget-drag-handle"
+        >
           {widget.type === 'chart' && (
             <>
               {isLoading ? (
@@ -148,10 +149,14 @@ function Widget({ widget, onRemove }: WidgetProps) {
                   </div>
                 </div>
               ) : chartData ? (
-                <ChartPreview 
-                  type={widget.chartType || 'bar'} 
-                  data={chartData} 
-                />
+                <div className="w-full h-full">
+                  <ChartPreview 
+                    type={widget.chartType || 'bar'} 
+                    data={chartData}
+                    width={dimensions.width}
+                    height={dimensions.height}
+                  />
+                </div>
               ) : (
                 <div className="h-full flex items-center justify-center">
                   <p className="text-sm text-gray-500">No data available</p>
@@ -163,29 +168,82 @@ function Widget({ widget, onRemove }: WidgetProps) {
           {widget.type === 'text' && (
             <textarea
               value={widget.content}
-              className="w-full h-full border-none focus:outline-none resize-none p-4"
+              readOnly={isPreview}
+              className="w-full h-full border-none focus:outline-none resize-none bg-transparent"
               placeholder="Enter your text here"
             />
           )}
           
           {widget.type === 'image' && (
-            <div className="flex items-center justify-center h-full">
+            <div className="flex items-center justify-center h-full w-full">
               <ImageIcon size={40} className="text-gray-300" />
             </div>
           )}
         </div>
       </div>
-    </Rnd>
+    </div>
   );
 }
 
-export default function DashboardDesigner({ params }: { params: { id: string } }) {
-  const [dashboardName, setDashboardName] = useState('HemendraTest');
+interface Report {
+  id: string;
+  name: string;
+  createdBy: string;
+  folder: string;
+}
+
+// Sample reports data (would come from API in real implementation)
+const reports: Report[] = [
+  {
+    id: '1',
+    name: 'New Demo With SS Report',
+    createdBy: 'Hemendra Sethi',
+    folder: 'Private Reports'
+  },
+  {
+    id: '2',
+    name: 'Sales Performance',
+    createdBy: 'Hemendra Sethi',
+    folder: 'Private Reports'
+  },
+  {
+    id: '3',
+    name: 'Customer Analysis',
+    createdBy: 'Hemendra Sethi',
+    folder: 'Private Reports'
+  }
+];
+
+// Sample fields for chart configuration
+const availableFields = [
+  'Account Name',
+  'Billing City',
+  'Billing State',
+  'Annual Revenue',
+  'Industry',
+  'Record Count'
+];
+
+export default function DashboardDesigner({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params);
+  const dashboardId = resolvedParams.id;
+  
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [dashboardData, setDashboardData] = useState<DashboardData>({
+    id: dashboardId,
+    name: 'HemendraTest',
+    widgets: [],
+    layouts: {
+      lg: [],
+      md: [],
+      sm: []
+    }
+  });
+  const [currentBreakpoint, setCurrentBreakpoint] = useState('lg');
   const [showWidgetMenu, setShowWidgetMenu] = useState(false);
   const [showReportSelector, setShowReportSelector] = useState(false);
   const [showWidgetConfig, setShowWidgetConfig] = useState(false);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
-  const [widgets, setWidgets] = useState<DashboardWidget[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [chartType, setChartType] = useState<ChartType>('bar');
   const [yAxisFields, setYAxisFields] = useState<string[]>([]);
@@ -197,42 +255,43 @@ export default function DashboardDesigner({ params }: { params: { id: string } }
   const reportSelectorRef = useRef<HTMLDivElement>(null);
   const widgetConfigRef = useRef<HTMLDivElement>(null);
 
-  // Sample reports data (would come from API in real implementation)
-  const reports: Report[] = [
-    {
-      id: '1',
-      name: 'New Demo With SS Report',
-      createdBy: 'Hemendra Sethi',
-      folder: 'Private Reports'
-    },
-    {
-      id: '2',
-      name: 'Sales Performance',
-      createdBy: 'Hemendra Sethi',
-      folder: 'Private Reports'
-    },
-    {
-      id: '3',
-      name: 'Customer Analysis',
-      createdBy: 'Hemendra Sethi',
-      folder: 'Private Reports'
-    }
-  ];
-
   // Filter reports based on search term
   const filteredReports = reports.filter(report => 
     report.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Sample fields for chart configuration
-  const availableFields = [
-    'Account Name',
-    'Billing City',
-    'Billing State',
-    'Annual Revenue',
-    'Industry',
-    'Record Count'
-  ];
+  // Load dashboard data from localStorage on mount
+  useEffect(() => {
+    const savedData = localStorage.getItem(`dashboard_${dashboardId}`);
+    if (savedData) {
+      setDashboardData(JSON.parse(savedData));
+    }
+  }, [dashboardId]);
+
+  // Save dashboard data to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem(`dashboard_${dashboardId}`, JSON.stringify(dashboardData));
+  }, [dashboardData, dashboardId]);
+
+  const handleLayoutChange = (layout: Layout[], layouts: { [key: string]: Layout[] }) => {
+    setDashboardData(prev => ({
+      ...prev,
+      layouts: {
+        ...prev.layouts,
+        ...layouts
+      },
+      widgets: prev.widgets.map(widget => {
+        const newLayout = layout.find(l => l.i === widget.id);
+        if (newLayout) {
+          return {
+            ...widget,
+            layout: newLayout
+          };
+        }
+        return widget;
+      })
+    }));
+  };
 
   const handleAddWidget = (type: 'chart' | 'text' | 'image') => {
     setShowWidgetMenu(false);
@@ -240,18 +299,35 @@ export default function DashboardDesigner({ params }: { params: { id: string } }
     if (type === 'chart') {
       setShowReportSelector(true);
     } else {
-      // For text and image widgets, add directly
+      const id = Math.random().toString(36).substr(2, 9);
+      const newLayout = {
+        i: id,
+        x: (dashboardData.widgets.length * 4) % 12, // Position horizontally based on number of widgets
+        y: 0, // Start from top
+        w: 4, // Smaller initial width
+        h: 3, // Smaller initial height
+        minW: 2,
+        minH: 2
+      };
+
       const newWidget: DashboardWidget = {
-        id: Math.random().toString(36).substr(2, 9),
+        id,
         type,
         title: type === 'text' ? 'Text Widget' : 'Image Widget',
-        position: { x: 20, y: 20 },
-        size: { width: 300, height: 200 },
+        layout: newLayout,
         content: type === 'text' ? 'Enter your text here' : '',
         imageUrl: type === 'image' ? '/placeholder-image.jpg' : ''
       };
       
-      setWidgets([...widgets, newWidget]);
+      setDashboardData(prev => ({
+        ...prev,
+        widgets: [...prev.widgets, newWidget],
+        layouts: {
+          lg: [...(prev.layouts.lg || []), newLayout],
+          md: [...(prev.layouts.md || []), { ...newLayout, w: 3 }],
+          sm: [...(prev.layouts.sm || []), { ...newLayout, w: 2 }]
+        }
+      }));
     }
   };
 
@@ -263,12 +339,22 @@ export default function DashboardDesigner({ params }: { params: { id: string } }
 
   const handleSaveWidget = () => {
     if (selectedReport) {
+      const id = Math.random().toString(36).substr(2, 9);
+      const newLayout = {
+        i: id,
+        x: (dashboardData.widgets.length * 4) % 12, // Position horizontally based on number of widgets
+        y: 0, // Start from top
+        w: 4, // Smaller initial width
+        h: 4, // Reasonable height for charts
+        minW: 2,
+        minH: 2
+      };
+
       const newWidget: DashboardWidget = {
-        id: Math.random().toString(36).substr(2, 9),
+        id,
         type: 'chart',
         title: selectedReport.name,
-        position: { x: 20, y: 20 },
-        size: { width: 400, height: 300 },
+        layout: newLayout,
         reportId: selectedReport.id,
         chartType,
         yAxisFields,
@@ -276,7 +362,16 @@ export default function DashboardDesigner({ params }: { params: { id: string } }
         displayUnits
       };
       
-      setWidgets([...widgets, newWidget]);
+      setDashboardData(prev => ({
+        ...prev,
+        widgets: [...prev.widgets, newWidget],
+        layouts: {
+          lg: [...(prev.layouts.lg || []), newLayout],
+          md: [...(prev.layouts.md || []), { ...newLayout, w: 3 }],
+          sm: [...(prev.layouts.sm || []), { ...newLayout, w: 2 }]
+        }
+      }));
+
       setShowWidgetConfig(false);
       setSelectedReport(null);
       setChartType('bar');
@@ -295,97 +390,124 @@ export default function DashboardDesigner({ params }: { params: { id: string } }
   };
 
   const handleRemoveWidget = (id: string) => {
-    setWidgets(widgets.filter(widget => widget.id !== id));
+    setDashboardData(prev => ({
+      ...prev,
+      widgets: prev.widgets.filter(w => w.id !== id),
+      layouts: Object.keys(prev.layouts).reduce((acc, breakpoint) => ({
+        ...acc,
+        [breakpoint]: prev.layouts[breakpoint].filter(l => l.i !== id)
+      }), {} as { [key: string]: Layout[] })
+    }));
   };
 
   return (
     <main className="min-h-screen bg-gray-50">
       {/* Dashboard Header */}
-      <div className="bg-white border-b shadow-sm">
+      <div className="bg-white border-b shadow-sm sticky top-0 z-10">
         <div className="max-w-[1400px] mx-auto px-4 py-3 flex justify-between items-center">
           <div className="flex items-center">
             <input
               type="text"
-              value={dashboardName}
-              onChange={(e) => setDashboardName(e.target.value)}
+              value={dashboardData.name}
+              onChange={(e) => setDashboardData(prev => ({ ...prev, name: e.target.value }))}
               className="text-xl font-bold border-none focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2"
+              readOnly={isPreviewMode}
             />
           </div>
           
           <div className="flex items-center gap-2">
-            <div className="relative" ref={widgetMenuRef}>
-              <button
-                onClick={() => setShowWidgetMenu(!showWidgetMenu)}
-                className="flex items-center px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-              >
-                <Plus size={16} className="mr-1" />
-                Widget
-              </button>
-              
-              {showWidgetMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded shadow-lg z-10 border">
-                  <div className="py-1">
-                    <button
-                      onClick={() => handleAddWidget('chart')}
-                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      <BarChart3 size={16} className="mr-2" />
-                      Chart or Table
-                    </button>
-                    <button
-                      onClick={() => handleAddWidget('text')}
-                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      <Type size={16} className="mr-2" />
-                      Text
-                    </button>
-                    <button
-                      onClick={() => handleAddWidget('image')}
-                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      <ImageIcon size={16} className="mr-2" />
-                      Image
-                    </button>
-                  </div>
+            {!isPreviewMode && (
+              <>
+                <div className="relative" ref={widgetMenuRef}>
+                  <button
+                    onClick={() => setShowWidgetMenu(!showWidgetMenu)}
+                    className="flex items-center px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  >
+                    <Plus size={16} className="mr-1" />
+                    Widget
+                  </button>
+                  
+                  {showWidgetMenu && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded shadow-lg z-10 border">
+                      <div className="py-1">
+                        <button
+                          onClick={() => handleAddWidget('chart')}
+                          className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          <BarChart3 size={16} className="mr-2" />
+                          Chart or Table
+                        </button>
+                        <button
+                          onClick={() => handleAddWidget('text')}
+                          className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          <Type size={16} className="mr-2" />
+                          Text
+                        </button>
+                        <button
+                          onClick={() => handleAddWidget('image')}
+                          className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          <ImageIcon size={16} className="mr-2" />
+                          Image
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+                
+                <button className="flex items-center px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200">
+                  <Filter size={16} className="mr-1" />
+                  Filter
+                </button>
+                
+                <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-full">
+                  <Save size={20} />
+                </button>
+                
+                <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-full">
+                  <Undo size={20} />
+                </button>
+                
+                <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-full">
+                  <Redo size={20} />
+                </button>
+                
+                <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-full">
+                  <Settings size={20} />
+                </button>
+              </>
+            )}
             
-            <button className="flex items-center px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200">
-              <Filter size={16} className="mr-1" />
-              Filter
+            <button
+              onClick={() => setIsPreviewMode(!isPreviewMode)}
+              className="flex items-center px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+            >
+              <Eye size={16} className="mr-1" />
+              {isPreviewMode ? 'Edit' : 'Preview'}
             </button>
-            
-            <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-full">
-              <Save size={20} />
-            </button>
-            
-            <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-full">
-              <Undo size={20} />
-            </button>
-            
-            <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-full">
-              <Redo size={20} />
-            </button>
-            
-            <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-full">
-              <Settings size={20} />
-            </button>
-            
-            <button className="flex items-center px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700">
-              <Check size={16} className="mr-1" />
-              Done
-            </button>
+
+            {!isPreviewMode && (
+              <button className="flex items-center px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+                <Check size={16} className="mr-1" />
+                Done
+              </button>
+            )}
           </div>
         </div>
       </div>
       
       {/* Dashboard Canvas */}
       <div className="max-w-[1400px] mx-auto px-4 py-6">
-        <div className="bg-white rounded-lg shadow-sm border min-h-[600px] relative">
-          {widgets.map((widget) => (
-            <Widget key={widget.id} widget={widget} onRemove={handleRemoveWidget} />
-          ))}
+        <div className={`bg-white rounded-lg shadow-sm border min-h-[600px] relative ${isPreviewMode ? 'p-0' : 'p-4'}`}>
+          <DashboardGrid 
+            widgets={dashboardData.widgets}
+            layouts={dashboardData.layouts}
+            isPreviewMode={isPreviewMode}
+            onLayoutChange={handleLayoutChange}
+            onBreakpointChange={setCurrentBreakpoint}
+            onRemoveWidget={handleRemoveWidget}
+          />
         </div>
       </div>
       

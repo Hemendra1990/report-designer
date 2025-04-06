@@ -18,9 +18,11 @@ interface ChartData {
 interface ChartPreviewProps {
   type: 'bar' | 'line' | 'pie' | 'grouped-bar' | 'stacked-bar' | 'funnel' | 'scatter' | 'gauge' | 'metric' | 'table';
   data?: ChartData;
+  width?: number;
+  height?: number;
 }
 
-export function ChartPreview({ type, data }: ChartPreviewProps) {
+export function ChartPreview({ type, data, width = 400, height = 300 }: ChartPreviewProps) {
   if (!data) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -43,7 +45,6 @@ export function ChartPreview({ type, data }: ChartPreviewProps) {
         return <GroupedBarChart data={data} />;
       case 'stacked-bar':
         return <StackedBarChart data={data} />;
-      // Add more chart types as needed
       default:
         return (
           <div className="flex items-center justify-center h-full">
@@ -53,6 +54,9 @@ export function ChartPreview({ type, data }: ChartPreviewProps) {
     }
   };
 
-  // Render chart directly without any wrapper
-  return renderChart();
+  return (
+    <div style={{ width: '100%', height: '100%', minHeight: '200px' }}>
+      {renderChart()}
+    </div>
+  );
 } 

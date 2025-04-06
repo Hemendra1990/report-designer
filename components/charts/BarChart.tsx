@@ -1,34 +1,57 @@
 'use client';
 
-import {
-  BarChart as RechartsBarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer
-} from 'recharts';
+import { ResponsiveContainer, BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 
-const data = [
-  { name: 'Jan 2024', sales: 12500 },
-  { name: 'Feb 2024', sales: 18900 },
-  { name: 'Mar 2024', sales: 15700 },
-  { name: 'Apr 2024', sales: 22400 },
-  { name: 'May 2024', sales: 19800 },
-  { name: 'Jun 2024', sales: 24600 },
-];
+interface ChartData {
+  labels: string[];
+  datasets: {
+    label: string;
+    data: number[];
+  }[];
+}
 
-export function BarChart() {
+interface BarChartProps {
+  data: ChartData;
+  width?: number;
+  height?: number;
+}
+
+export function BarChart({ data, width, height }: BarChartProps) {
+  // Transform data into Recharts format
+  const chartData = data.labels.map((label, index) => ({
+    name: label,
+    ...data.datasets.reduce((acc, dataset) => ({
+      ...acc,
+      [dataset.label]: dataset.data[index]
+    }), {})
+  }));
+
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <RechartsBarChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="name" />
-        <YAxis />
-        <Tooltip formatter={(value) => `$${value.toLocaleString()}`} />
-        <Bar dataKey="sales" fill="#3b82f6" name="Monthly Sales" />
-      </RechartsBarChart>
-    </ResponsiveContainer>
+    <div style={{ width: '100%', height: '100%' }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <RechartsBarChart
+          data={chartData}
+          margin={{
+            top: 20,
+            right: 30,
+            left: 20,
+            bottom: 5,
+          }}
+        >
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="name" />
+          <YAxis />
+          <Tooltip />
+          <Legend />
+          {data.datasets.map((dataset, index) => (
+            <Bar
+              key={dataset.label}
+              dataKey={dataset.label}
+              fill={`hsl(${index * 360 / data.datasets.length}, 70%, 50%)`}
+            />
+          ))}
+        </RechartsBarChart>
+      </ResponsiveContainer>
+    </div>
   );
 } 
