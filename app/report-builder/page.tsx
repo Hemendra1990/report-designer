@@ -516,7 +516,7 @@ export default function ReportBuilderPage() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Navigation Bar */}
-      <nav className="bg-primary text-primary-foreground py-4 px-6 shadow-md">
+      {/* <nav className="bg-primary text-primary-foreground py-4 px-6 shadow-md">
         <div className="container mx-auto flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <Image 
@@ -540,7 +540,7 @@ export default function ReportBuilderPage() {
             </Link>
           </div>
         </div>
-      </nav>
+      </nav> */}
       
       {/* Top Header Bar */}
       <header className="bg-white border-b border-gray-200 py-3 px-4 flex justify-between items-center">

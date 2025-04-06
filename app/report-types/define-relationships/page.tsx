@@ -201,7 +201,7 @@ export default function DefineRelationships() {
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation Bar */}
-      <nav className="bg-primary text-primary-foreground py-4 px-6 shadow-md">
+      {/* <nav className="bg-primary text-primary-foreground py-4 px-6 shadow-md">
         <div className="container mx-auto flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <Image 
@@ -222,7 +222,7 @@ export default function DefineRelationships() {
             </Link>
           </div>
         </div>
-      </nav>
+      </nav> */}
 
       {/* Main Content */}
       <main className="container mx-auto py-8 px-4">
