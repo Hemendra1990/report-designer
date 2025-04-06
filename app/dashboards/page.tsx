@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Plus, X, Folder } from 'lucide-react';
+import CreateDashboardModal from '@/components/CreateDashboardModal';
 
 interface Dashboard {
   id: string;
@@ -30,31 +31,17 @@ export default function DashboardsPage() {
     }
   ]);
   
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newDashboard, setNewDashboard] = useState({
     name: '',
     description: '',
     folder: 'Private Dashboards'
   });
   
-  const handleCreateDashboard = () => {
-    if (newDashboard.name.trim()) {
-      const dashboard: Dashboard = {
-        id: Math.random().toString(36).substr(2, 9),
-        name: newDashboard.name,
-        description: newDashboard.description,
-        folder: newDashboard.folder,
-        createdAt: new Date().toISOString()
-      };
-      
-      setDashboards([...dashboards, dashboard]);
-      setShowCreateModal(false);
-      setNewDashboard({
-        name: '',
-        description: '',
-        folder: 'Private Dashboards'
-      });
-    }
+  const handleCreateDashboard = (data: { name: string; description: string; folder: string }) => {
+    // TODO: Implement dashboard creation logic
+    console.log('Creating dashboard:', data);
+    setIsCreateModalOpen(false);
   };
   
   const formatDate = (dateString: string) => {
@@ -67,14 +54,13 @@ export default function DashboardsPage() {
   };
   
   return (
-    <div className="p-6">
+    <div className="container mx-auto px-4 py-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">All Dashboards</h1>
+        <h1 className="text-2xl font-semibold">Dashboards</h1>
         <button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          onClick={() => setIsCreateModalOpen(true)}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
         >
-          <Plus size={16} className="mr-2" />
           New Dashboard
         </button>
       </div>
@@ -101,87 +87,11 @@ export default function DashboardsPage() {
         ))}
       </div>
       
-      {/* Create Dashboard Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg w-full max-w-md">
-            <div className="p-4 border-b flex justify-between items-center">
-              <h2 className="text-lg font-semibold">Create New Dashboard</h2>
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            
-            <div className="p-4">
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={newDashboard.name}
-                  onChange={(e) => setNewDashboard({...newDashboard, name: e.target.value})}
-                  className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter dashboard name"
-                />
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description
-                </label>
-                <textarea
-                  value={newDashboard.description}
-                  onChange={(e) => setNewDashboard({...newDashboard, description: e.target.value})}
-                  className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter dashboard description"
-                  rows={3}
-                />
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Folder
-                </label>
-                <div className="flex">
-                  <input
-                    type="text"
-                    value={newDashboard.folder}
-                    readOnly
-                    className="flex-1 p-2 border rounded-l-md bg-gray-50"
-                  />
-                  <button className="px-3 py-2 bg-gray-100 border border-l-0 rounded-r-md hover:bg-gray-200">
-                    Select
-                  </button>
-                </div>
-              </div>
-            </div>
-            
-            <div className="p-4 border-t flex justify-end">
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className="px-4 py-2 border rounded-md mr-2 hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreateDashboard}
-                disabled={!newDashboard.name.trim()}
-                className={`px-4 py-2 rounded-md ${
-                  newDashboard.name.trim()
-                    ? 'bg-blue-600 text-white hover:bg-blue-700'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                }`}
-              >
-                Create
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <CreateDashboardModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSubmit={handleCreateDashboard}
+      />
     </div>
   );
 } 

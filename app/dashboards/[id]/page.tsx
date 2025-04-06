@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { 
   Plus, 
   Filter, 
@@ -17,11 +17,13 @@ import {
   Table,
   Type,
   Image as ImageIcon,
-  ChevronDown
+  ChevronDown,
+  Pencil
 } from 'lucide-react';
 import { Rnd } from 'react-rnd';
+import { ChartPreview } from '@/components/ChartPreview';
 
-type ChartType = 'table' | 'bar' | 'groupedBar' | 'stackedBar' | 'line' | 'pie' | 'funnel' | 'scatter' | 'gauge' | 'metric';
+type ChartType = 'bar' | 'line' | 'pie' | 'grouped-bar' | 'stacked-bar' | 'funnel' | 'scatter' | 'gauge' | 'metric' | 'table';
 
 interface DashboardWidget {
   id: string;
@@ -43,6 +45,138 @@ interface Report {
   name: string;
   createdBy: string;
   folder: string;
+}
+
+// Add mock data interface
+interface ChartData {
+  labels: string[];
+  datasets: {
+    label: string;
+    data: number[];
+  }[];
+}
+
+// Mock API function
+const fetchChartData = async (reportId: string): Promise<ChartData> => {
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 1500));
+  
+  return {
+    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+    datasets: [
+      {
+        label: 'Sales',
+        data: [65, 59, 80, 81, 56, 55],
+      },
+      {
+        label: 'Revenue',
+        data: [28, 48, 40, 19, 86, 27],
+      }
+    ]
+  };
+};
+
+interface WidgetProps {
+  widget: DashboardWidget;
+  onRemove: (id: string) => void;
+}
+
+function Widget({ widget, onRemove }: WidgetProps) {
+  const [isLoading, setIsLoading] = useState(true);
+  const [chartData, setChartData] = useState<ChartData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (widget.type === 'chart' && widget.reportId) {
+      const loadChartData = async () => {
+        try {
+          setIsLoading(true);
+          setError(null);
+          const data = await fetchChartData(widget.reportId!);
+          setChartData(data);
+        } catch (err) {
+          setError('Failed to load chart data');
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      loadChartData();
+    }
+  }, [widget.reportId]);
+
+  return (
+    <Rnd
+      default={{
+        x: widget.position.x,
+        y: widget.position.y,
+        width: widget.size.width,
+        height: widget.size.height,
+      }}
+      minWidth={200}
+      minHeight={150}
+      bounds="parent"
+    >
+      <div className="bg-white rounded-lg shadow-sm border h-full overflow-hidden">
+        <div className="absolute top-2 right-2 z-10 flex gap-1">
+          <button className="p-1 rounded-md hover:bg-gray-100">
+            <Pencil size={14} className="text-gray-500" />
+          </button>
+          <button 
+            onClick={() => onRemove(widget.id)}
+            className="p-1 rounded-md hover:bg-gray-100"
+          >
+            <X size={14} className="text-gray-500" />
+          </button>
+        </div>
+        
+        <div className="h-full">
+          {widget.type === 'chart' && (
+            <>
+              {isLoading ? (
+                <div className="h-full flex items-center justify-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+                    <p className="text-sm text-gray-500">Loading chart data...</p>
+                  </div>
+                </div>
+              ) : error ? (
+                <div className="h-full flex items-center justify-center">
+                  <div className="flex flex-col items-center gap-2 text-red-500">
+                    <X size={24} />
+                    <p className="text-sm">{error}</p>
+                  </div>
+                </div>
+              ) : chartData ? (
+                <ChartPreview 
+                  type={widget.chartType || 'bar'} 
+                  data={chartData} 
+                />
+              ) : (
+                <div className="h-full flex items-center justify-center">
+                  <p className="text-sm text-gray-500">No data available</p>
+                </div>
+              )}
+            </>
+          )}
+          
+          {widget.type === 'text' && (
+            <textarea
+              value={widget.content}
+              className="w-full h-full border-none focus:outline-none resize-none p-4"
+              placeholder="Enter your text here"
+            />
+          )}
+          
+          {widget.type === 'image' && (
+            <div className="flex items-center justify-center h-full">
+              <ImageIcon size={40} className="text-gray-300" />
+            </div>
+          )}
+        </div>
+      </div>
+    </Rnd>
+  );
 }
 
 export default function DashboardDesigner({ params }: { params: { id: string } }) {
@@ -160,6 +294,10 @@ export default function DashboardDesigner({ params }: { params: { id: string } }
     }
   };
 
+  const handleRemoveWidget = (id: string) => {
+    setWidgets(widgets.filter(widget => widget.id !== id));
+  };
+
   return (
     <main className="min-h-screen bg-gray-50">
       {/* Dashboard Header */}
@@ -246,52 +384,7 @@ export default function DashboardDesigner({ params }: { params: { id: string } }
       <div className="max-w-[1400px] mx-auto px-4 py-6">
         <div className="bg-white rounded-lg shadow-sm border min-h-[600px] relative">
           {widgets.map((widget) => (
-            <Rnd
-              key={widget.id}
-              default={{
-                x: widget.position.x,
-                y: widget.position.y,
-                width: widget.size.width,
-                height: widget.size.height,
-              }}
-              minWidth={200}
-              minHeight={150}
-              bounds="parent"
-            >
-              <div className="bg-white rounded-lg shadow-sm border h-full overflow-hidden">
-                <div className="p-2 bg-gray-50 border-b flex justify-between items-center">
-                  <h3 className="font-medium text-sm">{widget.title}</h3>
-                  <button className="text-gray-500 hover:text-gray-700">
-                    <X size={16} />
-                  </button>
-                </div>
-                
-                <div className="p-4 h-full">
-                  {widget.type === 'chart' && (
-                    <div className="flex flex-col items-center justify-center h-full text-gray-500">
-                      <BarChart3 size={40} className="mb-2" />
-                      <p className="text-center">We can't draw this chart because there is no data</p>
-                    </div>
-                  )}
-                  
-                  {widget.type === 'text' && (
-                    <div className="h-full">
-                      <textarea
-                        value={widget.content}
-                        className="w-full h-full border-none focus:outline-none resize-none"
-                        placeholder="Enter your text here"
-                      />
-                    </div>
-                  )}
-                  
-                  {widget.type === 'image' && (
-                    <div className="flex items-center justify-center h-full">
-                      <ImageIcon size={40} className="text-gray-300" />
-                    </div>
-                  )}
-                </div>
-              </div>
-            </Rnd>
+            <Widget key={widget.id} widget={widget} onRemove={handleRemoveWidget} />
           ))}
         </div>
       </div>
@@ -412,8 +505,8 @@ export default function DashboardDesigner({ params }: { params: { id: string } }
                       {[
                         { type: 'table' as ChartType, icon: '≡', label: 'Table' },
                         { type: 'bar' as ChartType, icon: '▌', label: 'Bar' },
-                        { type: 'groupedBar' as ChartType, icon: '▌▌', label: 'Grouped Bar' },
-                        { type: 'stackedBar' as ChartType, icon: '▌', label: 'Stacked Bar' },
+                        { type: 'grouped-bar' as ChartType, icon: '▌▌', label: 'Grouped Bar' },
+                        { type: 'stacked-bar' as ChartType, icon: '▌', label: 'Stacked Bar' },
                         { type: 'line' as ChartType, icon: '📈', label: 'Line' },
                         { type: 'pie' as ChartType, icon: '◓', label: 'Pie' },
                         { type: 'funnel' as ChartType, icon: '▼', label: 'Funnel' },
