@@ -12,6 +12,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 
+// Import TanStack Table
+import {
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
+  ColumnDef,
+  ColumnFiltersState,
+  SortingState,
+  VisibilityState,
+} from "@tanstack/react-table";
+
 // Sample Account fields with type indicators
 const accountFields = [
   { id: "account_owner", name: "Account Owner", category: "general", type: "user", icon: "A" },
@@ -180,6 +194,44 @@ interface Filter {
   selectedOptions?: string[];
 }
 
+// Add sample data for the preview
+interface AccountData {
+  id: number;
+  account_name: string;
+  account_owner: string;
+  billing_state: string;
+  type: string;
+  rating: string;
+  last_activity: string;
+  annual_revenue: number;
+  [key: string]: any; // Add index signature to allow string indexing
+}
+
+const sampleData: AccountData[] = [
+  { id: 1, account_name: "Acme Corporation", account_owner: "John Smith", billing_state: "CA", type: "Customer", rating: "Hot", last_activity: "2023-05-15", annual_revenue: 5000000 },
+  { id: 2, account_name: "Globex Industries", account_owner: "Sarah Johnson", billing_state: "NY", type: "Customer", rating: "Warm", last_activity: "2023-05-10", annual_revenue: 3200000 },
+  { id: 3, account_name: "Initech", account_owner: "Michael Brown", billing_state: "TX", type: "Prospect", rating: "Cold", last_activity: "2023-04-28", annual_revenue: 1200000 },
+  { id: 4, account_name: "Umbrella Corporation", account_owner: "Emily Davis", billing_state: "CA", type: "Customer", rating: "Hot", last_activity: "2023-05-18", annual_revenue: 7800000 },
+  { id: 5, account_name: "Stark Industries", account_owner: "John Smith", billing_state: "NY", type: "Customer", rating: "Hot", last_activity: "2023-05-20", annual_revenue: 9500000 },
+  { id: 6, account_name: "Wayne Enterprises", account_owner: "Sarah Johnson", billing_state: "NJ", type: "Customer", rating: "Warm", last_activity: "2023-05-05", annual_revenue: 4200000 },
+  { id: 7, account_name: "Cyberdyne Systems", account_owner: "Michael Brown", billing_state: "CA", type: "Prospect", rating: "Cold", last_activity: "2023-04-15", annual_revenue: 800000 },
+  { id: 8, account_name: "Oscorp", account_owner: "Emily Davis", billing_state: "NY", type: "Customer", rating: "Warm", last_activity: "2023-05-12", annual_revenue: 6100000 },
+  { id: 9, account_name: "Soylent Corporation", account_owner: "John Smith", billing_state: "TX", type: "Customer", rating: "Hot", last_activity: "2023-05-22", annual_revenue: 8900000 },
+  { id: 10, account_name: "Massive Dynamic", account_owner: "Sarah Johnson", billing_state: "CA", type: "Customer", rating: "Warm", last_activity: "2023-05-08", annual_revenue: 4500000 },
+];
+
+// Add more sample data for better grouping demonstration
+const moreSampleData: AccountData[] = [
+  { id: 11, account_name: "Aperture Science", account_owner: "Michael Brown", billing_state: "CA", type: "Prospect", rating: "Cold", last_activity: "2023-04-20", annual_revenue: 1500000 },
+  { id: 12, account_name: "Black Mesa", account_owner: "Emily Davis", billing_state: "NY", type: "Customer", rating: "Hot", last_activity: "2023-05-19", annual_revenue: 7200000 },
+  { id: 13, account_name: "Vault-Tec", account_owner: "John Smith", billing_state: "TX", type: "Customer", rating: "Warm", last_activity: "2023-05-14", annual_revenue: 3800000 },
+  { id: 14, account_name: "Abstergo Industries", account_owner: "Sarah Johnson", billing_state: "CA", type: "Customer", rating: "Hot", last_activity: "2023-05-21", annual_revenue: 8200000 },
+  { id: 15, account_name: "Weyland-Yutani", account_owner: "Michael Brown", billing_state: "NY", type: "Prospect", rating: "Cold", last_activity: "2023-04-25", annual_revenue: 2000000 },
+];
+
+// Combine all sample data
+const allSampleData: AccountData[] = [...sampleData, ...moreSampleData];
+
 export default function ReportBuilderPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [formulaSearchTerm, setFormulaSearchTerm] = useState("");
@@ -297,7 +349,7 @@ export default function ReportBuilderPage() {
   const [formulaOutputType, setFormulaOutputType] = useState("number");
   const [decimalPoints, setDecimalPoints] = useState("2");
   const [formulaDialogTab, setFormulaDialogTab] = useState("fields");
-
+  
   // Filter formula functions based on search term
   const filteredFunctions = formulaSearchTerm.trim() === ""
     ? formulaFunctions
@@ -383,6 +435,82 @@ export default function ReportBuilderPage() {
     setFilters(filters.map(filter => 
       filter.id === filterId ? { ...filter, ...updates } : filter
     ));
+  };
+  
+  // Add state for preview settings
+  const [rowData, setRowData] = useState<AccountData[]>([]);
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
+  const [showRowCounts, setShowRowCounts] = useState(false);
+  const [showDetailRows, setShowDetailRows] = useState(true);
+  const [autoUpdatePreview, setAutoUpdatePreview] = useState(true);
+  const [groupByField, setGroupByField] = useState<string | null>(null);
+  const [expandedRowGroups, setExpandedRowGroups] = useState<Record<string, boolean>>({});
+  
+  // Update column definitions when selected columns change
+  useEffect(() => {
+    if (selectedColumns.length > 0 && autoUpdatePreview) {
+      // Apply filters to sample data
+      let filteredData = [...allSampleData];
+      
+      // Apply filters based on the filter state
+      if (filters.length > 0) {
+        filteredData = filteredData.filter(item => {
+          // For demo purposes, we'll just check if the item has the field and value
+          // In a real app, you'd implement proper filter logic based on operators
+          return filters.every(filter => {
+            const fieldValue = item[filter.field.id];
+            if (!fieldValue) return false;
+            
+            // Simple filter implementation for demo
+            if (filter.operator === 'equals') {
+              return fieldValue === filter.value;
+            } else if (filter.operator === 'contains') {
+              return String(fieldValue).toLowerCase().includes(filter.value.toLowerCase());
+            }
+            
+            return true;
+          });
+        });
+      }
+      
+      setRowData(filteredData);
+    }
+  }, [filters, autoUpdatePreview, selectedColumns, allSampleData]);
+  
+  // Function to handle grouping by a field
+  const handleGroupBy = (fieldId: string) => {
+    if (groupByField === fieldId) {
+      setGroupByField(null);
+    } else {
+      setGroupByField(fieldId);
+    }
+  };
+  
+  // Function to toggle row counts
+  const toggleRowCounts = () => {
+    setShowRowCounts(!showRowCounts);
+  };
+  
+  // Function to toggle detail rows
+  const toggleDetailRows = () => {
+    setShowDetailRows(!showDetailRows);
+    // When using TanStack Table, this will toggle showing/hiding details
+    if (!showDetailRows) {
+      // Expand all groups
+      const expanded: Record<string, boolean> = {};
+      rowData.forEach(row => {
+        if (groupByField && row[groupByField]) {
+          expanded[row[groupByField]] = true;
+        }
+      });
+      setExpandedRowGroups(expanded);
+    } else {
+      // Collapse all groups
+      setExpandedRowGroups({});
+    }
   };
 
   return (
@@ -1187,97 +1315,189 @@ export default function ReportBuilderPage() {
               </button>
               <span className="text-sm font-medium">Preview</span>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Update Automatically</span>
-              <div className="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" value="" className="sr-only peer" defaultChecked />
-                <div className="w-9 h-5 bg-muted rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-background after:border-muted-foreground after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <button 
+                  className={`p-1 rounded ${showRowCounts ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}
+                  onClick={toggleRowCounts}
+                  title="Toggle Row Counts"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <line x1="4" y1="9" x2="20" y2="9" />
+                    <line x1="4" y1="15" x2="20" y2="15" />
+                    <line x1="10" y1="3" x2="8" y2="21" />
+                    <line x1="16" y1="3" x2="14" y2="21" />
+                  </svg>
+                </button>
+                <button 
+                  className={`p-1 rounded ${showDetailRows ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}
+                  onClick={toggleDetailRows}
+                  title="Toggle Detail Rows"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                    <line x1="3" y1="9" x2="21" y2="9" />
+                    <line x1="9" y1="21" x2="9" y2="9" />
+                  </svg>
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Update Automatically</span>
+                <div className="relative inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    className="sr-only peer" 
+                    checked={autoUpdatePreview}
+                    onChange={() => setAutoUpdatePreview(!autoUpdatePreview)}
+                  />
+                  <div className="w-9 h-5 bg-muted rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-background after:border-muted-foreground after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="flex-1 p-6 flex flex-col items-center justify-center text-center">
-            <div className="max-w-md">
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                width="40" 
-                height="40" 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="currentColor" 
-                strokeWidth="1" 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                className="mx-auto mb-4 text-gray-400"
-              >
-                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-                <polyline points="14 2 14 8 20 8" />
-                <path d="M16 13H8" />
-                <path d="M16 17H8" />
-                <path d="M10 9H8" />
-              </svg>
+          {rowData.length > 0 ? (
+            <div className="flex-1 p-4">
+              <div className="w-full h-full rounded-md overflow-hidden border border-border">
+                <DataTable<AccountData>
+                  data={rowData}
+                  columns={selectedColumns.map(col => ({
+                    accessorKey: col.id,
+                    header: col.name,
+                    cell: ({ row }: { row: any }) => {
+                      const value = row.getValue(col.id);
+                      // Format based on column type
+                      if (col.type === 'currency' && value !== undefined) {
+                        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(value));
+                      } else if (col.type === 'datetime' && value) {
+                        return new Date(value as string).toLocaleDateString();
+                      } else if (col.type === 'checkbox') {
+                        return value ? '✓' : '';
+                      }
+                      return value;
+                    },
+                  }))}
+                  sorting={sorting}
+                  setSorting={setSorting}
+                  columnFilters={columnFilters}
+                  setColumnFilters={setColumnFilters}
+                  columnVisibility={columnVisibility}
+                  setColumnVisibility={setColumnVisibility}
+                  pagination={pagination}
+                  setPagination={setPagination}
+                  showRowCounts={showRowCounts}
+                  showDetailRows={showDetailRows}
+                  groupByField={groupByField}
+                  expandedRowGroups={expandedRowGroups}
+                  setExpandedRowGroups={setExpandedRowGroups}
+                />
+              </div>
+            </div>
+          ) : (
+            // Keep the existing "No records returned" view
+            <div className="flex-1 p-6 flex flex-col items-center justify-center text-center">
+              <div className="max-w-md">
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  width="40" 
+                  height="40" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  strokeWidth="1" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  className="mx-auto mb-4 text-gray-400"
+                >
+                  <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <path d="M16 13H8" />
+                  <path d="M16 17H8" />
+                  <path d="M10 9H8" />
+                </svg>
 
-              <h3 className="text-lg font-medium mb-3 text-gray-700">No records returned in preview</h3>
-              <p className="text-gray-500 mb-4">Try running the report or editing report filters.</p>
-              
-              <div className="space-y-2 text-left">
-                <div>
-                  <Link href="#" className="text-blue-600 flex items-center gap-1 text-sm">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="12"
-                      height="12"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <polyline points="9 18 15 12 9 6" />
-                    </svg>
-                    Show All accounts.
-                  </Link>
-                </div>
-                <div>
-                  <Link href="#" className="text-blue-600 flex items-center gap-1 text-sm">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="12"
-                      height="12"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <polyline points="9 18 15 12 9 6" />
-                    </svg>
-                    Set the Created Date filter to All Time.
-                  </Link>
-                </div>
-                <div>
-                  <Link href="#" className="text-blue-600 flex items-center gap-1 text-sm">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="12"
-                      height="12"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <polyline points="9 18 15 12 9 6" />
-                    </svg>
-                    Edit other filters in the filter panel.
-                  </Link>
+                <h3 className="text-lg font-medium mb-3 text-gray-700">No records returned in preview</h3>
+                <p className="text-gray-500 mb-4">Try running the report or editing report filters.</p>
+                
+                <div className="space-y-2 text-left">
+                  <div>
+                    <Link href="#" className="text-blue-600 flex items-center gap-1 text-sm">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <polyline points="9 18 15 12 9 6" />
+                      </svg>
+                      Show All accounts.
+                    </Link>
+                  </div>
+                  <div>
+                    <Link href="#" className="text-blue-600 flex items-center gap-1 text-sm">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <polyline points="9 18 15 12 9 6" />
+                      </svg>
+                      Set the Created Date filter to All Time.
+                    </Link>
+                  </div>
+                  <div>
+                    <Link href="#" className="text-blue-600 flex items-center gap-1 text-sm">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <polyline points="9 18 15 12 9 6" />
+                      </svg>
+                      Edit other filters in the filter panel.
+                    </Link>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
       
@@ -2291,4 +2511,337 @@ function renderSingleValueInput(field: Field, value: string, setValue: (value: s
         />
       );
   }
+}
+
+// Add DataTable component
+interface DataTableProps<TData extends Record<string, any>> {
+  data: TData[];
+  columns: ColumnDef<TData, any>[];
+  sorting: SortingState;
+  setSorting: React.Dispatch<React.SetStateAction<SortingState>>;
+  columnFilters: ColumnFiltersState;
+  setColumnFilters: React.Dispatch<React.SetStateAction<ColumnFiltersState>>;
+  columnVisibility: VisibilityState;
+  setColumnVisibility: React.Dispatch<React.SetStateAction<VisibilityState>>;
+  pagination: { pageIndex: number; pageSize: number };
+  setPagination: React.Dispatch<React.SetStateAction<{ pageIndex: number; pageSize: number }>>;
+  showRowCounts: boolean;
+  showDetailRows: boolean;
+  groupByField: string | null;
+  expandedRowGroups: Record<string, boolean>;
+  setExpandedRowGroups: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+}
+
+function DataTable<TData extends Record<string, any>>(props: DataTableProps<TData>) {
+  const {
+    data,
+    columns,
+    sorting,
+    setSorting,
+    columnFilters,
+    setColumnFilters,
+    columnVisibility,
+    setColumnVisibility,
+    pagination,
+    setPagination,
+    showRowCounts,
+    showDetailRows,
+    groupByField,
+    expandedRowGroups,
+    setExpandedRowGroups
+  } = props;
+  
+  // Process data for grouping if a group field is specified
+  const [groupedData, setGroupedData] = useState<Record<string, TData[]>>({});
+  const [groupKeys, setGroupKeys] = useState<string[]>([]);
+  
+  // Create grouped data whenever the group field changes
+  useEffect(() => {
+    if (groupByField) {
+      const grouped = data.reduce((acc, row) => {
+        const groupValue = row[groupByField]?.toString() || 'undefined';
+        if (!acc[groupValue]) {
+          acc[groupValue] = [];
+        }
+        acc[groupValue].push(row);
+        return acc;
+      }, {} as Record<string, TData[]>);
+      
+      setGroupedData(grouped);
+      setGroupKeys(Object.keys(grouped).sort());
+    } else {
+      setGroupedData({});
+      setGroupKeys([]);
+    }
+  }, [data, groupByField]);
+  
+  // Initialize the table
+  const table = useReactTable({
+    data,
+    columns,
+    state: {
+      sorting,
+      columnFilters,
+      columnVisibility,
+      pagination,
+    },
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
+
+  // Toggle group expansion
+  const toggleGroupExpansion = (groupKey: string) => {
+    setExpandedRowGroups(prev => ({
+      ...prev,
+      [groupKey]: !prev[groupKey]
+    }));
+  };
+
+  // Handle whether to show grouped view or flat view
+  const showGroupedView = groupByField && groupKeys.length > 0;
+
+  // Render the table
+  return (
+    <div className="space-y-4">
+      {/* Table */}
+      <div className="rounded-md border">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-100 text-gray-600">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <tr key={headerGroup.id} className="border-b">
+                {headerGroup.headers.map((header) => (
+                  <th key={header.id} className="px-4 py-3 text-left font-medium">
+                    {header.isPlaceholder ? null : (
+                      <div
+                        className={`flex items-center gap-1 ${
+                          header.column.getCanSort() ? "cursor-pointer select-none" : ""
+                        }`}
+                        onClick={header.column.getToggleSortingHandler()}
+                      >
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                        {{
+                          asc: (
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <path d="m18 15-6-6-6 6" />
+                            </svg>
+                          ),
+                          desc: (
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <path d="m6 9 6 6 6-6" />
+                            </svg>
+                          ),
+                        }[header.column.getIsSorted() as string] ?? null}
+                      </div>
+                    )}
+                  </th>
+                ))}
+              </tr>
+            ))}
+          </thead>
+          <tbody>
+            {showGroupedView ? (
+              // Grouped view
+              groupKeys.map(groupKey => (
+                <React.Fragment key={groupKey}>
+                  {/* Group header */}
+                  <tr 
+                    className="bg-blue-50 cursor-pointer hover:bg-blue-100 transition-colors"
+                    onClick={() => toggleGroupExpansion(groupKey)}
+                  >
+                    <td colSpan={columns.length} className="px-4 py-2 font-medium text-blue-700 border-b border-blue-100">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className={`transition-transform ${expandedRowGroups[groupKey] ? 'rotate-90' : ''}`}
+                          >
+                            <path d="m9 18 6-6-6-6" />
+                          </svg>
+                          <span>{groupKey}</span>
+                        </div>
+                        {showRowCounts && (
+                          <span className="text-xs bg-blue-100 px-2 py-1 rounded text-blue-600">
+                            {groupedData[groupKey].length} {groupedData[groupKey].length === 1 ? 'item' : 'items'}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                  
+                  {/* Group detail rows */}
+                  {expandedRowGroups[groupKey] && showDetailRows && 
+                    groupedData[groupKey].map((row, index) => (
+                      <tr
+                        key={`${groupKey}-${index}`}
+                        className="border-b hover:bg-gray-50 transition-colors"
+                      >
+                        {columns.map((column, colIndex) => (
+                          <td key={`${groupKey}-${index}-${colIndex}`} className="px-4 py-2">
+                            {column.accessorKey && row[column.accessorKey as string] !== undefined ? (
+                              typeof column.cell === 'function' 
+                                ? column.cell({ row: { getValue: (key: string) => row[key] } })
+                                : row[column.accessorKey as string]
+                            ) : null}
+                          </td>
+                        ))}
+                      </tr>
+                    ))
+                  }
+                  
+                  {/* Group summary row */}
+                  {expandedRowGroups[groupKey] && (
+                    <tr className="bg-gray-50 border-b border-gray-200">
+                      <td colSpan={columns.length} className="px-4 py-2 text-right text-sm text-gray-600">
+                        Subtotal: {groupedData[groupKey].length} {groupedData[groupKey].length === 1 ? 'item' : 'items'}
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              ))
+            ) : (
+              // Standard view (no grouping)
+              table.getRowModel().rows.length ? (
+                table.getRowModel().rows.map((row) => (
+                  <tr
+                    key={row.id}
+                    className="border-b hover:bg-gray-50 transition-colors"
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <td key={cell.id} className="px-4 py-2">
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td
+                    colSpan={columns.length}
+                    className="h-24 text-center text-gray-500"
+                  >
+                    No results.
+                  </td>
+                </tr>
+              )
+            )}
+            
+            {/* Grand total row for grouped view */}
+            {showGroupedView && (
+              <tr className="bg-gray-100 font-medium">
+                <td colSpan={columns.length} className="px-4 py-2 text-right border-t border-gray-300">
+                  Total: {data.length} {data.length === 1 ? 'item' : 'items'}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Pagination */}
+      <div className="flex items-center justify-between py-2">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.setPageIndex(0)}
+            disabled={!table.getCanPreviousPage()}
+          >
+            {"<<"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
+          >
+            {"<"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+          >
+            {">"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+            disabled={!table.getCanNextPage()}
+          >
+            {">>"}
+          </Button>
+        </div>
+        <div className="flex items-center gap-2 text-sm text-gray-600">
+          <div>
+            Page{" "}
+            <span className="font-semibold">
+              {table.getState().pagination.pageIndex + 1}
+            </span>{" "}
+            of{" "}
+            <span className="font-semibold">
+              {table.getPageCount() === 0 ? 1 : table.getPageCount()}
+            </span>
+          </div>
+          <Select
+            value={table.getState().pagination.pageSize.toString()}
+            onValueChange={(value) => table.setPageSize(Number(value))}
+          >
+            <SelectTrigger className="w-[70px] h-8">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {[10, 20, 30, 40, 50].map((pageSize) => (
+                <SelectItem key={pageSize} value={pageSize.toString()}>
+                  {pageSize}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div>rows per page</div>
+        </div>
+      </div>
+    </div>
+  );
 }
