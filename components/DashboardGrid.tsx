@@ -14,6 +14,7 @@ interface DashboardGridProps {
   onLayoutChange: (layout: Layout[], layouts: { [key: string]: Layout[] }) => void;
   onBreakpointChange: (breakpoint: string) => void;
   onRemoveWidget: (id: string) => void;
+  onWidgetContentChange?: (widgetId: string, content: string) => void;
 }
 
 export function DashboardGrid({
@@ -22,9 +23,10 @@ export function DashboardGrid({
   isPreviewMode,
   onLayoutChange,
   onBreakpointChange,
-  onRemoveWidget
+  onRemoveWidget,
+  onWidgetContentChange
 }: DashboardGridProps) {
-  // Grid layout configuration
+  // Grid layout configuration - same for both preview and edit modes
   const gridProps = {
     className: "layout",
     layouts,
@@ -61,7 +63,7 @@ export function DashboardGrid({
         }
         .react-grid-item {
           transition: none;
-          cursor: move;
+          cursor: ${isPreviewMode ? 'default' : 'move'};
         }
         .react-grid-item.cssTransforms {
           transition: none;
@@ -86,6 +88,7 @@ export function DashboardGrid({
           box-sizing: border-box;
           cursor: se-resize;
           padding: 0 3px 3px 0;
+          display: ${isPreviewMode ? 'none' : 'block'};
         }
         .react-grid-item > .react-resizable-handle::after {
           content: "";
@@ -110,6 +113,7 @@ export function DashboardGrid({
           background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2IDYiIHN0eWxlPSJiYWNrZ3JvdW5kLWNvbG9yOiNmZmZmZmYwMCIgeD0iMHB4IiB5PSIwcHgiIHdpZHRoPSI2cHgiIGhlaWdodD0iNnB4Ij48ZyBvcGFjaXR5PSIwLjMwMiI+PHBhdGggZD0iTSA2IDYgTCAwIDYgTCAwIDQuMiBMIDQgNC4yIEwgNC4yIDQuMiBMIDQuMiAwIEwgNiAwIEwgNiA2IEwgNiA2IFoiIGZpbGw9IiMwMDAwMDAiLz48L2c+PC9zdmc+');
           background-position: bottom right;
           padding: 0 3px 3px 0;
+          display: ${isPreviewMode ? 'none' : 'block'};
         }
         .react-resizable-handle-se {
           bottom: 0;
@@ -138,6 +142,7 @@ export function DashboardGrid({
                   widget={widget} 
                   onRemove={onRemoveWidget}
                   isPreview={isPreviewMode}
+                  onContentChange={onWidgetContentChange}
                 />
               </div>
             ))}

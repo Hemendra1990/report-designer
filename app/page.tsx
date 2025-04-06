@@ -11,6 +11,13 @@ import {
 export default function HomePage() {
   const quickLinks = [
     {
+      title: 'Report Types',
+      description: 'Configure report templates',
+      icon: BarChart3,
+      href: '/report-types',
+      color: 'bg-green-100 text-green-600'
+    },
+    {
       title: 'Reports',
       description: 'Create and manage reports',
       icon: FileText,
@@ -24,13 +31,7 @@ export default function HomePage() {
       href: '/dashboards',
       color: 'bg-purple-100 text-purple-600'
     },
-    {
-      title: 'Report Types',
-      description: 'Configure report templates',
-      icon: BarChart3,
-      href: '/report-types',
-      color: 'bg-green-100 text-green-600'
-    }
+    
   ];
 
   const recentItems = [

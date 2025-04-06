@@ -400,6 +400,15 @@ export default function DashboardDesigner({ params }: { params: Promise<{ id: st
     }));
   };
 
+  const handleWidgetContentChange = (widgetId: string, content: string) => {
+    setDashboardData(prev => ({
+      ...prev,
+      widgets: prev.widgets.map(widget => 
+        widget.id === widgetId ? { ...widget, content } : widget
+      )
+    }));
+  };
+
   return (
     <main className="min-h-screen bg-gray-50">
       {/* Dashboard Header */}
@@ -499,7 +508,7 @@ export default function DashboardDesigner({ params }: { params: Promise<{ id: st
       
       {/* Dashboard Canvas */}
       <div className="max-w-[1400px] mx-auto px-4 py-6">
-        <div className={`bg-white rounded-lg shadow-sm border min-h-[600px] relative ${isPreviewMode ? 'p-0' : 'p-4'}`}>
+        <div className={`bg-white rounded-lg shadow-sm border min-h-[600px] relative ${isPreviewMode ? 'p-4' : 'p-4'}`}>
           <DashboardGrid 
             widgets={dashboardData.widgets}
             layouts={dashboardData.layouts}
@@ -507,6 +516,7 @@ export default function DashboardDesigner({ params }: { params: Promise<{ id: st
             onLayoutChange={handleLayoutChange}
             onBreakpointChange={setCurrentBreakpoint}
             onRemoveWidget={handleRemoveWidget}
+            onWidgetContentChange={handleWidgetContentChange}
           />
         </div>
       </div>

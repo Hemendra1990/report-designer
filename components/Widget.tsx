@@ -7,12 +7,14 @@ interface WidgetProps {
   widget: DashboardWidget;
   onRemove: (id: string) => void;
   isPreview?: boolean;
+  onContentChange?: (widgetId: string, content: string) => void;
 }
 
-export function Widget({ widget, onRemove, isPreview = false }: WidgetProps) {
+export function Widget({ widget, onRemove, isPreview = false, onContentChange }: WidgetProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [chartData, setChartData] = useState<ChartData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [textContent, setTextContent] = useState(widget.content || '');
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
@@ -67,6 +69,19 @@ export function Widget({ widget, onRemove, isPreview = false }: WidgetProps) {
       resizeObserver.disconnect();
     };
   }, []);
+
+  // Initialize text content from widget
+  useEffect(() => {
+    setTextContent(widget.content || '');
+  }, [widget.content]);
+
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    if (!isPreview) {
+      const newContent = e.target.value;
+      setTextContent(newContent);
+      onContentChange?.(widget.id, newContent);
+    }
+  };
 
   return (
     <div className="h-full w-full widget-drag-handle">
@@ -124,7 +139,8 @@ export function Widget({ widget, onRemove, isPreview = false }: WidgetProps) {
           
           {widget.type === 'text' && (
             <textarea
-              value={widget.content}
+              value={textContent}
+              onChange={handleTextChange}
               readOnly={isPreview}
               className="w-full h-full border-none focus:outline-none resize-none bg-transparent"
               placeholder="Enter your text here"
