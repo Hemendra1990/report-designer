@@ -1,52 +1,71 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { ReportType, reportTypeService } from '@/services/reportTypeService';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Pencil, Trash2, Search, ArrowUpDown } from 'lucide-react';
-import ReportTypeForm from './ReportTypeForm';
-import { Input } from '@/components/ui/input';
-import { useToast } from '@/hooks/use-toast';
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Search, Plus, Edit2, Trash2, ArrowUpDown } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { ReportTypeForm } from "./ReportTypeForm";
 
-type SortField = 'name' | 'createdAt' | 'active';
-type SortOrder = 'asc' | 'desc';
+interface ReportType {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+}
 
-export const ReportTypeList: React.FC = () => {
+type SortField = "name" | "createdAt" | "active";
+type SortOrder = "asc" | "desc";
+
+export function ReportTypeList() {
   const [reportTypes, setReportTypes] = useState<ReportType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [selectedReportType, setSelectedReportType] = useState<ReportType | undefined>(undefined);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortField, setSortField] = useState<SortField>('name');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+  const [selectedReportType, setSelectedReportType] = useState<ReportType | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortField, setSortField] = useState<SortField>("name");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
   const { toast } = useToast();
 
-  const fetchReportTypes = async () => {
-    try {
-      setLoading(true);
-      const data = await reportTypeService.getAll();
-      setReportTypes(data);
-      setError(null);
-    } catch (err) {
-      const errorMessage = 'Failed to fetch report types';
-      setError(errorMessage);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: errorMessage,
-      });
-      console.error('Error fetching report types:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Mock data for initial development
   useEffect(() => {
-    fetchReportTypes();
+    const mockReportTypes: ReportType[] = [
+      {
+        id: "tabular",
+        name: "Tabular",
+        description: "Simple list of records with optional grouping.",
+        icon: "/file.svg",
+        color: "#1E88E5"
+      },
+      {
+        id: "summary",
+        name: "Summary",
+        description: "Grouped report records with subtotals and grand totals.",
+        icon: "/file.svg",
+        color: "#43A047"
+      },
+      {
+        id: "matrix",
+        name: "Matrix",
+        description: "Show data in rows and columns with grand summaries.",
+        icon: "/file.svg",
+        color: "#E53935"
+      },
+      {
+        id: "joined",
+        name: "Joined",
+        description: "Combine data from multiple related objects.",
+        icon: "/file.svg",
+        color: "#FB8C00"
+      }
+    ];
+    setReportTypes(mockReportTypes);
+    setLoading(false);
   }, []);
 
   const handleCreate = () => {
-    setSelectedReportType(undefined);
+    setSelectedReportType(null);
     setShowForm(true);
   };
 
@@ -55,101 +74,82 @@ export const ReportTypeList: React.FC = () => {
     setShowForm(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this report type?')) {
+  const handleDelete = async (reportType: ReportType) => {
+    if (window.confirm(`Are you sure you want to delete ${reportType.name}?`)) {
       try {
-        await reportTypeService.delete(id);
-        await fetchReportTypes();
+        // TODO: Implement actual API call
+        setReportTypes(reportTypes.filter(rt => rt.id !== reportType.id));
         toast({
           title: "Success",
-          description: "Report type deleted successfully",
+          description: `${reportType.name} has been deleted.`,
         });
-      } catch (err) {
-        const errorMessage = 'Failed to delete report type';
+      } catch (error) {
         toast({
-          variant: "destructive",
           title: "Error",
-          description: errorMessage,
+          description: "Failed to delete report type.",
+          variant: "destructive",
         });
-        console.error('Error deleting report type:', err);
       }
     }
   };
 
-  const handleFormSubmit = async (reportType: Partial<ReportType>) => {
+  const handleFormSubmit = async (formData: Omit<ReportType, "id">) => {
     try {
       if (selectedReportType) {
-        await reportTypeService.update(selectedReportType.id, reportType);
+        // Update existing report type
+        setReportTypes(reportTypes.map(rt => 
+          rt.id === selectedReportType.id 
+            ? { ...rt, ...formData }
+            : rt
+        ));
         toast({
           title: "Success",
-          description: "Report type updated successfully",
+          description: `${formData.name} has been updated.`,
         });
       } else {
-        await reportTypeService.create(reportType);
+        // Create new report type
+        const newReportType: ReportType = {
+          ...formData,
+          id: Math.random().toString(36).substr(2, 9),
+        };
+        setReportTypes([...reportTypes, newReportType]);
         toast({
           title: "Success",
-          description: "Report type created successfully",
+          description: `${formData.name} has been created.`,
         });
       }
       setShowForm(false);
-      await fetchReportTypes();
-    } catch (err) {
-      const errorMessage = 'Failed to save report type';
+    } catch (error) {
       toast({
-        variant: "destructive",
         title: "Error",
-        description: errorMessage,
+        description: "Failed to save report type.",
+        variant: "destructive",
       });
-      console.error('Error saving report type:', err);
     }
-  };
-
-  const handleFormCancel = () => {
-    setShowForm(false);
-    setSelectedReportType(undefined);
   };
 
   const handleSort = (field: SortField) => {
-    if (field === sortField) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    if (sortField === field) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {
       setSortField(field);
-      setSortOrder('asc');
+      setSortOrder("asc");
     }
   };
 
-  const filteredAndSortedReportTypes = useMemo(() => {
-    let result = [...reportTypes];
-
-    // Apply search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(
-        (rt) =>
-          rt.name.toLowerCase().includes(query) ||
-          rt.description.toLowerCase().includes(query)
-      );
-    }
-
-    // Apply sorting
-    result.sort((a, b) => {
-      let comparison = 0;
-      switch (sortField) {
-        case 'name':
-          comparison = a.name.localeCompare(b.name);
-          break;
-        case 'createdAt':
-          comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-          break;
-        case 'active':
-          comparison = (a.active === b.active) ? 0 : a.active ? 1 : -1;
-          break;
+  const filteredAndSortedReportTypes = reportTypes
+    .filter(reportType =>
+      reportType.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      reportType.description.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => {
+      const multiplier = sortOrder === "asc" ? 1 : -1;
+      if (sortField === "name") {
+        return multiplier * a.name.localeCompare(b.name);
       }
-      return sortOrder === 'asc' ? comparison : -comparison;
+      // Add more sort fields as needed
+      return 0;
     });
-
-    return result;
-  }, [reportTypes, searchQuery, sortField, sortOrder]);
 
   if (loading) {
     return <div>Loading...</div>;
@@ -159,114 +159,65 @@ export const ReportTypeList: React.FC = () => {
     return <div className="text-red-500">{error}</div>;
   }
 
-  if (showForm) {
-    return (
-      <ReportTypeForm
-        reportType={selectedReportType}
-        onSubmit={handleFormSubmit}
-        onCancel={handleFormCancel}
-      />
-    );
-  }
-
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Report Types</h1>
-        <Button onClick={handleCreate}>
-          <Plus className="w-4 h-4 mr-2" />
-          Create Report Type
-        </Button>
-      </div>
-
-      <div className="flex items-center space-x-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+        <div className="relative w-72">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <Input
+            type="text"
             placeholder="Search report types..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8"
+            className="pl-9"
           />
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => handleSort('name')}
-          className="flex items-center space-x-1"
-        >
-          <span>Name</span>
-          <ArrowUpDown className="h-4 w-4" />
-          {sortField === 'name' && (
-            <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-          )}
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => handleSort('createdAt')}
-          className="flex items-center space-x-1"
-        >
-          <span>Created</span>
-          <ArrowUpDown className="h-4 w-4" />
-          {sortField === 'createdAt' && (
-            <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-          )}
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => handleSort('active')}
-          className="flex items-center space-x-1"
-        >
-          <span>Status</span>
-          <ArrowUpDown className="h-4 w-4" />
-          {sortField === 'active' && (
-            <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-          )}
+        <Button onClick={handleCreate}>
+          <Plus className="h-4 w-4 mr-2" />
+          New Report Type
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {showForm && (
+        <ReportTypeForm
+          reportType={selectedReportType}
+          onSubmit={handleFormSubmit}
+          onCancel={() => setShowForm(false)}
+        />
+      )}
+
+      <div className="grid gap-4">
         {filteredAndSortedReportTypes.map((reportType) => (
           <Card key={reportType.id}>
-            <CardHeader>
-              <CardTitle className="flex justify-between items-center">
-                <span>{reportType.name}</span>
-                <div className="space-x-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleEdit(reportType)}
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDelete(reportType.id)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-lg font-medium">
+                {reportType.name}
               </CardTitle>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleEdit(reportType)}
+                >
+                  <Edit2 className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleDelete(reportType)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-gray-500">{reportType.description}</p>
-              <div className="mt-2 flex items-center justify-between">
-                <span className={`text-xs px-2 py-1 rounded ${
-                  reportType.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                }`}>
-                  {reportType.active ? 'Active' : 'Inactive'}
-                </span>
-                <span className="text-xs text-gray-500">
-                  Created: {new Date(reportType.createdAt).toLocaleDateString()}
-                </span>
-              </div>
+              <p className="text-sm text-muted-foreground">
+                {reportType.description}
+              </p>
             </CardContent>
           </Card>
         ))}
       </div>
     </div>
   );
-}; 
+} 
