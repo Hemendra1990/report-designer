@@ -136,6 +136,50 @@ const reorder = (list: any[], startIndex: number, endIndex: number) => {
   return result;
 };
 
+// Add these interfaces near the top of the file, after the initial imports
+
+// Field types definition
+type FieldType = 'text' | 'textarea' | 'url' | 'email' | 'phone' | 'number' | 'currency' | 
+                'date' | 'datetime' | 'picklist' | 'multipicklist' | 'lookup' | 'user' | 'checkbox';
+
+// Field interface
+interface Field {
+  id: string;
+  name: string;
+  type: FieldType;
+  category?: string;
+  icon?: string;
+}
+
+// Operator interface
+interface Operator {
+  value: string;
+  label: string;
+}
+
+// Filter state interface
+interface FilterState {
+  value: string;
+  setValue: (value: string) => void;
+  rangeStart: string;
+  setRangeStart: (value: string) => void;
+  rangeEnd: string;
+  setRangeEnd: (value: string) => void;
+  selectedOptions: string[];
+  setSelectedOptions: (options: string[]) => void;
+}
+
+// Add this interface for filter state
+interface Filter {
+  id: string;
+  field: Field;
+  operator: string;
+  value: string;
+  rangeStart?: string;
+  rangeEnd?: string;
+  selectedOptions?: string[];
+}
+
 export default function ReportBuilderPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [formulaSearchTerm, setFormulaSearchTerm] = useState("");
@@ -196,7 +240,7 @@ export default function ReportBuilderPage() {
   const toggleCategory = (category: string) => {
     setExpandedCategories(prev => ({
       ...prev,
-      [category]: !prev[category]
+      [category]: !prev[category as keyof typeof prev]
     }));
   };
   
@@ -304,7 +348,43 @@ export default function ReportBuilderPage() {
   const insertFunctionIntoFormula = (funcName: string) => {
     setFormulaEditorValue(prev => `${prev}${funcName}()`);
   };
+
+  // Add state for filters
+  const [filters, setFilters] = useState<Filter[]>([]);
+  const [filterLogic, setFilterLogic] = useState<'and' | 'or' | 'custom'>('and');
+  const [customFormula, setCustomFormula] = useState('');
   
+  // Add state for filter field selector
+  const [showFilterFieldSelector, setShowFilterFieldSelector] = useState(false);
+  const [filterSearchTerm, setFilterSearchTerm] = useState('');
+  
+  // Function to add a new filter
+  const addFilter = (field: Field) => {
+    const newFilter: Filter = {
+      id: `filter-${Date.now()}`,
+      field,
+      operator: getDefaultOperator(field.type),
+      value: '',
+      rangeStart: '',
+      rangeEnd: '',
+      selectedOptions: []
+    };
+    
+    setFilters([...filters, newFilter]);
+  };
+  
+  // Function to remove a filter
+  const removeFilter = (filterId: string) => {
+    setFilters(filters.filter(filter => filter.id !== filterId));
+  };
+  
+  // Function to update a filter
+  const updateFilter = (filterId: string, updates: Partial<Filter>) => {
+    setFilters(filters.map(filter => 
+      filter.id === filterId ? { ...filter, ...updates } : filter
+    ));
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Navigation Bar */}
@@ -854,7 +934,12 @@ export default function ReportBuilderPage() {
                     {selectedColumns.map((column, index) => (
                       <div 
                         key={column.id}
-                        ref={el => columnRefs.current[index] = el}
+                        ref={(el) => {
+                          // Fix the ref assignment
+                          if (columnRefs.current) {
+                            columnRefs.current[index] = el;
+                          }
+                        }}
                         className={`bg-white border border-gray-200 rounded p-2 flex items-center justify-between group hover:border-gray-300 shadow-sm ${draggedItem === index ? 'opacity-50 border-dashed' : ''}`}
                         draggable
                         onDragStart={() => handleDragStart(index)}
@@ -910,113 +995,130 @@ export default function ReportBuilderPage() {
               </TabsContent>
 
               <TabsContent value="filters" className="m-0 data-[state=active]:p-4">
-                <div className="space-y-4">
-                  <div className="bg-white border border-gray-200 rounded-md p-4">
-                    <h3 className="font-medium mb-2">Last Activity</h3>
-                    <div className="flex items-center gap-2">
-                      <Select defaultValue="equals">
-                        <SelectTrigger className="w-[120px]">
-                          <SelectValue placeholder="Operator" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="equals">equals</SelectItem>
-                          <SelectItem value="not_equals">not equals</SelectItem>
-                          <SelectItem value="greater_than">greater than</SelectItem>
-                          <SelectItem value="less_than">less than</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Select defaultValue="last_30_days">
-                        <SelectTrigger className="flex-1">
-                          <SelectValue placeholder="Value" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="today">Today</SelectItem>
-                          <SelectItem value="yesterday">Yesterday</SelectItem>
-                          <SelectItem value="last_7_days">Last 7 Days</SelectItem>
-                          <SelectItem value="last_30_days">Last 30 Days</SelectItem>
-                          <SelectItem value="this_month">This Month</SelectItem>
-                          <SelectItem value="last_month">Last Month</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Button variant="outline" size="icon" className="h-9 w-9">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="14"
-                          height="14"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <path d="M18 6 6 18" />
-                          <path d="m6 6 12 12" />
-                        </svg>
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="bg-white border border-gray-200 rounded-md p-4">
-                    <h3 className="font-medium mb-2">Account Owner</h3>
-                    <div className="flex items-center gap-2">
-                      <Select defaultValue="equals">
-                        <SelectTrigger className="w-[120px]">
-                          <SelectValue placeholder="Operator" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="equals">equals</SelectItem>
-                          <SelectItem value="not_equals">not equals</SelectItem>
-                          <SelectItem value="contains">contains</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Select defaultValue="current_user">
-                        <SelectTrigger className="flex-1">
-                          <SelectValue placeholder="Value" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="current_user">Current User</SelectItem>
-                          <SelectItem value="role">Role</SelectItem>
-                          <SelectItem value="role_subordinates">Role & Subordinates</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Button variant="outline" size="icon" className="h-9 w-9">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="14"
-                          height="14"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <path d="M18 6 6 18" />
-                          <path d="m6 6 12 12" />
-                        </svg>
-                      </Button>
-                    </div>
-                  </div>
-
-                  <Button variant="outline" className="w-full">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="mr-1"
+                <div className="space-y-6">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-medium">Filters</h3>
+                    <Button 
+                      size="sm" 
+                      className="flex items-center gap-1"
+                      onClick={() => setShowFilterFieldSelector(true)}
                     >
-                      <path d="M5 12h14" />
-                      <path d="M12 5v14" />
-                    </svg>
-                    Add Filter
-                  </Button>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <line x1="12" x2="12" y1="5" y2="19" />
+                        <line x1="5" x2="19" y1="12" y2="12" />
+                      </svg>
+                      Add Filter
+                    </Button>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    {/* Filter Logic Selector */}
+                    <div className="bg-gray-50 p-3 rounded-md border border-gray-200">
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="font-medium">Filter Logic:</span>
+                        <Select 
+                          value={filterLogic} 
+                          onValueChange={(value: 'and' | 'or' | 'custom') => setFilterLogic(value)}
+                        >
+                          <SelectTrigger className="w-[120px] h-8 text-xs">
+                            <SelectValue placeholder="Logic" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="and">AND (1 AND 2 AND 3)</SelectItem>
+                            <SelectItem value="or">OR (1 OR 2 OR 3)</SelectItem>
+                            <SelectItem value="custom">Custom Formula</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <div className="text-xs text-gray-500">
+                          {filterLogic === 'and' ? 'All conditions must be true' : 
+                           filterLogic === 'or' ? 'Any condition can be true' : 
+                           'Define a custom formula'}
+                        </div>
+                      </div>
+                      
+                      {filterLogic === 'custom' && (
+                        <div className="mt-3">
+                          <Textarea 
+                            placeholder="Enter custom formula (e.g., 1 AND (2 OR 3))"
+                            value={customFormula}
+                            onChange={(e) => setCustomFormula(e.target.value)}
+                            className="text-xs"
+                          />
+                          <div className="text-xs text-gray-500 mt-1">
+                            Use numbers to reference filters (e.g., 1, 2, 3) and combine with AND, OR, NOT
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Display existing filters */}
+                    {filters.map((filter, index) => (
+                      <FilterRow 
+                        key={filter.id}
+                        filter={filter}
+                        onRemove={() => removeFilter(filter.id)}
+                        onUpdate={(updates) => updateFilter(filter.id, updates)}
+                        index={index + 1}
+                      />
+                    ))}
+                    
+                    {/* Show message when no filters exist */}
+                    {filters.length === 0 && (
+                      <div className="bg-gray-50 p-4 rounded-md border border-dashed border-gray-300 text-center">
+                        <p className="text-gray-500">No filters added yet. Click "Add Filter" to create one.</p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Filter Field Selection UI */}
+                  <div className="mt-8 border border-dashed border-gray-300 rounded-md p-4 bg-gray-50">
+                    <h4 className="text-sm font-medium mb-3">Add Another Filter</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label htmlFor="filter-field" className="text-xs mb-1 block">Field</Label>
+                        <Select onValueChange={(value) => {
+                          const field = accountFields.find(f => f.id === value);
+                          if (field) {
+                            // Convert the field to the correct type
+                            const typedField: Field = {
+                              id: field.id,
+                              name: field.name,
+                              type: field.type as FieldType,
+                              category: field.category,
+                              icon: field.icon
+                            };
+                            addFilter(typedField);
+                          }
+                        }}>
+                          <SelectTrigger id="filter-field" className="w-full">
+                            <SelectValue placeholder="Select field" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {accountFields.map(field => (
+                              <SelectItem key={field.id} value={field.id}>
+                                {field.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex items-end">
+                        <Button className="w-full" onClick={() => setShowFilterFieldSelector(true)}>
+                          Add Filter
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </TabsContent>
             </Tabs>
@@ -1502,6 +1604,691 @@ export default function ReportBuilderPage() {
           </div>
         </div>
       )}
+      
+      {/* Filter Field Selector Dialog */}
+      {showFilterFieldSelector && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+              <h2 className="text-xl font-semibold">Add Filter</h2>
+              <button 
+                onClick={() => setShowFilterFieldSelector(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M18 6 6 18" />
+                  <path d="m6 6 12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="p-4 border-b border-gray-200">
+              <div className="relative">
+                <Input 
+                  className="pl-8 text-sm" 
+                  placeholder="Search fields..."
+                  value={filterSearchTerm}
+                  onChange={(e) => setFilterSearchTerm(e.target.value)}
+                />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"
+                >
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="m21 21-4.3-4.3" />
+                </svg>
+              </div>
+            </div>
+            
+            <div className="overflow-y-auto flex-1 p-4">
+              {Object.entries(fieldsByCategory).map(([category, fields]) => (
+                <div key={category} className="mb-4">
+                  <div 
+                    className="p-2 flex justify-between items-center cursor-pointer hover:bg-gray-50"
+                    onClick={() => toggleCategory(category)}
+                  >
+                    <div className="text-xs font-semibold text-gray-500 uppercase">
+                      {category} FIELDS ({fields.length})
+                    </div>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className={`transition-transform ${expandedCategories[category as keyof typeof expandedCategories] ? 'rotate-180' : ''}`}
+                    >
+                      <path d="m6 9 6 6 6-6" />
+                    </svg>
+                  </div>
+                  
+                  {expandedCategories[category as keyof typeof expandedCategories] && (
+                    <div className="pl-2">
+                      {fields
+                        .filter(field => 
+                          !filterSearchTerm.trim() || 
+                          field.name.toLowerCase().includes(filterSearchTerm.toLowerCase())
+                        )
+                        .map(field => (
+                          <div 
+                            key={field.id}
+                            className="pl-2 pr-3 py-1.5 text-sm hover:bg-blue-50 flex items-center justify-between cursor-pointer group"
+                            onClick={() => {
+                              // Convert the field to the correct type
+                              const typedField: Field = {
+                                id: field.id,
+                                name: field.name,
+                                type: field.type as FieldType,
+                                category: field.category,
+                                icon: field.icon
+                              };
+                              addFilter(typedField);
+                              setShowFilterFieldSelector(false);
+                            }}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className={`w-4 h-4 flex items-center justify-center rounded-sm text-xs ${field.type === 'number' || field.type === 'currency' ? 'bg-purple-100 text-purple-700' : 'bg-indigo-100 text-indigo-700'}`}>
+                                {getFieldIcon(field.type as FieldType)}
+                              </span>
+                              <span>{field.name}</span>
+                            </div>
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="text-blue-600 opacity-0 group-hover:opacity-100"
+                            >
+                              <path d="M5 12h14" />
+                              <path d="M12 5v14" />
+                            </svg>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
+}
+
+// Update the FilterRow component to accept the new props
+function FilterRow({ 
+  filter, 
+  onRemove, 
+  onUpdate,
+  index
+}: { 
+  filter: Filter; 
+  onRemove: () => void;
+  onUpdate: (updates: Partial<Filter>) => void;
+  index: number;
+}) {
+  const { field, operator, value, rangeStart, rangeEnd, selectedOptions } = filter;
+  
+  // Get appropriate operators based on field type
+  const operators = getOperatorsForType(field.type);
+  
+  return (
+    <div className="bg-white border border-gray-200 rounded-md p-4 shadow-sm">
+      <div className="flex justify-between items-center mb-3">
+        <h3 className="font-medium text-sm flex items-center gap-2">
+          <span className="w-5 h-5 inline-flex items-center justify-center bg-blue-100 text-blue-800 rounded-full text-xs">
+            {index}
+          </span>
+          <span className="w-5 h-5 inline-flex items-center justify-center bg-blue-100 text-blue-800 rounded-full text-xs">
+            {getFieldIcon(field.type)}
+          </span>
+          {field.name}
+        </h3>
+        <button 
+          onClick={onRemove}
+          className="text-gray-400 hover:text-gray-600"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+          </svg>
+        </button>
+      </div>
+      
+      <div className="space-y-3">
+        {/* Operator selector */}
+        <div>
+          <Select 
+            value={operator} 
+            onValueChange={(newOperator) => onUpdate({ operator: newOperator })}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select operator" />
+            </SelectTrigger>
+            <SelectContent>
+              {operators.map(op => (
+                <SelectItem key={op.value} value={op.value}>{op.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        
+        {/* Value input based on field type and operator */}
+        {renderValueInput(field, operator, { 
+          value, 
+          setValue: (newValue) => onUpdate({ value: newValue }), 
+          rangeStart: rangeStart || '', 
+          setRangeStart: (newValue) => onUpdate({ rangeStart: newValue }), 
+          rangeEnd: rangeEnd || '', 
+          setRangeEnd: (newValue) => onUpdate({ rangeEnd: newValue }),
+          selectedOptions: selectedOptions || [],
+          setSelectedOptions: (newOptions) => onUpdate({ selectedOptions: newOptions })
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Helper function to get default operator based on field type
+function getDefaultOperator(type: FieldType): string {
+  switch(type) {
+    case 'text':
+    case 'textarea':
+    case 'url':
+    case 'email':
+    case 'phone':
+      return 'contains';
+    case 'number':
+    case 'currency':
+      return 'equals';
+    case 'date':
+    case 'datetime':
+      return 'equals';
+    case 'picklist':
+    case 'multipicklist':
+      return 'equals';
+    case 'lookup':
+    case 'user':
+      return 'equals';
+    case 'checkbox':
+      return 'equals';
+    default:
+      return 'equals';
+  }
+}
+
+// Helper function to get field icon
+function getFieldIcon(type: FieldType): string {
+  switch(type) {
+    case 'text':
+    case 'textarea':
+    case 'url':
+    case 'email':
+    case 'phone':
+      return 'T';
+    case 'number':
+    case 'currency':
+      return '#';
+    case 'date':
+    case 'datetime':
+      return 'D';
+    case 'picklist':
+    case 'multipicklist':
+      return 'L';
+    case 'lookup':
+    case 'user':
+      return 'R';
+    case 'checkbox':
+      return '✓';
+    default:
+      return 'F';
+  }
+}
+
+// Helper function to get operators for field type
+function getOperatorsForType(type: FieldType): Operator[] {
+  const textOperators: Operator[] = [
+    { value: 'equals', label: 'equals' },
+    { value: 'not_equals', label: 'not equals' },
+    { value: 'contains', label: 'contains' },
+    { value: 'not_contains', label: 'does not contain' },
+    { value: 'starts_with', label: 'starts with' },
+    { value: 'ends_with', label: 'ends with' },
+    { value: 'is_empty', label: 'is empty' },
+    { value: 'is_not_empty', label: 'is not empty' }
+  ];
+  
+  const numberOperators: Operator[] = [
+    { value: 'equals', label: 'equals' },
+    { value: 'not_equals', label: 'not equals' },
+    { value: 'greater_than', label: 'greater than' },
+    { value: 'less_than', label: 'less than' },
+    { value: 'greater_or_equal', label: 'greater or equal' },
+    { value: 'less_or_equal', label: 'less or equal' },
+    { value: 'between', label: 'between' },
+    { value: 'is_empty', label: 'is empty' },
+    { value: 'is_not_empty', label: 'is not empty' }
+  ];
+  
+  const dateOperators: Operator[] = [
+    { value: 'equals', label: 'equals' },
+    { value: 'not_equals', label: 'not equals' },
+    { value: 'greater_than', label: 'after' },
+    { value: 'less_than', label: 'before' },
+    { value: 'between', label: 'date range' },
+    { value: 'last_n_days', label: 'last N days' },
+    { value: 'next_n_days', label: 'next N days' },
+    { value: 'current_fiscal_year', label: 'current fiscal year' },
+    { value: 'current_fiscal_quarter', label: 'current fiscal quarter' },
+    { value: 'last_fiscal_year', label: 'last fiscal year' },
+    { value: 'this_year', label: 'this year' },
+    { value: 'this_month', label: 'this month' },
+    { value: 'last_month', label: 'last month' },
+    { value: 'is_empty', label: 'is empty' },
+    { value: 'is_not_empty', label: 'is not empty' }
+  ];
+  
+  const picklistOperators: Operator[] = [
+    { value: 'equals', label: 'equals' },
+    { value: 'not_equals', label: 'not equals' },
+    { value: 'includes', label: 'includes' },
+    { value: 'excludes', label: 'excludes' },
+    { value: 'is_empty', label: 'is empty' },
+    { value: 'is_not_empty', label: 'is not empty' }
+  ];
+  
+  const lookupOperators: Operator[] = [
+    { value: 'equals', label: 'equals' },
+    { value: 'not_equals', label: 'not equals' },
+    { value: 'is_empty', label: 'is empty' },
+    { value: 'is_not_empty', label: 'is not empty' }
+  ];
+  
+  const checkboxOperators: Operator[] = [
+    { value: 'equals', label: 'equals' },
+    { value: 'not_equals', label: 'not equals' }
+  ];
+  
+  switch(type) {
+    case 'text':
+    case 'textarea':
+    case 'url':
+    case 'email':
+    case 'phone':
+      return textOperators;
+    case 'number':
+    case 'currency':
+      return numberOperators;
+    case 'date':
+    case 'datetime':
+      return dateOperators;
+    case 'picklist':
+    case 'multipicklist':
+      return picklistOperators;
+    case 'lookup':
+    case 'user':
+      return lookupOperators;
+    case 'checkbox':
+      return checkboxOperators;
+    default:
+      return textOperators;
+  }
+}
+
+// Helper function to render the appropriate value input based on field type and operator
+function renderValueInput(field: Field, operator: string, state: FilterState): React.ReactNode {
+  const { value, setValue, rangeStart, setRangeStart, rangeEnd, setRangeEnd, selectedOptions, setSelectedOptions } = state;
+  
+  // Handle operators that don't need value inputs
+  if (['is_empty', 'is_not_empty'].includes(operator)) {
+    return null;
+  }
+  
+  // Special handling for date/datetime fields
+  if ((field.type === 'date' || field.type === 'datetime') && !['between', 'last_n_days', 'next_n_days'].includes(operator)) {
+    return (
+      <div>
+        <Select value={value} onValueChange={setValue}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select date option" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="today">Today</SelectItem>
+            <SelectItem value="yesterday">Yesterday</SelectItem>
+            <SelectItem value="tomorrow">Tomorrow</SelectItem>
+            <SelectItem value="last_week">Last Week</SelectItem>
+            <SelectItem value="this_week">This Week</SelectItem>
+            <SelectItem value="next_week">Next Week</SelectItem>
+            <SelectItem value="last_month">Last Month</SelectItem>
+            <SelectItem value="this_month">This Month</SelectItem>
+            <SelectItem value="next_month">Next Month</SelectItem>
+            <SelectItem value="last_90_days">Last 90 Days</SelectItem>
+            <SelectItem value="this_quarter">This Quarter</SelectItem>
+            <SelectItem value="last_quarter">Last Quarter</SelectItem>
+            <SelectItem value="this_year">This Year</SelectItem>
+            <SelectItem value="last_year">Last Year</SelectItem>
+            <SelectItem value="custom">Custom Date...</SelectItem>
+          </SelectContent>
+        </Select>
+        
+        {value === 'custom' && (
+          <div className="mt-3">
+            <Label className="text-xs mb-1 block">Select specific date</Label>
+            <Input
+              type={field.type === 'datetime' ? "datetime-local" : "date"}
+              value={rangeStart}
+              onChange={(e) => setRangeStart(e.target.value)}
+              className="mt-1"
+            />
+          </div>
+        )}
+      </div>
+    );
+  }
+  
+  // Special handling for "between" operator for date/datetime fields
+  if ((field.type === 'date' || field.type === 'datetime') && operator === 'between') {
+    return (
+      <div className="space-y-3">
+        <div className="bg-blue-50 p-3 rounded-md border border-blue-200 mb-3">
+          <div className="text-sm font-medium text-blue-800">Date Range Filter</div>
+          <div className="text-xs text-blue-600 mt-1">Select a start and end date for your range</div>
+        </div>
+        
+        <div>
+          <Label className="text-xs mb-1 block">From</Label>
+          <Select value={rangeStart} onValueChange={setRangeStart}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Start date option" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="today">Today</SelectItem>
+              <SelectItem value="yesterday">Yesterday</SelectItem>
+              <SelectItem value="start_of_week">Start of Week</SelectItem>
+              <SelectItem value="start_of_month">Start of Month</SelectItem>
+              <SelectItem value="start_of_quarter">Start of Quarter</SelectItem>
+              <SelectItem value="start_of_year">Start of Year</SelectItem>
+              <SelectItem value="custom">Custom Date...</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          {rangeStart === 'custom' && (
+            <Input
+              type={field.type === 'datetime' ? "datetime-local" : "date"}
+              value={rangeStart !== 'custom' ? '' : state.value}
+              onChange={(e) => setValue(e.target.value)}
+              className="mt-2"
+            />
+          )}
+        </div>
+        
+        <div>
+          <Label className="text-xs mb-1 block">To</Label>
+          <Select value={rangeEnd} onValueChange={setRangeEnd}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="End date option" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="today">Today</SelectItem>
+              <SelectItem value="tomorrow">Tomorrow</SelectItem>
+              <SelectItem value="end_of_week">End of Week</SelectItem>
+              <SelectItem value="end_of_month">End of Month</SelectItem>
+              <SelectItem value="end_of_quarter">End of Quarter</SelectItem>
+              <SelectItem value="end_of_year">End of Year</SelectItem>
+              <SelectItem value="custom">Custom Date...</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          {rangeEnd === 'custom' && (
+            <Input
+              type={field.type === 'datetime' ? "datetime-local" : "date"}
+              value={rangeEnd !== 'custom' ? '' : state.selectedOptions[0] || ''}
+              onChange={(e) => setSelectedOptions([e.target.value])}
+              className="mt-2"
+            />
+          )}
+        </div>
+      </div>
+    );
+  }
+  
+  // Special handling for "last_n_days" and "next_n_days"
+  if (['last_n_days', 'next_n_days'].includes(operator)) {
+    return (
+      <div>
+        <div className="flex items-center gap-2">
+          <Input 
+            type="number"
+            min="1"
+            placeholder="Number of days"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            className="flex-1"
+          />
+          <div className="text-sm text-gray-500">days</div>
+        </div>
+        <div className="text-xs text-gray-500 mt-1">
+          {operator === 'last_n_days' ? 'Past' : 'Next'} N days {operator === 'last_n_days' ? 'before' : 'after'} today
+        </div>
+      </div>
+    );
+  }
+  
+  // Special handling for relative date operators
+  if (['current_fiscal_year', 'current_fiscal_quarter', 'last_fiscal_year', 'this_year', 'this_month', 'last_month'].includes(operator)) {
+    return (
+      <div className="text-xs text-gray-500 italic">
+        No additional input needed for this filter.
+      </div>
+    );
+  }
+  
+  // Special handling for "between" operator for non-date fields
+  if (operator === 'between' && field.type !== 'date' && field.type !== 'datetime') {
+    return (
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <Label className="mb-1 block text-xs">From</Label>
+          {renderSingleValueInput(field, rangeStart, setRangeStart)}
+        </div>
+        <div>
+          <Label className="mb-1 block text-xs">To</Label>
+          {renderSingleValueInput(field, rangeEnd, setRangeEnd)}
+        </div>
+      </div>
+    );
+  }
+  
+  // Special handling for picklists when using includes/excludes
+  if ((field.type === 'picklist' || field.type === 'multipicklist') && ['includes', 'excludes'].includes(operator)) {
+    // Mock picklist values for demo
+    const options = [
+      { value: 'technology', label: 'Technology' },
+      { value: 'healthcare', label: 'Healthcare' },
+      { value: 'finance', label: 'Finance' },
+      { value: 'retail', label: 'Retail' },
+      { value: 'manufacturing', label: 'Manufacturing' },
+      { value: 'education', label: 'Education' },
+      { value: 'other', label: 'Other' }
+    ];
+    
+    return (
+      <div className="space-y-2">
+        {options.map(option => (
+          <div key={option.value} className="flex items-center space-x-2">
+            <Checkbox 
+              id={`${field.id}-${option.value}`}
+              checked={selectedOptions.includes(option.value)}
+              onCheckedChange={(checked) => {
+                if (checked) {
+                  setSelectedOptions([...selectedOptions, option.value]);
+                } else {
+                  setSelectedOptions(selectedOptions.filter(v => v !== option.value));
+                }
+              }}
+            />
+            <Label 
+              htmlFor={`${field.id}-${option.value}`}
+              className="text-sm font-normal"
+            >
+              {option.label}
+            </Label>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  
+  // Default case: render single value input
+  return renderSingleValueInput(field, value, setValue);
+}
+
+// Helper function to render single value input based on field type
+function renderSingleValueInput(field: Field, value: string, setValue: (value: string) => void): React.ReactNode {
+  switch(field.type) {
+    case 'text':
+    case 'textarea':
+    case 'url':
+    case 'email':
+    case 'phone':
+      return (
+        <Input 
+          type="text"
+          placeholder="Enter value"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+        />
+      );
+    
+    case 'number':
+    case 'currency':
+      return (
+        <Input 
+          type="number"
+          placeholder="Enter value"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+        />
+      );
+    
+    case 'date':
+      return (
+        <Input 
+          type="date"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+        />
+      );
+    
+    case 'datetime':
+      return (
+        <Input 
+          type="datetime-local"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+        />
+      );
+    
+    case 'picklist':
+      // Mock picklist values for demo
+      const options = [
+        { value: 'technology', label: 'Technology' },
+        { value: 'healthcare', label: 'Healthcare' },
+        { value: 'finance', label: 'Finance' },
+        { value: 'retail', label: 'Retail' },
+        { value: 'manufacturing', label: 'Manufacturing' },
+        { value: 'education', label: 'Education' },
+        { value: 'other', label: 'Other' }
+      ];
+      
+      return (
+        <Select value={value} onValueChange={setValue}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select value" />
+          </SelectTrigger>
+          <SelectContent>
+            {options.map(option => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      );
+    
+    case 'lookup':
+    case 'user':
+      return (
+        <div>
+          <Input 
+            type="text"
+            placeholder="Search..."
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+          />
+          <div className="text-xs text-gray-500 mt-1">Type to search for records</div>
+        </div>
+      );
+    
+    case 'checkbox':
+      return (
+        <Select value={value} onValueChange={setValue}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select value" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="true">True</SelectItem>
+            <SelectItem value="false">False</SelectItem>
+          </SelectContent>
+        </Select>
+      );
+    
+    default:
+      return (
+        <Input 
+          type="text"
+          placeholder="Enter value"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+        />
+      );
+  }
 }

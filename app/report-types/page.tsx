@@ -50,6 +50,9 @@ export default function ReportTypesPage() {
     report.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Find the selected report object to access its color
+  const selectedReport = reportTypes.find(r => r.id === selectedReportType);
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       {/* Navigation Bar */}
@@ -80,22 +83,22 @@ export default function ReportTypesPage() {
       </nav>
 
       {/* Main Content */}
-      <div className="flex-1 p-6">
-        <div className="max-w-3xl mx-auto space-y-8">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold mb-3">Create Custom Report</h1>
+      <div className="flex-1 p-6 md:p-10">
+        <div className="max-w-4xl mx-auto space-y-10">
+          <div className="text-center">
+            <h1 className="text-3xl md:text-4xl font-bold mb-3 tracking-tight">Create Custom Report</h1>
             <p className="text-muted-foreground text-lg max-w-xl mx-auto">Select the type of report you want to create from the options below.</p>
           </div>
           
           {/* Search Bar */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
             <Input
               type="text"
-              placeholder="Search Report Types..."
+              placeholder="Search Report Types by name or description..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 h-10 text-base"
+              className="pl-12 h-11 text-base rounded-md border border-input focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             />
           </div>
 
@@ -105,44 +108,50 @@ export default function ReportTypesPage() {
               {filteredReportTypes.map((report) => (
                 <div key={report.id}>
                   <Card 
-                    className={`cursor-pointer transition-all hover:shadow-md ${
+                    className={`cursor-pointer transition-all duration-200 ease-in-out hover:shadow-lg border ${ // Added default border
                       selectedReportType === report.id 
-                        ? `border-2 bg-opacity-5 bg-${report.id}` 
-                        : "hover:border-primary"
+                        ? `border-2` // Use border width for selection
+                        : "border-border hover:border-muted-foreground/50" // Default and hover border
                     }`}
                     style={{ 
-                      borderColor: selectedReportType === report.id ? report.color : '',
-                      backgroundColor: selectedReportType === report.id ? `${report.color}05` : ''
+                      // Set border color dynamically for selection
+                      borderColor: selectedReportType === report.id ? report.color : undefined, 
+                      // Apply a very subtle background tint on selection
+                      backgroundColor: selectedReportType === report.id ? `${report.color}10` : '' 
                     }}
                   >
-                    <label htmlFor={`report-type-${report.id}`} className="cursor-pointer">
-                      <CardContent className="p-6">
-                        <div className="flex items-start gap-4">
-                          <RadioGroupItem 
-                            value={report.id} 
-                            id={`report-type-${report.id}`} 
-                            className="mt-1"
-                          />
-                          <div>
-                            <div className="flex items-center gap-3 mb-3">
-                              <div 
-                                className="p-2 rounded-md" 
-                                style={{ backgroundColor: `${report.color}20` }}
-                              >
-                                <Image
-                                  src={report.icon}
-                                  alt={report.name}
-                                  width={24}
-                                  height={24}
-                                  style={{ color: report.color }}
-                                />
-                              </div>
-                              <h3 className="font-medium text-lg">{report.name}</h3>
+                    <label htmlFor={`report-type-${report.id}`} className="block cursor-pointer p-6">
+                      <div className="flex items-start gap-5">
+                        <RadioGroupItem 
+                          value={report.id} 
+                          id={`report-type-${report.id}`} 
+                          className="mt-1 flex-shrink-0"
+                          // Style radio button border based on selection color
+                          style={{ 
+                            borderColor: selectedReportType === report.id ? report.color : undefined,
+                            // Optionally add ring on focus/selection if needed, but border might suffice
+                          }}
+                        />
+                        <div className="flex-grow">
+                          <div className="flex items-center gap-3 mb-3">
+                            <div 
+                              className="p-2 rounded-md flex items-center justify-center" 
+                              style={{ backgroundColor: `${report.color}20` }} // Slightly more vibrant icon background
+                            >
+                              <Image
+                                src={report.icon}
+                                alt={`${report.name} icon`}
+                                width={24}
+                                height={24}
+                                // Apply color to SVG icon if needed (depends on SVG structure)
+                                // style={{ color: report.color }} 
+                              />
                             </div>
-                            <p className="text-muted-foreground">{report.description}</p>
+                            <h3 className="font-semibold text-lg text-foreground">{report.name}</h3>
                           </div>
+                          <p className="text-muted-foreground text-sm leading-relaxed">{report.description}</p>
                         </div>
-                      </CardContent>
+                      </div>
                     </label>
                   </Card>
                 </div>
@@ -150,27 +159,29 @@ export default function ReportTypesPage() {
             </div>
           </RadioGroup>
           
-          {/* Next Button */}
-          <div className="flex justify-end space-x-4 mt-8">
+          {/* Action Buttons */}
+          <div className="flex justify-end items-center gap-4 mt-10">
             <Link href="/">
               <Button variant="outline" size="lg" className="px-6">Cancel</Button>
             </Link>
             <Link 
               href={selectedReportType ? `/report-types/select-object?type=${selectedReportType}` : "#"}
               aria-disabled={!selectedReportType}
-              className={!selectedReportType ? "pointer-events-none" : ""}
+              tabIndex={!selectedReportType ? -1 : undefined} // Improve accessibility for disabled link
+              className={` ${!selectedReportType ? "cursor-not-allowed" : ""}`}
             >
               <Button 
                 disabled={!selectedReportType} 
                 size="lg" 
-                className="px-8"
+                className={`px-8 transition-colors duration-200 ease-in-out ${!selectedReportType ? "opacity-50 cursor-not-allowed" : "hover:opacity-90"}`}
                 style={{ 
-                  backgroundColor: selectedReportType ? reportTypes.find(r => r.id === selectedReportType)?.color : undefined,
-                  opacity: selectedReportType ? 1 : 0.5
+                  backgroundColor: selectedReport?.color, 
+                  // Ensure text color contrasts well with dynamic background
+                  color: selectedReport ? getContrastYIQ(selectedReport.color) : undefined
                 }}
               >
                 Next 
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="ml-2">
                   <path d="m9 18 6-6-6-6"/>
                 </svg>
               </Button>
@@ -180,4 +191,15 @@ export default function ReportTypesPage() {
       </div>
     </div>
   );
+}
+
+// Helper function to determine text color (black/white) based on background hex color
+// (This should ideally be placed in a utility file)
+function getContrastYIQ(hexcolor: string): string {
+  hexcolor = hexcolor.replace("#", "");
+  const r = parseInt(hexcolor.substring(0, 2), 16);
+  const g = parseInt(hexcolor.substring(2, 4), 16);
+  const b = parseInt(hexcolor.substring(4, 6), 16);
+  const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+  return (yiq >= 128) ? '#000000' : '#FFFFFF';
 }
