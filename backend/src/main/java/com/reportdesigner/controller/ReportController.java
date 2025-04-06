@@ -95,10 +95,8 @@ public class ReportController {
     @PostMapping("/{id}/execute")
     public ResponseEntity<List<Map<String, Object>>> executeReport(@PathVariable UUID id) {
         try {
-            List<Report> reports = reportService.executeReport(id);
-            // For now, we're just returning an empty list
-            // In a real implementation, we would return the query results
-            return ResponseEntity.ok(List.of());
+            List<Map<String, Object>> results = reportService.executeReport(id);
+            return ResponseEntity.ok(results);
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }

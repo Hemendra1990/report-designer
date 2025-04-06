@@ -41,7 +41,7 @@ public class DashboardServiceImpl extends BaseServiceImpl<Dashboard, DashboardRe
 
     @Override
     public List<Dashboard> findAllPublished() {
-        return repository.findByIsPublishedTrueAndActiveTrue();
+        return repository.findByPublishedTrueAndActiveTrue();
     }
 
     @Override

@@ -14,7 +14,7 @@ public interface DashboardRepository extends JpaRepository<Dashboard, UUID> {
     List<Dashboard> findByReport(Report report);
     List<Dashboard> findByReportAndActiveTrue(Report report);
     List<Dashboard> findByIsPublicTrueAndActiveTrue();
-    List<Dashboard> findByIsPublishedTrueAndActiveTrue();
+    List<Dashboard> findByPublishedTrueAndActiveTrue();
     Optional<Dashboard> findByPublishUrl(String publishUrl);
     boolean existsByNameAndReport(String name, Report report);
 } 

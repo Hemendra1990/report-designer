@@ -4,6 +4,7 @@ import com.reportdesigner.model.Report;
 import com.reportdesigner.model.ReportType;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -17,5 +18,5 @@ public interface ReportService extends BaseService<Report> {
     Report create(Report report);
     Report update(UUID id, Report report);
     void softDelete(UUID id);
-    List<Report> executeReport(UUID id);
+    List<Map<String, Object>> executeReport(UUID id);
 } 

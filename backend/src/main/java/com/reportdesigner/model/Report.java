@@ -4,8 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,6 +13,11 @@ import java.util.List;
 @Table(name = "reports")
 @Getter
 @Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@ToString(callSuper = true)
+@EqualsAndHashCode(callSuper = true)
 public class Report extends BaseEntity {
 
     @NotBlank
@@ -38,10 +42,12 @@ public class Report extends BaseEntity {
     @Column(nullable = false)
     private String visualizationConfig;
 
+    @Builder.Default
     @OneToMany(mappedBy = "report", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Dashboard> dashboards = new ArrayList<>();
 
     @Column(nullable = false)
+    @Builder.Default
     private boolean isPublic = false;
 
     @Column(nullable = false)
@@ -51,5 +57,6 @@ public class Report extends BaseEntity {
     private String refreshInterval;
 
     @Column(nullable = false)
+    @Builder.Default
     private boolean autoRefresh = false;
 } 

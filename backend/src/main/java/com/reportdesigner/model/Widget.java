@@ -4,13 +4,17 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 @Entity
 @Table(name = "widgets")
 @Getter
 @Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@ToString(callSuper = true)
+@EqualsAndHashCode(callSuper = true)
 public class Widget extends BaseEntity {
 
     @NotBlank
@@ -47,6 +51,7 @@ public class Widget extends BaseEntity {
     private String refreshInterval;
 
     @Column(nullable = false)
+    @Builder.Default
     private boolean autoRefresh = false;
 
     @Column(nullable = false)

@@ -7,6 +7,7 @@ import com.reportdesigner.service.BaseServiceImpl;
 import com.reportdesigner.service.DuckDBService;
 import com.reportdesigner.service.ReportService;
 import com.reportdesigner.service.ReportTypeService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +24,7 @@ public class ReportServiceImpl extends BaseServiceImpl<Report, ReportRepository>
     private final ReportTypeService reportTypeService;
     private final DuckDBService duckDBService;
 
+    @Autowired
     public ReportServiceImpl(ReportRepository repository, ReportTypeService reportTypeService, DuckDBService duckDBService) {
         super(repository);
         this.reportTypeService = reportTypeService;
@@ -99,24 +101,10 @@ public class ReportServiceImpl extends BaseServiceImpl<Report, ReportRepository>
     }
 
     @Override
-    public List<Report> executeReport(UUID id) {
-        if (!existsById(id)) {
-            throw new IllegalArgumentException("Report with id " + id + " not found");
-        }
-        
-        Report report = findById(id).orElseThrow();
-        
+    public List<Map<String, Object>> executeReport(UUID id) {
+        Report report = findById(id).orElseThrow(() -> new IllegalArgumentException("Report with id " + id + " not found"));
         try {
-            // Execute the report query using DuckDB
-            List<Map<String, Object>> results = duckDBService.executeQueryAsList(
-                report.getDataSource(),
-                report.getQuery(),
-                null // TODO: Parse and pass parameters from report.getParameters()
-            );
-            
-            // For now, we're just returning the report itself
-            // In a real implementation, we would return the query results
-            return List.of(report);
+            return duckDBService.executeQueryAsList(report.getDataSource(), report.getQuery(), null);
         } catch (SQLException e) {
             throw new RuntimeException("Failed to execute report: " + e.getMessage(), e);
         }
