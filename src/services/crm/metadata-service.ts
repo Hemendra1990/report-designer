@@ -1,6 +1,6 @@
 import { crmHttpService } from "./http-crm-service";
 
-const BASE_URL = "metadata";
+const BASE_URL = "/metadata";
 
 export const findAllTableMetaData = () => {
     return crmHttpService.get(`${BASE_URL}/all-table`)

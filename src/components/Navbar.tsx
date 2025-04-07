@@ -55,7 +55,7 @@ export default function Navbar() {
               )}
             </button>
             <Link href="/" className="ml-2 md:ml-0">
-              <h1 className="text-xl font-bold text-gray-900">Salesforce Analytics</h1>
+              <h1 className="text-xl font-bold text-gray-900">Unity Analytics</h1>
             </Link>
           </div>
 

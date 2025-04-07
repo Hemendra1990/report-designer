@@ -6,8 +6,10 @@ import { useQuery } from "@tanstack/react-query";
 export const useCrmTokenHook = () => {
     const crmToken = useQuery<KeycloakResponse>({
         queryKey: [QueryKeys.KEYCLOAK_RESPONSE],
-        queryFn: () => fetchKeycloakToken().then(res => res.data),
-        staleTime: 2000
+        queryFn: () => fetchKeycloakToken().then((res) => {
+            return res?.data;
+        }),
+        staleTime: 1000
     })
 
     return crmToken;

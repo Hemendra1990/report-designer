@@ -29,7 +29,7 @@ export const useAllTableMetadata = () => {
     const allTableMetaData = () => {
         return findAllTableMetaData().then((res) => res?.data?.data);
     };
-    const columnListByTableName = useQuery({
+    const columnListByTableName = useQuery<TableMetadata[]>({
         queryKey: [METADATA.ALL_TABLE_METADATA],
         queryFn: allTableMetaData,
     });

@@ -1,16 +1,16 @@
 // crm-http-service.ts
 import { AxiosRequestConfig } from "axios";
 import { httpClient } from "../http-service";
-import { fetchKeycloakToken } from "../keycloak/keyclock-service";
-import { useCrmTokenHook } from "@/hooks/crm-authentication-hook";
+import { getAuthToken } from "../AuthTokenHolder";
 
 const withAuthHeader = (config: AxiosRequestConfig = {}): AxiosRequestConfig => {
-  const token = localStorage.getItem("token");
+  let token = localStorage.getItem('token') || '';
   return {
     ...config,
     headers: {
       ...config.headers,
-      Authorization: `Bearer ${fetchKeycloakToken()}`,
+      Authorization: `Bearer ${token}`,
+      'web-origin': window.location.href,
     },
   };
 };

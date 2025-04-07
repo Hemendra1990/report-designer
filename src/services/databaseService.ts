@@ -130,6 +130,7 @@ export async function getAvailableSchemas(): Promise<string[]> {
 
 export interface TableMetadata {
   tableName: string;
+  displayName: string;
   schema: string;
   columns: ColumnMetadata[];
 }

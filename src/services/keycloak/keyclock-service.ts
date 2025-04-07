@@ -1,7 +1,7 @@
 import { AxiosResponse } from "axios";
 import { httpClient } from "../http-service";
 
-const KEYCLOAK_TOKEN_URL = "http://bip.unitysphere.info:58084/auth/realms/bip/protocol/openid-connect/token";
+const KEYCLOAK_TOKEN_URL = "http://localhost:8081/realms/bip/protocol/openid-connect/token?client_id=bip";
 
 interface TokenResponse {
   access_token: string;
@@ -23,7 +23,7 @@ export const fetchKeycloakToken = (): Promise<AxiosResponse<any, any>> => {
 
   const config = {
     headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
+      // "Content-Type": "application/x-www-form-urlencoded",
       },
   };
 
