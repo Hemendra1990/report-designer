@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import {
+import { 
   Search,
   Bell,
   User,
@@ -23,11 +23,6 @@ export default function Navbar() {
 
   const navigation = [
     {
-      name: 'Report Types',
-      href: '/report-types',
-      icon: BarChart3,
-    },
-    {
       name: 'Reports',
       href: '/reports',
       icon: FileText,
@@ -37,53 +32,54 @@ export default function Navbar() {
       href: '/dashboards',
       icon: LayoutDashboard,
     },
+    {
+      name: 'Report Types',
+      href: '/report-types',
+      icon: BarChart3,
+    },
   ];
 
   return (
     <header className="bg-white border-b sticky top-0 z-50">
-      <div className="mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          {/* Left: Logo + Navigation */}
-          <div className="flex items-center space-x-6">
-            <div className="flex items-center">
-              <button
-                className="md:hidden p-2 hover:bg-gray-100 rounded-md"
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              >
-                {isMobileMenuOpen ? (
-                  <X size={24} className="text-gray-600" />
-                ) : (
-                  <Menu size={24} className="text-gray-600" />
-                )}
-              </button>
-              <Link href="/" className="ml-2 md:ml-0">
-                <h1 className="text-xl font-bold text-gray-900">Insight Board</h1>
-              </Link>
-            </div>
-
-            {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center space-x-5">
-              {navigation.map((item) => {
-                const isActive = pathname === item.href;
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className={`flex items-center space-x-2 px-3 py-2 rounded-md ${
-                      isActive
-                        ? 'bg-blue-50 text-blue-600'
-                        : 'text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    <item.icon size={20} />
-                    <span>{item.name}</span>
-                  </Link>
-                );
-              })}
-            </nav>
+          <div className="flex items-center">
+            <button
+              className="md:hidden p-2 hover:bg-gray-100 rounded-md"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            >
+              {isMobileMenuOpen ? (
+                <X size={24} className="text-gray-600" />
+              ) : (
+                <Menu size={24} className="text-gray-600" />
+              )}
+            </button>
+            <Link href="/" className="ml-2 md:ml-0">
+              <h1 className="text-xl font-bold text-gray-900">Salesforce Analytics</h1>
+            </Link>
           </div>
 
-          {/* Right: Search + Icons */}
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex items-center space-x-8">
+            {navigation.map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-md ${
+                    isActive
+                      ? 'bg-blue-50 text-blue-600'
+                      : 'text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  <item.icon size={20} />
+                  <span>{item.name}</span>
+                </Link>
+              );
+            })}
+          </nav>
+
           <div className="flex items-center space-x-4">
             <div className="relative hidden md:block">
               <input
@@ -147,4 +143,4 @@ export default function Navbar() {
       )}
     </header>
   );
-}
+} 

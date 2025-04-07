@@ -40,12 +40,12 @@ export default function CreateDashboardModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4 overflow-auto">
-      <div className="bg-white rounded-lg shadow-lg w-full max-w-[1100px] max-h-[90vh] flex flex-col md:flex-row overflow-hidden">
+    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-lg w-full max-w-[1100px] h-[80vh] flex">
         {/* Left Panel - Configuration */}
-        <div className="w-full md:w-[400px] border-b md:border-b-0 md:border-r overflow-y-auto">
+        <div className="w-[400px] border-r">
           <ModalHeader title="Add Widget" onClose={onClose} />
-  
+
           <form onSubmit={handleSubmit} className="p-6">
             <div className="mb-6">
               <h3 className="font-medium mb-2">Display As</h3>
@@ -67,22 +67,29 @@ export default function CreateDashboardModal({
                 ))}
               </div>
             </div>
-  
-            <SelectField label="Y-Axis Field" required>
+
+            <SelectField
+              label="Y-Axis Field"
+              required
+            >
               <option>Select field</option>
             </SelectField>
-  
-            <SelectField label="X-Axis Field">
+
+            <SelectField
+              label="X-Axis Field"
+            >
               <option>Select field</option>
             </SelectField>
-  
-            <SelectField label="Display Units">
+
+            <SelectField
+              label="Display Units"
+            >
               <option>Auto</option>
               <option>Thousands</option>
               <option>Millions</option>
               <option>Billions</option>
             </SelectField>
-  
+
             <div className="mb-4">
               <label className="block mb-1">
                 Y-Axis Field <span className="text-red-500">*</span>
@@ -91,14 +98,14 @@ export default function CreateDashboardModal({
                 <option>Select field</option>
               </select>
             </div>
-  
+
             <div className="mb-4">
               <label className="block mb-1">X-Axis Field</label>
               <select className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option>Select field</option>
               </select>
             </div>
-  
+
             <div className="mb-6">
               <label className="block mb-1">Display Units</label>
               <select className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -108,7 +115,7 @@ export default function CreateDashboardModal({
                 <option>Billions</option>
               </select>
             </div>
-  
+
             <div className="flex justify-end gap-3">
               <button
                 type="button"
@@ -126,13 +133,12 @@ export default function CreateDashboardModal({
             </div>
           </form>
         </div>
-  
+
         {/* Right Panel - Preview */}
-        <div className="w-full flex-1 p-6 bg-gray-50 overflow-y-auto">
+        <div className="flex-1 p-6 bg-gray-50">
           <ChartPreview type={selectedChartType} />
         </div>
       </div>
     </div>
   );
-  
 } 

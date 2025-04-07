@@ -19,15 +19,7 @@ import {
   Image as ImageIcon,
   ChevronDown,
   Pencil,
-  Eye,
-  Icon,
-  Table2,
-  BarChart4,
-  BarChart2,
-  TrendingUp,
-  ScatterChart,
-  Gauge,
-  Calculator
+  Eye
 } from 'lucide-react';
 import { Responsive, WidthProvider } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
@@ -235,7 +227,7 @@ const availableFields = [
 export default function DashboardDesigner({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const dashboardId = resolvedParams.id;
-  const isNew = dashboardId === 'new';
+  
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [dashboardData, setDashboardData] = useState<DashboardData>({
     id: dashboardId,
@@ -270,19 +262,16 @@ export default function DashboardDesigner({ params }: { params: Promise<{ id: st
 
   // Load dashboard data from localStorage on mount
   useEffect(() => {
-    if (!isNew) {
-      const savedData = localStorage.getItem(`dashboard_${dashboardId}`);
-      if (savedData) {
-        setDashboardData(JSON.parse(savedData));
-      }
+    const savedData = localStorage.getItem(`dashboard_${dashboardId}`);
+    if (savedData) {
+      setDashboardData(JSON.parse(savedData));
     }
-  }, [dashboardId, isNew]);
+  }, [dashboardId]);
 
+  // Save dashboard data to localStorage when it changes
   useEffect(() => {
-    if (!isNew) {
-      localStorage.setItem(`dashboard_${dashboardId}`, JSON.stringify(dashboardData));
-    }
-  }, [dashboardData, dashboardId, isNew]);
+    localStorage.setItem(`dashboard_${dashboardId}`, JSON.stringify(dashboardData));
+  }, [dashboardData, dashboardId]);
 
   const handleLayoutChange = (layout: Layout[], layouts: { [key: string]: Layout[] }) => {
     setDashboardData(prev => ({
@@ -429,7 +418,6 @@ export default function DashboardDesigner({ params }: { params: Promise<{ id: st
             <input
               type="text"
               value={dashboardData.name}
-              autoFocus
               onChange={(e) => setDashboardData(prev => ({ ...prev, name: e.target.value }))}
               className="text-xl font-bold border-none focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2"
               readOnly={isPreviewMode}
@@ -610,7 +598,7 @@ export default function DashboardDesigner({ params }: { params: Promise<{ id: st
             <div className="flex">
               {/* Left Panel - Configuration */}
               <div className="w-1/2 border-r p-6">
-                <div className="space-y-2">
+                <div className="space-y-6">
                   <div>
                     <label className="block text-sm mb-2">Report</label>
                     <div className="flex items-center justify-between p-2 border rounded bg-white">
@@ -647,34 +635,28 @@ export default function DashboardDesigner({ params }: { params: Promise<{ id: st
                     <label className="block text-sm mb-2">Display As</label>
                     <div className="grid grid-cols-5 gap-2">
                       {[
-                        { type: 'table' as ChartType, icon: Table2, label: 'Table' },
-                        { type: 'bar' as ChartType, icon: BarChart3, label: 'Bar' },
-                        { type: 'grouped-bar' as ChartType, icon: BarChart2, label: 'Grouped Bar' },
-                        { type: 'stacked-bar' as ChartType, icon: BarChart4, label: 'Stacked Bar' },
-                        { type: 'line' as ChartType, icon: LineChart, label: 'Line' },
-                        { type: 'pie' as ChartType, icon: PieChart, label: 'Pie' },
-                        { type: 'funnel' as ChartType, icon: TrendingUp, label: 'Funnel' },
-                        { type: 'scatter' as ChartType, icon: ScatterChart, label: 'Scatter' },
-                        { type: 'gauge' as ChartType, icon: Gauge, label: 'Gauge' },
-                        { type: 'metric' as ChartType, icon: Calculator, label: 'Metric' }
-                      ].map((chart) => {
-                        const Icon = chart.icon; 
-                        return (<button
+                        { type: 'table' as ChartType, icon: '≡', label: 'Table' },
+                        { type: 'bar' as ChartType, icon: '▌', label: 'Bar' },
+                        { type: 'grouped-bar' as ChartType, icon: '▌▌', label: 'Grouped Bar' },
+                        { type: 'stacked-bar' as ChartType, icon: '▌', label: 'Stacked Bar' },
+                        { type: 'line' as ChartType, icon: '📈', label: 'Line' },
+                        { type: 'pie' as ChartType, icon: '◓', label: 'Pie' },
+                        { type: 'funnel' as ChartType, icon: '▼', label: 'Funnel' },
+                        { type: 'scatter' as ChartType, icon: ':::', label: 'Scatter' },
+                        { type: 'gauge' as ChartType, icon: '◐', label: 'Gauge' },
+                        { type: 'metric' as ChartType, icon: '123', label: 'Metric' }
+                      ].map((chart) => (
+                        <button
                           key={chart.type}
                           onClick={() => setChartType(chart.type)}
                           className={`flex flex-col items-center justify-center py-2 px-1 rounded border ${
                             chartType === chart.type ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
                           }`}
                         >
-                          {/* <span className="text-base mb-0.5">{chart.icon}</span> */}
-                          <Icon
-                            size={18}
-                            className={`mb-1 ${chartType === chart.type ? 'text-blue-500' : 'text-gray-600'
-                              }`}
-                          />
+                          <span className="text-base mb-0.5">{chart.icon}</span>
                           <span className="text-xs">{chart.label}</span>
                         </button>
-                      )})}
+                      ))}
                     </div>
                   </div>
 

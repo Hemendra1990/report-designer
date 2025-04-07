@@ -305,7 +305,7 @@ export default function EditLayout() {
   return (
     <div className="min-h-screen bg-muted/40">
       {/* Navigation Bar */}
-      {/* <nav className="bg-primary text-primary-foreground py-4 px-6 shadow-md">
+      <nav className="bg-primary text-primary-foreground py-4 px-6 shadow-md">
         <div className="container mx-auto flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <Image 
@@ -326,7 +326,7 @@ export default function EditLayout() {
             </Link>
           </div>
         </div>
-      </nav> */}
+      </nav>
 
       {/* Main Content */}
       <main className="container mx-auto py-8 px-4">
@@ -383,45 +383,41 @@ export default function EditLayout() {
         {/* Tabs and Fields Editor */}
         <div className="bg-background border rounded-lg overflow-hidden">
           <Tabs defaultValue={primaryObject?.id || "account"} onValueChange={setSelectedTab}>
-            <div className="px-4">
-              <TabsList className="mt-3 gap-3 bg-transparent p-0">
-                {allObjects.map((obj) => (
-                  <TabsTrigger
-                    key={obj.id}
+            <div className="border-b px-4">
+              <TabsList className="h-auto p-0 bg-transparent">
+                {allObjects.map(obj => (
+                  <TabsTrigger 
+                    key={obj.id} 
                     value={obj.id}
-                    className={`
-                      flex items-center gap-3 px-4 py-2
-                      border rounded-full transition-all
-                      shadow-sm text-sm font-medium
-                      h-12
-                      data-[state=active]:bg-white
-                      data-[state=active]:border-[${obj.color}]
-                      data-[state=active]:shadow-md
-                      hover:bg-muted
-                    `}
-                    style={{
+                    className="relative h-12 px-4 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-t-md data-[state=active]:after:absolute data-[state=active]:after:bottom-0 data-[state=active]:after:left-0 data-[state=active]:after:right-0 data-[state=active]:after:h-[3px] border border-b-0 data-[state=active]:border-background"
+                    style={{ 
+                      "--tw-text-opacity": selectedTab === obj.id ? "1" : "0.6",
+                      "--tw-after-bg-opacity": "1",
+                      "--tw-after-bg": obj.color,
                       borderColor: selectedTab === obj.id ? obj.color : "transparent",
-                    }}
+                      borderTopColor: selectedTab === obj.id ? obj.color : "transparent", 
+                      borderLeftColor: selectedTab === obj.id ? obj.color : "transparent",
+                      borderRightColor: selectedTab === obj.id ? obj.color : "transparent",
+                      borderBottomColor: selectedTab === obj.id ? "transparent" : "transparent"
+                     } as any}
                   >
-                    {/* Colored circle with letter */}
-                    <div
-                      className="h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold transition-all"
-                      style={{
-                        backgroundColor: selectedTab === obj.id
-                          ? obj.color
-                          : `${obj.color}40`,
-                        color: selectedTab === obj.id ? "white" : obj.color,
-                      }}
-                    >
-                      {obj.letter}
-                    </div>
-
-                    {/* Name + field count */}
-                    <div className="flex flex-col items-start justify-center leading-tight">
-                      <span className="font-medium text-sm">{obj.name}</span>
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-                        {getSelectedFieldCount(obj.id)} fields
-                      </span>
+                    <div className="flex items-center gap-2">
+                      <div 
+                        className="h-6 w-6 rounded-full flex items-center justify-center"
+                        style={{ 
+                          backgroundColor: selectedTab === obj.id ? obj.color : `${obj.color}40`,
+                          color: selectedTab === obj.id ? "white" : obj.color,
+                          transition: "all 0.2s ease"
+                        }}
+                      >
+                        <span className="font-bold text-xs">{obj.letter}</span>
+                      </div>
+                      <div className="flex flex-col items-start">
+                        <span className="font-medium">{obj.name}</span>
+                        <span className="text-xs text-muted-foreground px-1.5 py-0.5 rounded-full bg-muted">
+                          {getSelectedFieldCount(obj.id)} fields
+                        </span>
+                      </div>
                     </div>
                   </TabsTrigger>
                 ))}
