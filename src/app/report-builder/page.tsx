@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -250,10 +250,22 @@ export default function ReportBuilderPage() {
   const [draggedItem, setDraggedItem] = useState<null | number>(null);
   const columnRefs = useRef<(HTMLDivElement | null)[]>([]);
   
-  // Add group dropdown state
+  // Group dropdown state
   const [showGroupDropdown, setShowGroupDropdown] = useState(false);
   const [groupSearchTerm, setGroupSearchTerm] = useState("");
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+  const [groupByField, setGroupByField] = useState<string | null>(null);
+  const [expandedRowGroups, setExpandedRowGroups] = useState<Record<string, boolean>>({});
+  
+  // Preview settings
+  const [rowData, setRowData] = useState<AccountData[]>([]);
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
+  const [showRowCounts, setShowRowCounts] = useState(true);
+  const [showDetailRows, setShowDetailRows] = useState(true);
+  const [autoUpdatePreview, setAutoUpdatePreview] = useState(true);
   
   // Reference for click outside menu
   const menuRef = useRef<HTMLDivElement>(null);
@@ -263,6 +275,16 @@ export default function ReportBuilderPage() {
   useEffect(() => {
     columnRefs.current = columnRefs.current.slice(0, selectedColumns.length);
   }, [selectedColumns]);
+  
+  // Update selectedGroup when groupByField changes
+  useEffect(() => {
+    setSelectedGroup(groupByField);
+    if (groupByField) {
+      setGroupSearchTerm(selectedColumns.find(col => col.id === groupByField)?.name || "");
+    } else {
+      setGroupSearchTerm("");
+    }
+  }, [groupByField, selectedColumns]);
   
   // Handle click outside to close menus
   useEffect(() => {
@@ -437,18 +459,6 @@ export default function ReportBuilderPage() {
     ));
   };
   
-  // Add state for preview settings
-  const [rowData, setRowData] = useState<AccountData[]>([]);
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
-  const [showRowCounts, setShowRowCounts] = useState(false);
-  const [showDetailRows, setShowDetailRows] = useState(true);
-  const [autoUpdatePreview, setAutoUpdatePreview] = useState(true);
-  const [groupByField, setGroupByField] = useState<string | null>(null);
-  const [expandedRowGroups, setExpandedRowGroups] = useState<Record<string, boolean>>({});
-  
   // Update column definitions when selected columns change
   useEffect(() => {
     if (selectedColumns.length > 0 && autoUpdatePreview) {
@@ -476,16 +486,77 @@ export default function ReportBuilderPage() {
         });
       }
       
+      // Sort data by group field if one is selected
+      if (groupByField) {
+        filteredData.sort((a, b) => {
+          const aValue = a[groupByField]?.toString() || 'undefined';
+          const bValue = b[groupByField]?.toString() || 'undefined';
+          return aValue.localeCompare(bValue);
+        });
+      }
+      
       setRowData(filteredData);
     }
-  }, [filters, autoUpdatePreview, selectedColumns, allSampleData]);
+  }, [filters, autoUpdatePreview, selectedColumns, allSampleData, groupByField]);
   
   // Function to handle grouping by a field
-  const handleGroupBy = (fieldId: string) => {
-    if (groupByField === fieldId) {
+  const handleGroupBy = (fieldId: string | null) => {
+    console.log("Grouping by field:", fieldId);
+    
+    if (groupByField === fieldId || fieldId === null) {
+      // Ungroup
+      console.log("Ungrouping");
       setGroupByField(null);
+      setExpandedRowGroups({});
+      setSelectedGroup(null);
+      setGroupSearchTerm("");
+      
+      // Sort data by the first selected column if any
+      const sortedData = [...rowData];
+      if (selectedColumns.length > 0) {
+        const firstColumn = selectedColumns[0];
+        sortedData.sort((a, b) => {
+          const aValue = a[firstColumn.id]?.toString() || 'undefined';
+          const bValue = b[firstColumn.id]?.toString() || 'undefined';
+          return aValue.localeCompare(bValue);
+        });
+        setRowData(sortedData);
+      }
     } else {
+      // Set new group field
+      console.log("Setting new group field");
       setGroupByField(fieldId);
+      
+      // Create a new object to manage expanded groups
+      const newExpandedGroups: Record<string, boolean> = {};
+      
+      // Get unique values for the selected field
+      const uniqueValues = new Set(rowData.map(item => item[fieldId]?.toString() || 'undefined'));
+      console.log("Unique values:", Array.from(uniqueValues));
+      
+      // Set all groups to expanded by default
+      uniqueValues.forEach(value => {
+        newExpandedGroups[value] = true;
+      });
+      
+      console.log("Setting expanded groups:", newExpandedGroups);
+      setExpandedRowGroups(newExpandedGroups);
+      
+      // Update the selected group and search term
+      setSelectedGroup(fieldId);
+      const selectedColumn = selectedColumns.find(col => col.id === fieldId);
+      if (selectedColumn) {
+        setGroupSearchTerm(selectedColumn.name);
+      }
+      
+      // Sort data by group field
+      const sortedData = [...rowData];
+      sortedData.sort((a, b) => {
+        const aValue = a[fieldId]?.toString() || 'undefined';
+        const bValue = b[fieldId]?.toString() || 'undefined';
+        return aValue.localeCompare(bValue);
+      });
+      setRowData(sortedData);
     }
   };
   
@@ -859,6 +930,7 @@ export default function ReportBuilderPage() {
                                   setSelectedGroup(column.id);
                                   setGroupSearchTerm(column.name);
                                   setShowGroupDropdown(false);
+                                  handleGroupBy(column.id);
                                 }}
                               >
                                 <span className={`size-4 flex items-center justify-center rounded-sm text-xs ${column.type === 'number' || column.type === 'currency' ? 'bg-primary/10 text-primary' : 'bg-accent/80 text-accent-foreground'}`}>
@@ -884,7 +956,10 @@ export default function ReportBuilderPage() {
                         <span className="text-muted-foreground">Ascending</span>
                       </div>
                       <button 
-                        onClick={() => setSelectedGroup(null)}
+                        onClick={() => {
+                          setSelectedGroup(null);
+                          handleGroupBy(selectedGroup);
+                        }}
                         className="text-muted-foreground hover:text-foreground"
                       >
                         <svg
@@ -1930,7 +2005,7 @@ export default function ReportBuilderPage() {
                           >
                             <div className="flex items-center gap-2">
                               <span className={`w-4 h-4 flex items-center justify-center rounded-sm text-xs ${field.type === 'number' || field.type === 'currency' ? 'bg-purple-100 text-purple-700' : 'bg-indigo-100 text-indigo-700'}`}>
-                                {getFieldIcon(field.type as FieldType)}
+                                {getFieldIcon(field.type)}
                               </span>
                               <span>{field.name}</span>
                             </div>
@@ -1967,7 +2042,7 @@ export default function ReportBuilderPage() {
 function FilterRow({ 
   filter, 
   onRemove, 
-  onUpdate,
+  onUpdate, 
   index
 }: { 
   filter: Filter; 
@@ -2551,30 +2626,6 @@ function DataTable<TData extends Record<string, any>>(props: DataTableProps<TDat
     setExpandedRowGroups
   } = props;
   
-  // Process data for grouping if a group field is specified
-  const [groupedData, setGroupedData] = useState<Record<string, TData[]>>({});
-  const [groupKeys, setGroupKeys] = useState<string[]>([]);
-  
-  // Create grouped data whenever the group field changes
-  useEffect(() => {
-    if (groupByField) {
-      const grouped = data.reduce((acc, row) => {
-        const groupValue = row[groupByField]?.toString() || 'undefined';
-        if (!acc[groupValue]) {
-          acc[groupValue] = [];
-        }
-        acc[groupValue].push(row);
-        return acc;
-      }, {} as Record<string, TData[]>);
-      
-      setGroupedData(grouped);
-      setGroupKeys(Object.keys(grouped).sort());
-    } else {
-      setGroupedData({});
-      setGroupKeys([]);
-    }
-  }, [data, groupByField]);
-  
   // Initialize the table
   const table = useReactTable({
     data,
@@ -2595,6 +2646,24 @@ function DataTable<TData extends Record<string, any>>(props: DataTableProps<TDat
     getPaginationRowModel: getPaginationRowModel(),
   });
 
+  // Process data for grouping if a group field is specified
+  const groupedData = useMemo(() => {
+    if (!groupByField) return {};
+    
+    return data.reduce((acc, row) => {
+      const groupValue = row[groupByField]?.toString() || 'undefined';
+      if (!acc[groupValue]) {
+        acc[groupValue] = [];
+      }
+      acc[groupValue].push(row);
+      return acc;
+    }, {} as Record<string, TData[]>);
+  }, [data, groupByField]);
+
+  const groupKeys = useMemo(() => {
+    return Object.keys(groupedData).sort();
+  }, [groupedData]);
+
   // Toggle group expansion
   const toggleGroupExpansion = (groupKey: string) => {
     setExpandedRowGroups(prev => ({
@@ -2605,6 +2674,8 @@ function DataTable<TData extends Record<string, any>>(props: DataTableProps<TDat
 
   // Handle whether to show grouped view or flat view
   const showGroupedView = groupByField && groupKeys.length > 0;
+
+  console.log("Show grouped view:", showGroupedView, "Group by field:", groupByField, "Group keys:", groupKeys);
 
   // Render the table
   return (
@@ -2632,8 +2703,8 @@ function DataTable<TData extends Record<string, any>>(props: DataTableProps<TDat
                           asc: (
                             <svg
                               xmlns="http://www.w3.org/2000/svg"
-                              width="14"
-                              height="14"
+                              width="16"
+                              height="16"
                               viewBox="0 0 24 24"
                               fill="none"
                               stroke="currentColor"
@@ -2647,8 +2718,8 @@ function DataTable<TData extends Record<string, any>>(props: DataTableProps<TDat
                           desc: (
                             <svg
                               xmlns="http://www.w3.org/2000/svg"
-                              width="14"
-                              height="14"
+                              width="16"
+                              height="16"
                               viewBox="0 0 24 24"
                               fill="none"
                               stroke="currentColor"
@@ -2669,36 +2740,34 @@ function DataTable<TData extends Record<string, any>>(props: DataTableProps<TDat
           </thead>
           <tbody>
             {showGroupedView ? (
-              // Grouped view
-              groupKeys.map(groupKey => (
+              // Render grouped view
+              groupKeys.map((groupKey) => (
                 <React.Fragment key={groupKey}>
-                  {/* Group header */}
+                  {/* Group header row */}
                   <tr 
-                    className="bg-blue-50 cursor-pointer hover:bg-blue-100 transition-colors"
+                    className="bg-gray-50 cursor-pointer hover:bg-gray-100"
                     onClick={() => toggleGroupExpansion(groupKey)}
                   >
-                    <td colSpan={columns.length} className="px-4 py-2 font-medium text-blue-700 border-b border-blue-100">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className={`transition-transform ${expandedRowGroups[groupKey] ? 'rotate-90' : ''}`}
-                          >
-                            <path d="m9 18 6-6-6-6" />
-                          </svg>
-                          <span>{groupKey}</span>
-                        </div>
+                    <td colSpan={columns.length} className="px-4 py-2">
+                      <div className="flex items-center gap-2">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className={`transform transition-transform ${expandedRowGroups[groupKey] ? 'rotate-90' : ''}`}
+                        >
+                          <path d="m9 18 6-6-6-6" />
+                        </svg>
+                        <span className="font-medium">{groupKey}</span>
                         {showRowCounts && (
-                          <span className="text-xs bg-blue-100 px-2 py-1 rounded text-blue-600">
-                            {groupedData[groupKey].length} {groupedData[groupKey].length === 1 ? 'item' : 'items'}
+                          <span className="text-gray-500 text-sm">
+                            ({groupedData[groupKey].length} items)
                           </span>
                         )}
                       </div>
@@ -2706,140 +2775,56 @@ function DataTable<TData extends Record<string, any>>(props: DataTableProps<TDat
                   </tr>
                   
                   {/* Group detail rows */}
-                  {expandedRowGroups[groupKey] && showDetailRows && 
-                    groupedData[groupKey].map((row, index) => (
-                      <tr
-                        key={`${groupKey}-${index}`}
-                        className="border-b hover:bg-gray-50 transition-colors"
-                      >
-                        {columns.map((column, colIndex) => (
-                          <td key={`${groupKey}-${index}-${colIndex}`} className="px-4 py-2">
-                            {column.accessorKey && row[column.accessorKey as string] !== undefined ? (
-                              typeof column.cell === 'function' 
-                                ? column.cell({ row: { getValue: (key: string) => row[key] } })
-                                : row[column.accessorKey as string]
-                            ) : null}
-                          </td>
-                        ))}
-                      </tr>
-                    ))
-                  }
-                  
-                  {/* Group summary row */}
-                  {expandedRowGroups[groupKey] && (
-                    <tr className="bg-gray-50 border-b border-gray-200">
-                      <td colSpan={columns.length} className="px-4 py-2 text-right text-sm text-gray-600">
-                        Subtotal: {groupedData[groupKey].length} {groupedData[groupKey].length === 1 ? 'item' : 'items'}
-                      </td>
+                  {expandedRowGroups[groupKey] && showDetailRows && groupedData[groupKey].map((row, index) => (
+                    <tr key={index} className="border-t hover:bg-gray-50">
+                      {columns.map((column) => (
+                        <td key={column.id} className="px-4 py-2">
+                          {flexRender(
+                            column.cell,
+                            { row: { getValue: () => row[column.id] } }
+                          )}
+                        </td>
+                      ))}
                     </tr>
-                  )}
+                  ))}
                 </React.Fragment>
               ))
             ) : (
-              // Standard view (no grouping)
-              table.getRowModel().rows.length ? (
-                table.getRowModel().rows.map((row) => (
-                  <tr
-                    key={row.id}
-                    className="border-b hover:bg-gray-50 transition-colors"
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id} className="px-4 py-2">
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
-                      </td>
-                    ))}
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td
-                    colSpan={columns.length}
-                    className="h-24 text-center text-gray-500"
-                  >
-                    No results.
-                  </td>
+              // Render flat view
+              table.getRowModel().rows.map((row) => (
+                <tr key={row.id} className="border-t hover:bg-gray-50">
+                  {row.getVisibleCells().map((cell) => (
+                    <td key={cell.id} className="px-4 py-2">
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  ))}
                 </tr>
-              )
-            )}
-            
-            {/* Grand total row for grouped view */}
-            {showGroupedView && (
-              <tr className="bg-gray-100 font-medium">
-                <td colSpan={columns.length} className="px-4 py-2 text-right border-t border-gray-300">
-                  Total: {data.length} {data.length === 1 ? 'item' : 'items'}
-                </td>
-              </tr>
+              ))
             )}
           </tbody>
         </table>
       </div>
-
+      
       {/* Pagination */}
-      <div className="flex items-center justify-between py-2">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.setPageIndex(0)}
-            disabled={!table.getCanPreviousPage()}
+          <button
+            className="px-3 py-1 border rounded hover:bg-gray-100"
+            onClick={() => setPagination(prev => ({ ...prev, pageIndex: prev.pageIndex - 1 }))}
+            disabled={pagination.pageIndex === 0}
           >
-            {"<<"}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
+            Previous
+          </button>
+          <button
+            className="px-3 py-1 border rounded hover:bg-gray-100"
+            onClick={() => setPagination(prev => ({ ...prev, pageIndex: prev.pageIndex + 1 }))}
+            disabled={pagination.pageIndex >= table.getPageCount() - 1}
           >
-            {"<"}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-          >
-            {">"}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-            disabled={!table.getCanNextPage()}
-          >
-            {">>"}
-          </Button>
+            Next
+          </button>
         </div>
-        <div className="flex items-center gap-2 text-sm text-gray-600">
-          <div>
-            Page{" "}
-            <span className="font-semibold">
-              {table.getState().pagination.pageIndex + 1}
-            </span>{" "}
-            of{" "}
-            <span className="font-semibold">
-              {table.getPageCount() === 0 ? 1 : table.getPageCount()}
-            </span>
-          </div>
-          <Select
-            value={table.getState().pagination.pageSize.toString()}
-            onValueChange={(value) => table.setPageSize(Number(value))}
-          >
-            <SelectTrigger className="w-[70px] h-8">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {[10, 20, 30, 40, 50].map((pageSize) => (
-                <SelectItem key={pageSize} value={pageSize.toString()}>
-                  {pageSize}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <div>rows per page</div>
+        <div className="text-sm text-gray-500">
+          Page {pagination.pageIndex + 1} of {table.getPageCount()}
         </div>
       </div>
     </div>
