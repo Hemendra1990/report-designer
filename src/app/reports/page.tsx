@@ -135,10 +135,16 @@ export default function ReportsPage() {
   const [typeFilter, setTypeFilter] = useState<"all" | "tabular" | "summary" | "matrix" | "joined">("all");
   const [sortBy, setSortBy] = useState<"recent" | "name" | "popular">("recent");
   const [showStarredOnly, setShowStarredOnly] = useState(false);
+  const [isClient, setIsClient] = useState(false);
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(8);
+  
+  // Set isClient to true when component mounts (client-side only)
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
   
   // Filter report types based on all filters
   const filteredReportTypes = sampleReportTypes.filter(reportType => {
@@ -514,7 +520,9 @@ export default function ReportsPage() {
                           <div className="flex flex-col items-center gap-2">
                             <div 
                               className="h-14 w-14 rounded-md flex items-center justify-center relative"
-                              style={{ backgroundColor: `${(typeColors as any)[reportType.type]}20` }}
+                              style={{ 
+                                backgroundColor: isClient ? `${(typeColors as any)[reportType.type]}20` : 'transparent'
+                              }}
                             >
                               <svg
                                 xmlns="http://www.w3.org/2000/svg"
@@ -522,7 +530,7 @@ export default function ReportsPage() {
                                 height="24"
                                 viewBox="0 0 24 24"
                                 fill="none"
-                                stroke={typeColors[reportType.type as keyof typeof typeColors]}
+                                stroke={isClient ? typeColors[reportType.type as keyof typeof typeColors] : 'currentColor'}
                                 strokeWidth="2"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
@@ -533,7 +541,7 @@ export default function ReportsPage() {
                                 <line x1="16" y1="17" x2="8" y2="17" />
                                 <line x1="10" y1="9" x2="8" y2="9" />
                               </svg>
-                              {reportType.starred && (
+                              {isClient && reportType.starred && (
                                 <div className="absolute -top-1 -right-1 bg-amber-400 text-white rounded-full p-0.5">
                                   <svg 
                                     xmlns="http://www.w3.org/2000/svg" 
@@ -551,15 +559,17 @@ export default function ReportsPage() {
                                 </div>
                               )}
                             </div>
-                            <div 
-                              className="text-xs font-medium px-2 py-1 rounded-full capitalize"
-                              style={{ 
-                                backgroundColor: `${(typeColors as any)[reportType.type]}20`,
-                                color: typeColors[reportType.type as keyof typeof typeColors]
-                              }}
-                            >
-                              {reportType.type}
-                            </div>
+                            {isClient && (
+                              <div 
+                                className="text-xs font-medium px-2 py-1 rounded-full capitalize"
+                                style={{ 
+                                  backgroundColor: `${(typeColors as any)[reportType.type]}20`,
+                                  color: typeColors[reportType.type as keyof typeof typeColors]
+                                }}
+                              >
+                                {reportType.type}
+                              </div>
+                            )}
                           </div>
                           
                           {/* Report Details */}

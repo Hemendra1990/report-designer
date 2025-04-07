@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import VennDiagram from "@/components/VennDiagram";
 import ObjectTree from "@/components/ObjectTree";
+import { getMetadataTables, getRelatedTables, TableMetadata } from "@/services/databaseService";
 
 // Sample list of available objects for reference
 const availableObjects = [
@@ -98,28 +99,157 @@ interface RelatedObject {
   parentId: string | null; // ID of parent object, null for direct children of primary
 }
 
+interface AvailableObject {
+  id: string;
+  name: string;
+  schema: string;
+  letter: string;
+  description: string;
+  color: string;
+  relatedTo: string[];
+  icon: string;
+}
+
+interface ObjectData {
+  id: string;
+  name: string;
+  letter: string;
+  color: string;
+  icon: string;
+}
+
 export default function DefineRelationships() {
   const searchParams = useSearchParams();
   const reportType = searchParams.get("type") || "";
-  const primaryObjectId = searchParams.get("object") || "account"; // Default to account if not provided
+  const primaryObjectId = searchParams.get("object") || "";
+  const primaryObjectSchema = searchParams.get("schema") || "";
   const displayLabel = searchParams.get("label") || "";
   const apiName = searchParams.get("api") || "";
   const description = searchParams.get("desc") || "";
   
-  const [primaryObject, setPrimaryObject] = useState<any>(null);
+  const [primaryObject, setPrimaryObject] = useState<AvailableObject | null>(null);
   const [relatedObjects, setRelatedObjects] = useState<RelatedObject[]>([]);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [availableObjects, setAvailableObjects] = useState<AvailableObject[]>([]);
+  const [relatedTables, setRelatedTables] = useState<TableMetadata[]>([]);
+  const [isLoadingRelated, setIsLoadingRelated] = useState(false);
+  const [isLoadingAvailableObjects, setIsLoadingAvailableObjects] = useState(false);
   
-  // Initialize primary object from the URL parameter
+  // Fetch available objects and initialize primary object
   useEffect(() => {
-    const foundObject = availableObjects.find(obj => obj.id === primaryObjectId);
-    if (foundObject) {
-      setPrimaryObject(foundObject);
-    }
-  }, [primaryObjectId]);
+    const fetchData = async () => {
+      try {
+        const response = await getMetadataTables();
+        const mappedObjects = response.items.map((table: TableMetadata) => ({
+          id: table.tableName,
+          name: table.tableName,
+          schema: table.schema,
+          letter: "A", // Will be assigned dynamically
+          description: `Table in schema ${table.schema}`,
+          color: "#1E88E5",
+          relatedTo: [], // Will be populated based on foreign key relationships
+          icon: "/icons/database.svg" // Default icon for all tables
+        }));
+        
+        setAvailableObjects(mappedObjects);
+        
+        // Find the primary object
+        const foundObject = mappedObjects.find((obj: AvailableObject) => 
+          obj.id === primaryObjectId && obj.schema === primaryObjectSchema
+        );
+        
+        if (foundObject) {
+          setPrimaryObject(foundObject);
+        }
+      } catch (error) {
+        console.error("Error fetching tables:", error);
+      }
+    };
+    
+    fetchData();
+  }, [primaryObjectId, primaryObjectSchema]);
 
-  // Function to add a related object
-  const handleAddRelatedObject = (objectId: string, relationshipType: RelationshipType = "inner", parentId: string | null = null) => {
+  // Fetch related tables when primary object changes
+  useEffect(() => {
+    const fetchRelatedTables = async () => {
+      if (primaryObject) {
+        setIsLoadingRelated(true);
+        try {
+          const tables = await getRelatedTables(primaryObject.schema, primaryObject.name);
+          setRelatedTables(tables);
+        } catch (error) {
+          console.error("Error fetching related tables:", error);
+        } finally {
+          setIsLoadingRelated(false);
+        }
+      } else {
+        setRelatedTables([]);
+      }
+    };
+
+    fetchRelatedTables();
+  }, [primaryObject]);
+
+  // Fetch available objects for a specific parent
+  const fetchAvailableObjectsForParent = async (parentId: string | null) => {
+    setIsLoadingAvailableObjects(true);
+    try {
+      // Find the parent object
+      let parentObject: ObjectData | null = null;
+      
+      if (parentId) {
+        // First try to find in available objects
+        parentObject = availableObjects.find(obj => obj.id === parentId);
+        
+        // If not found, try to find in related objects and then get its details
+        if (!parentObject) {
+          const relatedObj = relatedObjects.find(obj => obj.objectId === parentId);
+          if (relatedObj) {
+            parentObject = availableObjects.find(obj => obj.id === relatedObj.objectId) || null;
+          }
+        }
+      } else {
+        parentObject = primaryObject;
+      }
+      
+      if (parentObject && parentObject.schema && parentObject.name) {
+        const tables = await getRelatedTables(parentObject.schema, parentObject.name);
+        const mappedTables = tables.map((table: TableMetadata) => ({
+          id: table.tableName,
+          name: table.tableName,
+          schema: table.schema,
+          letter: table.tableName.charAt(0).toUpperCase(),
+          description: `Table in schema ${table.schema}`,
+          color: "#1E88E5",
+          relatedTo: [],
+          icon: "/icons/database.svg"
+        }));
+
+        // Keep existing objects and add new ones
+        setAvailableObjects(prevObjects => {
+          const existingIds = new Set(prevObjects.map(obj => obj.id));
+          const newObjects = mappedTables.filter(obj => !existingIds.has(obj.id));
+          return [...prevObjects, ...newObjects];
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching available objects:", error);
+    } finally {
+      setIsLoadingAvailableObjects(false);
+    }
+  };
+
+  // Map TableMetadata to ObjectData
+  const mapTableToObjectData = (table: TableMetadata): ObjectData => ({
+    id: table.tableName,
+    name: table.tableName,
+    letter: table.tableName.charAt(0).toUpperCase(),
+    color: "#1E88E5",
+    icon: "/icons/database.svg"
+  });
+
+  // Handle adding related object
+  const handleAddRelatedObject = (objectId: string, relationshipType: RelationshipType, parentId: string | null) => {
     const objectToAdd = availableObjects.find(obj => obj.id === objectId);
     if (!objectToAdd) return;
     
@@ -133,8 +263,8 @@ export default function DefineRelationships() {
     const nextLetter = letters.find(letter => !usedLetters.includes(letter)) || "X";
     
     // Add to related objects
-    setRelatedObjects([
-      ...relatedObjects,
+    setRelatedObjects(prevObjects => [
+      ...prevObjects,
       {
         objectId,
         letter: nextLetter,
@@ -142,20 +272,28 @@ export default function DefineRelationships() {
         parentId
       }
     ]);
+
+    // Fetch available objects for the newly added object
+    fetchAvailableObjectsForParent(objectId);
   };
 
-  // Function to remove a related object
+  // Handle removing related object
   const handleRemoveRelatedObject = (index: number) => {
     const updatedObjects = [...relatedObjects];
     updatedObjects.splice(index, 1);
     setRelatedObjects(updatedObjects);
   };
 
-  // Function to change relationship type
+  // Handle changing relationship type
   const handleChangeRelationshipType = (index: number, type: RelationshipType) => {
     const updatedObjects = [...relatedObjects];
     updatedObjects[index].relationshipType = type;
     setRelatedObjects(updatedObjects);
+  };
+
+  // Handle opening the object selector
+  const handleOpenObjectSelector = (parentId: string | null) => {
+    fetchAvailableObjectsForParent(parentId);
   };
 
   // Handle form submission
@@ -296,6 +434,8 @@ export default function DefineRelationships() {
                     onAddRelatedObject={handleAddRelatedObject}
                     onRemoveRelatedObject={handleRemoveRelatedObject}
                     onChangeRelationshipType={handleChangeRelationshipType}
+                    onOpenObjectSelector={handleOpenObjectSelector}
+                    isLoadingAvailableObjects={isLoadingAvailableObjects}
                   />
                 )}
               </CardContent>
@@ -325,6 +465,31 @@ export default function DefineRelationships() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Object Tree */}
+            {/* <div className="border rounded-lg p-4">
+              <h3 className="text-lg font-semibold mb-4">Object Tree</h3>
+              {isLoadingRelated ? (
+                <div className="flex justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : relatedTables.length > 0 ? (
+                <ObjectTree
+                  primaryObject={primaryObject}
+                  availableObjects={relatedTables.map(mapTableToObjectData)}
+                  relatedObjects={relatedObjects}
+                  onAddRelatedObject={handleAddRelatedObject}
+                  onRemoveRelatedObject={handleRemoveRelatedObject}
+                  onChangeRelationshipType={handleChangeRelationshipType}
+                  onOpenObjectSelector={handleOpenObjectSelector}
+                  isLoadingAvailableObjects={isLoadingAvailableObjects}
+                />
+              ) : (
+                <div className="text-center text-muted-foreground">
+                  {primaryObject ? "No related tables found" : "Select a primary object to see related tables"}
+                </div>
+              )}
+            </div> */}
           </div>
           
           {/* Right Side - Relationship Visualization */}

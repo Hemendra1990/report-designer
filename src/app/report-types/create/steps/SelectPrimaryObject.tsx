@@ -13,23 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { getAllTables, getAvailableSchemas } from '@/services/databaseService';
-
-interface TableInfo {
-  tableName: string;
-  schema: string;
-  columns: ColumnInfo[];
-}
-
-interface ColumnInfo {
-  name: string;
-  dataType: string;
-  nullable: boolean;
-  primaryKey: boolean;
-  foreignKey: boolean;
-  referencedTable?: string;
-  referencedColumn?: string;
-}
+import { getMetadataTables, searchTables, TableMetadata, ColumnMetadata } from '@/services/databaseService';
 
 interface PaginationInfo {
   currentPage: number;
@@ -42,43 +26,58 @@ export default function SelectPrimaryObject() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedObject, setSelectedObject] = useState(state.reportType.primaryObject.name || '');
   const [selectedFields, setSelectedFields] = useState<string[]>(state.reportType.primaryObject.fields || []);
-  const [availableTables, setAvailableTables] = useState<TableInfo[]>([]);
+  const [availableTables, setAvailableTables] = useState<TableMetadata[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [schemas, setSchemas] = useState<string[]>([]);
-  const [selectedSchema, setSelectedSchema] = useState<string>('');
   const [pagination, setPagination] = useState<PaginationInfo>({
     currentPage: 1,
     totalPages: 1,
     totalItems: 0
   });
   const [pageSize, setPageSize] = useState(20);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadSchemas();
-  }, []);
-
+  // Load initial tables
   useEffect(() => {
     loadTables();
-  }, [selectedSchema, pagination.currentPage, pageSize]);
+  }, []);
 
-  async function loadSchemas() {
+  // Handle search
+  const handleSearch = async (query: string) => {
+    setSearchQuery(query);
+    setIsSearching(true);
+    setSearchError(null);
+    
     try {
-      const availableSchemas = await getAvailableSchemas();
-      setSchemas(availableSchemas);
-      if (availableSchemas.length > 0) {
-        setSelectedSchema(availableSchemas[0]);
-      }
-    } catch (err) {
-      console.error('Error loading schemas:', err);
+      const tables = await searchTables(query);
+      setAvailableTables(tables);
+    } catch (error) {
+      setSearchError("Failed to search tables. Please try again.");
+      console.error("Search error:", error);
+    } finally {
+      setIsSearching(false);
     }
-  }
+  };
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchQuery) {
+        handleSearch(searchQuery);
+      } else {
+        loadTables(); // Load all tables if search is empty
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   async function loadTables() {
     try {
       setIsLoading(true);
       setError(null);
-      const response = await getAllTables(pagination.currentPage, pageSize, selectedSchema);
+      const response = await getMetadataTables(pagination.currentPage, pageSize);
       setAvailableTables(response.items);
       setPagination({
         currentPage: response.currentPage,
@@ -96,6 +95,11 @@ export default function SelectPrimaryObject() {
   const filteredTables = availableTables.filter(table =>
     table.tableName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     table.schema.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const displayedTables = filteredTables.slice(
+    (pagination.currentPage - 1) * pageSize,
+    pagination.currentPage * pageSize
   );
 
   const handleObjectChange = (tableName: string) => {
@@ -150,52 +154,24 @@ export default function SelectPrimaryObject() {
       )}
 
       <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label>Schema</Label>
-            <Select value={selectedSchema} onValueChange={setSelectedSchema}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a schema" />
-              </SelectTrigger>
-              <SelectContent>
-                {schemas.map((schema) => (
-                  <SelectItem key={schema} value={schema}>
-                    {schema}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>Items per page</Label>
-            <Select value={pageSize.toString()} onValueChange={(value) => setPageSize(Number(value))}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select page size" />
-              </SelectTrigger>
-              <SelectContent>
-                {[10, 20, 50, 100].map((size) => (
-                  <SelectItem key={size} value={size.toString()}>
-                    {size} items
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Search tables..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+          {isSearching && (
+            <div className="absolute right-3 top-2">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
+            </div>
+          )}
         </div>
 
-        <div>
-          <Label>Search Tables</Label>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-            <Input
-              type="text"
-              placeholder="Search tables..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-        </div>
+        {searchError && (
+          <div className="text-red-500 text-sm">{searchError}</div>
+        )}
 
         <div>
           <Label>Primary Table</Label>
@@ -208,12 +184,12 @@ export default function SelectPrimaryObject() {
                 <div className="p-2 text-center text-muted-foreground">
                   Loading tables...
                 </div>
-              ) : filteredTables.length === 0 ? (
+              ) : displayedTables.length === 0 ? (
                 <div className="p-2 text-center text-muted-foreground">
                   No tables found
                 </div>
               ) : (
-                filteredTables.map((table) => (
+                displayedTables.map((table) => (
                   <SelectItem key={`${table.schema}.${table.tableName}`} value={table.tableName}>
                     <div className="flex items-center gap-2">
                       <Database className="h-4 w-4 text-muted-foreground" />

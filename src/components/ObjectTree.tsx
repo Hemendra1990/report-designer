@@ -1,10 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { InputWithIcon } from '@/components/ui/input-with-icon';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
+import { relatedObjectsService } from '@/services/relatedObjectsService';
+
+interface TableColumn {
+  name: string;
+  dataType: string;
+  nullable: boolean;
+  primaryKey: boolean;
+  foreignKey: boolean;
+  referencedTable: string | null;
+  referencedColumn: string | null;
+}
+
+interface TableMetadata {
+  schema: string;
+  tableName: string;
+  columns: TableColumn[];
+}
 
 interface ObjectData {
   id: string;
@@ -13,7 +30,12 @@ interface ObjectData {
   description?: string;
   color: string;
   icon: string;
+  schema: string;
   relatedTo?: string[]; // IDs of objects this object can relate to
+}
+
+interface AvailableObject extends ObjectData {
+  relatedTo: string[];
 }
 
 interface RelatedObject {
@@ -25,11 +47,13 @@ interface RelatedObject {
 
 interface ObjectTreeProps {
   availableObjects: ObjectData[];
-  primaryObject: ObjectData | null;
+  primaryObject: ObjectData | AvailableObject | null;
   relatedObjects: RelatedObject[];
   onAddRelatedObject: (objectId: string, relationshipType: RelatedObject['relationshipType'], parentId: string | null) => void;
   onRemoveRelatedObject: (index: number) => void;
   onChangeRelationshipType: (index: number, type: RelatedObject['relationshipType']) => void;
+  onOpenObjectSelector?: (parentId: string | null) => void;
+  isLoadingAvailableObjects?: boolean;
 }
 
 const ObjectTree: React.FC<ObjectTreeProps> = ({
@@ -38,14 +62,108 @@ const ObjectTree: React.FC<ObjectTreeProps> = ({
   relatedObjects,
   onAddRelatedObject,
   onRemoveRelatedObject,
-  onChangeRelationshipType
+  onChangeRelationshipType,
+  onOpenObjectSelector,
+  isLoadingAvailableObjects = false
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showSelector, setShowSelector] = useState(false);
   const [tempRelationshipType, setTempRelationshipType] = useState<RelatedObject['relationshipType']>('inner');
   const [expandedRelationships, setExpandedRelationships] = useState<string[]>([]);
   const [currentParentId, setCurrentParentId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [filteredObjects, setFilteredObjects] = useState<ObjectData[]>([]);
   
+  // Fetch related objects when search term or parent changes
+  useEffect(() => {
+    const fetchRelatedObjects = async () => {
+      if (!currentParentId && !primaryObject) return;
+      
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        const parentObject = currentParentId 
+          ? availableObjects.find(obj => obj.id === currentParentId)
+          : primaryObject;
+          
+        if (!parentObject) return;
+        
+        const apiObjects = await relatedObjectsService.getRelatedObjects(
+          parentObject.schema,
+          parentObject.name
+        );
+        
+        // Map API objects to ObjectData format
+        const mappedObjects: ObjectData[] = apiObjects.map((obj, index) => ({
+          id: obj.tableName,
+          name: obj.tableName,
+          letter: obj.tableName.charAt(0).toUpperCase(),
+          description: `Table in schema ${obj.schema} with ${obj.columns.length} columns`,
+          color: getColorForIndex(index), // Helper function to generate colors
+          icon: "/icons/database.svg",
+          schema: obj.schema,
+          relatedTo: obj.columns
+            .filter(col => col.foreignKey)
+            .map(col => col.referencedTable || '')
+            .filter(table => table !== null)
+        }));
+        
+        // Filter out already used objects
+        const usedObjectIds = [
+          primaryObject?.id,
+          ...relatedObjects.map(obj => obj.objectId)
+        ].filter(Boolean) as string[];
+        
+        const filtered = mappedObjects.filter(obj => {
+          // Skip if object is null or undefined
+          if (!obj) return false;
+          
+          // Check if object is already used
+          if (usedObjectIds.includes(obj.id)) return false;
+          
+          // If no search term, include all objects
+          if (!searchTerm) return true;
+          
+          // Check if name matches search term (with null check)
+          const nameMatch = obj.name && obj.name.toLowerCase().includes(searchTerm.toLowerCase());
+          
+          // Check if description matches search term (with null check)
+          const descMatch = obj.description && obj.description.toLowerCase().includes(searchTerm.toLowerCase());
+          
+          return nameMatch || descMatch;
+        });
+        
+        setFilteredObjects(filtered);
+      } catch (err) {
+        setError('Failed to fetch related objects');
+        console.error('Error fetching related objects:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchRelatedObjects();
+  }, [searchTerm, currentParentId, primaryObject, availableObjects, relatedObjects]);
+
+  // Helper function to generate colors for tables
+  const getColorForIndex = (index: number): string => {
+    const colors = [
+      '#1E88E5', // Blue
+      '#43A047', // Green
+      '#E53935', // Red
+      '#FB8C00', // Orange
+      '#8E24AA', // Purple
+      '#00ACC1', // Cyan
+      '#F9A825', // Yellow
+      '#5E35B1', // Deep Purple
+      '#3949AB', // Indigo
+      '#00897B', // Teal
+    ];
+    return colors[index % colors.length];
+  };
+
   // Toggle expansion of relationship details
   const toggleRelationshipExpansion = (objectId: string) => {
     setExpandedRelationships(prev => 
@@ -57,28 +175,19 @@ const ObjectTree: React.FC<ObjectTreeProps> = ({
 
   // Filter objects based on what can be related to the current parent
   const getFilteredObjects = () => {
-    // If currentParentId is null, we're adding direct children to the primary object
-    const parentObject = currentParentId 
-      ? availableObjects.find(obj => obj.id === currentParentId)
-      : primaryObject;
-    
-    // Get objects that this parent can relate to
-    const validRelatedIds = parentObject?.relatedTo || availableObjects.map(obj => obj.id);
-    
-    // Get IDs of objects already used in the relationship tree
+    // Filter out objects that are already used in the tree
     const usedObjectIds = [
       primaryObject?.id,
       ...relatedObjects.map(obj => obj.objectId)
     ].filter(Boolean) as string[];
-    
-    return availableObjects.filter(obj => 
-      !usedObjectIds.includes(obj.id) && 
-      validRelatedIds.includes(obj.id) &&
-      (
-        obj.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (obj.description || '').toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    );
+
+    return filteredObjects.filter(obj => !usedObjectIds.includes(obj.id));
+  };
+
+  // Helper to validate object relationships
+  const validateObjectRelationship = (selectedObject: ObjectData, parentId: string | null): boolean => {
+    // For primary object's direct children or any child object, allow the relationship
+    return true;
   };
 
   // Build a hierarchical tree of objects
@@ -86,7 +195,7 @@ const ObjectTree: React.FC<ObjectTreeProps> = ({
     if (!primaryObject) return [];
     
     // Recursive function to build tree
-    const buildBranch = (parentId: string | null): JSX.Element[] => {
+    const buildBranch = (parentId: string | null): React.ReactNode[] => {
       // Get direct children of this parent
       const directChildren = relatedObjects.filter(obj => obj.parentId === parentId);
       
@@ -105,7 +214,7 @@ const ObjectTree: React.FC<ObjectTreeProps> = ({
         
         return (
           <div 
-            key={`obj-${relObj.objectId}`}
+            key={`obj-${relObj.objectId}-${index}`}
             className="mt-3"
           >
             <Card 
@@ -232,13 +341,18 @@ const ObjectTree: React.FC<ObjectTreeProps> = ({
                   </RadioGroup>
                   
                   {/* Add child button if this object doesn't already have a child */}
-                  {relatedObjects.length < 4 && !relatedObjects.some(obj => obj.parentId === relObj.objectId) && (
+                  {!relatedObjects.some(obj => obj.parentId === relObj.objectId) && (
                     <Button
                       variant="ghost"
                       size="sm"
                       className="mt-3 text-xs h-7 border border-dashed border-muted-foreground/50"
-                      onClick={(e) => {
+                      onClick={async (e) => {
                         e.stopPropagation(); // Prevent card click
+                        // First notify parent component to fetch available objects
+                        if (onOpenObjectSelector) {
+                          await onOpenObjectSelector(relObj.objectId);
+                        }
+                        // Then set the parent ID and show selector
                         setCurrentParentId(relObj.objectId);
                         setShowSelector(true);
                       }}
@@ -319,6 +433,9 @@ const ObjectTree: React.FC<ObjectTreeProps> = ({
                   onClick={() => {
                     setCurrentParentId(null);
                     setShowSelector(true);
+                    if (onOpenObjectSelector) {
+                      onOpenObjectSelector(null);
+                    }
                   }}
                 >
                   <svg
@@ -355,13 +472,16 @@ const ObjectTree: React.FC<ObjectTreeProps> = ({
           <div className="bg-background rounded-lg shadow-lg w-full max-w-md mx-4 p-4">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-medium">
-                Select {currentParentId ? 'Child' : 'Related'} Object
+                {currentParentId ? `Add Child Object to ${availableObjects.find(obj => obj.id === currentParentId)?.name}` : 'Add Related Object'}
               </h3>
               <Button 
                 variant="ghost" 
                 size="sm" 
                 className="h-7 px-2"
-                onClick={() => setShowSelector(false)}
+                onClick={() => {
+                  setShowSelector(false);
+                  setSearchTerm('');
+                }}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -414,56 +534,97 @@ const ObjectTree: React.FC<ObjectTreeProps> = ({
               >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="inner" id="select-inner" />
-                  <Label htmlFor="select-inner" className="font-normal text-sm">INNER JOIN</Label>
+                  <Label htmlFor="select-inner">INNER JOIN</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="left" id="select-left" />
-                  <Label htmlFor="select-left" className="font-normal text-sm">LEFT JOIN</Label>
+                  <Label htmlFor="select-left">LEFT JOIN</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="right" id="select-right" />
-                  <Label htmlFor="select-right" className="font-normal text-sm">RIGHT JOIN</Label>
+                  <Label htmlFor="select-right">RIGHT JOIN</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="outer" id="select-outer" />
-                  <Label htmlFor="select-outer" className="font-normal text-sm">OUTER JOIN</Label>
+                  <Label htmlFor="select-outer">OUTER JOIN</Label>
                 </div>
               </RadioGroup>
             </div>
             
             <div className="max-h-64 overflow-y-auto space-y-2 mb-4">
-              {getFilteredObjects().length === 0 ? (
+              {isLoading ? (
+                <div className="flex justify-center py-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                </div>
+              ) : getFilteredObjects().length === 0 ? (
                 <div className="text-center py-4 text-muted-foreground text-sm">
                   No available objects found
                 </div>
               ) : (
-                getFilteredObjects().map((obj) => (
-                  <div
-                    key={obj.id}
-                    className="flex items-center gap-3 p-3 rounded-md hover:bg-accent cursor-pointer"
-                    onClick={() => {
-                      onAddRelatedObject(obj.id, tempRelationshipType, currentParentId);
-                      setShowSelector(false);
-                    }}
-                  >
-                    <div className="flex items-center justify-center w-8 h-8 rounded-md" 
-                         style={{ backgroundColor: `${obj.color}20`, color: obj.color }}>
-                      <span className="text-lg font-bold">{obj.letter}</span>
+                <div className="space-y-2">
+                  {getFilteredObjects().map((obj, index) => (
+                    <div
+                      key={`filtered-obj-${obj.id}-${index}`}
+                      className="flex items-center gap-3 p-3 rounded-md hover:bg-accent cursor-pointer"
+                      onClick={async () => {
+                        // First add the related object
+                        onAddRelatedObject(obj.id, tempRelationshipType, currentParentId);
+                        // Then notify parent component
+                        if (onOpenObjectSelector) {
+                          await onOpenObjectSelector(obj.id);
+                        }
+                        // Finally close the modal and reset search
+                        setShowSelector(false);
+                        setSearchTerm('');
+                      }}
+                    >
+                      <div className="flex items-center justify-center w-8 h-8 rounded-md" 
+                           style={{ backgroundColor: `${obj.color}20`, color: obj.color }}>
+                        <span className="text-lg font-bold">{obj.letter}</span>
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-medium text-sm">{obj.name}</h3>
+                        {obj.description && (
+                          <p className="text-xs text-muted-foreground">{obj.description}</p>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-medium text-sm">{obj.name}</h3>
-                      <p className="text-xs text-muted-foreground">{obj.description}</p>
-                    </div>
-                  </div>
-                ))
+                  ))}
+                </div>
               )}
             </div>
             
             <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => setShowSelector(false)}>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => {
+                  setShowSelector(false);
+                  setSearchTerm('');
+                }}
+              >
                 Cancel
               </Button>
-              <Button variant="default" size="sm" disabled={getFilteredObjects().length === 0}>
+              <Button 
+                variant="default" 
+                size="sm" 
+                onClick={async () => {
+                  const filteredObjs = getFilteredObjects();
+                  if (filteredObjs.length > 0) {
+                    const obj = filteredObjs[0];
+                    // First add the related object
+                    onAddRelatedObject(obj.id, tempRelationshipType, currentParentId);
+                    // Then notify parent component
+                    if (onOpenObjectSelector) {
+                      await onOpenObjectSelector(obj.id);
+                    }
+                    // Finally close the modal and reset search
+                    setShowSelector(false);
+                    setSearchTerm('');
+                  }
+                }}
+                disabled={getFilteredObjects().length === 0}
+              >
                 Add
               </Button>
             </div>

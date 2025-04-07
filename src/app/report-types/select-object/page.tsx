@@ -11,131 +11,15 @@ import { InputWithIcon } from "@/components/ui/input-with-icon";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-
-// This would be fetched from an API in a real application
-// Mock function to simulate fetching objects from an API
-const fetchObjects = async (searchTerm: string = "", page: number = 1, pageSize: number = 20) => {
-  // This is a mock implementation - in a real app this would be a fetch call
-  // to your backend API that returns objects matching the search term
-  
-  // Generate a larger set of mock objects for demonstration
-  const allObjects = Array.from({ length: 150 }, (_, i) => {
-    const id = `object_${i + 1}`;
-    const categoryNum = Math.floor(i / 30); // Divide into 5 categories
-    let category, prefix, description;
-    
-    switch(categoryNum) {
-      case 0:
-        category = "Standard";
-        prefix = "std_";
-        description = "Standard objects for core functionality";
-        break;
-      case 1:
-        category = "Custom";
-        prefix = "custom_";
-        description = "Custom objects specific to your organization";
-        break;
-      case 2:
-        category = "Analytics";
-        prefix = "analytics_";
-        description = "Objects for analytics and reporting";
-        break;
-      case 3:
-        category = "Integration";
-        prefix = "integration_";
-        description = "Objects used for third-party integrations";
-        break;
-      default:
-        category = "External";
-        prefix = "ext_";
-        description = "External objects from connected systems";
-    }
-
-    // Create some common objects that always appear
-    if (i < 3) {
-      switch(i) {
-        case 0:
-          return {
-            id: "account",
-            name: "Account",
-            category: "Standard",
-            description: "Represents a customer, prospect, or other organization",
-            icon: "/icons/account.svg",
-          };
-        case 1:
-          return {
-            id: "contact",
-            name: "Contact",
-            category: "Standard",
-            description: "Represents a person associated with an account",
-            icon: "/icons/contact.svg",
-          };
-        case 2:
-          return {
-            id: "opportunity",
-            name: "Opportunity",
-            category: "Standard",
-            description: "Represents a potential sale or deal",
-            icon: "/icons/opportunity.svg",
-          };
-      }
-    }
-    
-    // Generate various object names
-    const objectNames = [
-      "Asset", "Campaign", "Case", "Contract", "Event", "Invoice", "Lead", 
-      "Order", "Product", "Project", "Quote", "Task", "User", "Document", 
-      "Report", "Dashboard", "Setting", "Permission", "Role", "Group",
-      "Template", "Configuration", "Subscription", "Transaction", "Attachment"
-    ];
-    
-    const nameIndex = i % objectNames.length;
-    const suffix = Math.floor(i / objectNames.length);
-    const name = suffix > 0 ? `${objectNames[nameIndex]} ${suffix}` : objectNames[nameIndex];
-    
-    return {
-      id: `${prefix}${name.toLowerCase().replace(/\s/g, '_')}`,
-      name,
-      category,
-      description: `${description} - ${name}`,
-      icon: i % 3 === 0 ? "/icons/account.svg" : i % 3 === 1 ? "/icons/contact.svg" : "/icons/opportunity.svg",
-    };
-  });
-  
-  // Filter objects based on search term
-  const filteredObjects = searchTerm
-    ? allObjects.filter(obj => 
-        obj.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        obj.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        obj.category.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    : allObjects;
-  
-  // Calculate pagination
-  const totalCount = filteredObjects.length;
-  const startIndex = (page - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
-  const paginatedObjects = filteredObjects.slice(startIndex, endIndex);
-
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 300));
-  
-  return {
-    objects: paginatedObjects,
-    pagination: {
-      currentPage: page,
-      totalPages: Math.ceil(totalCount / pageSize),
-      totalCount,
-      hasMore: endIndex < totalCount
-    }
-  };
-};
+import { getMetadataTables, TableMetadata } from "@/services/databaseService";
+import { Database } from "lucide-react";
 
 export default function SelectObject() {
   const searchParams = useSearchParams();
   const reportType = searchParams.get("type") || "";
   
   const [selectedObject, setSelectedObject] = useState<string>("");
+  const [selectedSchema, setSelectedSchema] = useState<string>("");
   const [formData, setFormData] = useState({
     displayLabel: "",
     apiName: "",
@@ -145,7 +29,7 @@ export default function SelectObject() {
   // Add search and pagination state
   const [searchTerm, setSearchTerm] = useState("");
   const [isSearching, setIsSearching] = useState(false);
-  const [availableObjects, setAvailableObjects] = useState<any[]>([]);
+  const [availableTables, setAvailableTables] = useState<TableMetadata[]>([]);
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -160,20 +44,34 @@ export default function SelectObject() {
   const loadObjects = useCallback(async (term: string = searchTerm, page: number = pagination.currentPage) => {
     setIsLoading(true);
     try {
-      const result = await fetchObjects(term, page);
-      setAvailableObjects(result.objects);
-      setPagination(result.pagination);
+      const response = await getMetadataTables(page, 20);
       
-      // Extract unique categories
-      const uniqueCategories = new Set<string>();
-      result.objects.forEach((obj: any) => {
-        if (obj.category) {
-          uniqueCategories.add(obj.category);
+      // Filter tables based on search term
+      const filteredTables = term
+        ? response.items.filter(table => 
+            table.tableName.toLowerCase().includes(term.toLowerCase()) ||
+            table.schema.toLowerCase().includes(term.toLowerCase())
+          )
+        : response.items;
+      
+      setAvailableTables(filteredTables);
+      setPagination({
+        currentPage: response.currentPage,
+        totalPages: response.totalPages,
+        totalCount: response.totalItems,
+        hasMore: response.currentPage < response.totalPages
+      });
+      
+      // Extract unique schemas as categories
+      const uniqueSchemas = new Set<string>();
+      response.items.forEach(table => {
+        if (table.schema) {
+          uniqueSchemas.add(table.schema);
         }
       });
-      setCategories(uniqueCategories);
+      setCategories(uniqueSchemas);
     } catch (error) {
-      console.error("Error loading objects:", error);
+      console.error("Error loading tables:", error);
     } finally {
       setIsLoading(false);
     }
@@ -198,22 +96,24 @@ export default function SelectObject() {
   // Pre-fill form when an object is selected
   useEffect(() => {
     if (selectedObject) {
-      const selectedObj = availableObjects.find(obj => obj.id === selectedObject);
-      if (selectedObj) {
+      const selectedTable = availableTables.find(table => table.tableName === selectedObject);
+      if (selectedTable) {
+        setSelectedSchema(selectedTable.schema);
         setFormData({
-          displayLabel: selectedObj.name + " Report Type",
-          apiName: selectedObj.id + "_report_type",
-          description: `Report type for ${selectedObj.name} objects`
+          displayLabel: selectedTable.tableName + " Report Type",
+          apiName: selectedTable.tableName.toLowerCase() + "_report_type",
+          description: `Report type for ${selectedTable.tableName} objects`
         });
       }
     } else {
+      setSelectedSchema("");
       setFormData({
         displayLabel: "",
         apiName: "",
         description: "",
       });
     }
-  }, [selectedObject, availableObjects]);
+  }, [selectedObject, availableTables]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -236,8 +136,8 @@ export default function SelectObject() {
 
   // Filter objects by selected category
   const displayedObjects = selectedCategory 
-    ? availableObjects.filter(obj => obj.category === selectedCategory)
-    : availableObjects;
+    ? availableTables.filter(table => table.schema === selectedCategory)
+    : availableTables;
 
   return (
     <div className="min-h-screen bg-background">
@@ -287,7 +187,7 @@ export default function SelectObject() {
             <div className="mb-6">
               <InputWithIcon
                 type="text"
-                placeholder="Search objects..."
+                placeholder="Search tables..."
                 value={searchTerm}
                 onChange={handleSearchChange}
                 icon={
@@ -312,19 +212,19 @@ export default function SelectObject() {
             {/* Category filter */}
             {categories.size > 0 && (
               <div className="mb-4">
-                <h3 className="text-sm font-medium mb-2">Filter by Category</h3>
+                <h3 className="text-sm font-medium mb-2">Filter by Schema</h3>
                 <div className="flex flex-wrap gap-2">
-                  {Array.from(categories).map(category => (
+                  {Array.from(categories).map(schema => (
                     <button
-                      key={category}
-                      onClick={() => handleCategoryFilter(category)}
+                      key={schema}
+                      onClick={() => handleCategoryFilter(schema)}
                       className={`px-3 py-1 text-xs rounded-full border transition-colors ${
-                        selectedCategory === category 
+                        selectedCategory === schema 
                           ? "bg-primary text-primary-foreground border-primary" 
                           : "bg-background border-input hover:border-primary/50"
                       }`}
                     >
-                      {category}
+                      {schema}
                     </button>
                   ))}
                 </div>
@@ -342,9 +242,9 @@ export default function SelectObject() {
             {!isLoading && (
               <>
                 <div className="mb-2 flex justify-between items-center">
-                  <h2 className="text-xl font-bold">Available Objects</h2>
+                  <h2 className="text-xl font-bold">Available Tables</h2>
                   <div className="text-sm text-muted-foreground">
-                    {pagination.totalCount} objects found
+                    {pagination.totalCount} tables found
                   </div>
                 </div>
 
@@ -356,40 +256,34 @@ export default function SelectObject() {
                   >
                     {displayedObjects.length === 0 ? (
                       <div className="text-center py-8 text-muted-foreground">
-                        No objects found matching your search criteria
+                        No tables found matching your search criteria
                       </div>
                     ) : (
-                      displayedObjects.map((object) => (
-                        <div key={object.id} className="cursor-pointer">
+                      displayedObjects.map((table) => (
+                        <div key={`${table.schema}.${table.tableName}`} className="cursor-pointer">
                           <Card 
                             className={`transition-all hover:border-primary ${
-                              selectedObject === object.id 
+                              selectedObject === table.tableName 
                                 ? "border-2 border-primary bg-primary/5"
                                 : ""
                             }`}
                           >
                             <label 
-                              htmlFor={`object-${object.id}`}
+                              htmlFor={`object-${table.schema}-${table.tableName}`}
                               className="cursor-pointer"
                             >
                               <div className="flex items-center gap-3 p-3">
                                 <RadioGroupItem 
-                                  value={object.id} 
-                                  id={`object-${object.id}`}
+                                  value={table.tableName} 
+                                  id={`object-${table.schema}-${table.tableName}`}
                                   className="mt-0"
                                 />
                                 <div className="bg-primary/10 p-1.5 rounded-md text-primary">
-                                  <Image
-                                    src={object.icon}
-                                    alt={object.name}
-                                    width={20}
-                                    height={20}
-                                    className="text-primary"
-                                  />
+                                  <Database className="h-4 w-4" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <h3 className="font-medium text-sm truncate">{object.name}</h3>
-                                  <p className="text-xs text-muted-foreground truncate">{object.category}</p>
+                                  <h3 className="font-medium text-sm truncate">{table.tableName}</h3>
+                                  <p className="text-xs text-muted-foreground truncate">{table.schema}</p>
                                 </div>
                               </div>
                             </label>
@@ -432,28 +326,22 @@ export default function SelectObject() {
           <div>
             {selectedObject && (
               <div className="mb-6">
-                <h2 className="text-xl font-bold mb-4">Selected Object</h2>
+                <h2 className="text-xl font-bold mb-4">Selected Table</h2>
                 <Card className="bg-primary/5 border-primary">
                   <CardContent className="p-4">
-                    {availableObjects.find(obj => obj.id === selectedObject) && (
+                    {availableTables.find(table => table.tableName === selectedObject) && (
                       <div className="flex items-start gap-4">
                         <div className="bg-primary/10 p-2 rounded-md text-primary mt-1">
-                          <Image
-                            src={availableObjects.find(obj => obj.id === selectedObject)?.icon || "/icons/account.svg"}
-                            alt={availableObjects.find(obj => obj.id === selectedObject)?.name || "Object"}
-                            width={24}
-                            height={24}
-                            className="text-primary"
-                          />
+                          <Database className="h-6 w-6" />
                         </div>
                         <div>
-                          <h3 className="font-medium text-lg">{availableObjects.find(obj => obj.id === selectedObject)?.name}</h3>
+                          <h3 className="font-medium text-lg">{availableTables.find(table => table.tableName === selectedObject)?.tableName}</h3>
                           <p className="text-sm text-muted-foreground mt-1">
-                            {availableObjects.find(obj => obj.id === selectedObject)?.description}
+                            Schema: {availableTables.find(table => table.tableName === selectedObject)?.schema}
                           </p>
                           <div className="mt-2">
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                              {availableObjects.find(obj => obj.id === selectedObject)?.category}
+                              {availableTables.find(table => table.tableName === selectedObject)?.columns.length} columns
                             </span>
                           </div>
                         </div>
@@ -528,7 +416,7 @@ export default function SelectObject() {
             </Link>
             <Link 
               href={selectedObject && formData.displayLabel && formData.apiName 
-                ? `/report-types/define-relationships?type=${reportType}&object=${selectedObject}&label=${encodeURIComponent(formData.displayLabel)}&api=${encodeURIComponent(formData.apiName)}&desc=${encodeURIComponent(formData.description)}`
+                ? `/report-types/define-relationships?type=${reportType}&object=${selectedObject}&schema=${selectedSchema}&label=${encodeURIComponent(formData.displayLabel)}&api=${encodeURIComponent(formData.apiName)}&desc=${encodeURIComponent(formData.description)}`
                 : "#"
               }
             >

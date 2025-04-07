@@ -26,6 +26,7 @@ public class Dashboard extends BaseEntity {
     @Column(nullable = false)
     private String name;
 
+    @Column
     @Size(max = 500)
     private String description;
 

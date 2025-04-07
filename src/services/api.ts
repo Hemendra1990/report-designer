@@ -14,9 +14,9 @@ export class ApiService<T> {
   protected baseUrl: string;
 
   constructor(endpoint: string) {
-    this.baseUrl = `/api/${endpoint}`;
+    this.baseUrl = `/${endpoint}`;
     this.api = axios.create({
-      baseURL: this.baseUrl,
+      baseURL: 'http://localhost:8080/api',
       headers: {
         'Content-Type': 'application/json',
       },
@@ -25,36 +25,44 @@ export class ApiService<T> {
 
   // Get all items
   async getAll(): Promise<T[]> {
-    const response: AxiosResponse<T[]> = await this.api.get<T[]>('');
+    const response: AxiosResponse<T[]> = await this.api.get<T[]>(`${this.baseUrl}`);
     return response.data;
   }
 
   // Get item by ID
   async getById(id: string): Promise<T> {
-    const response: AxiosResponse<T> = await this.api.get<T>(`/${id}`);
+    const response: AxiosResponse<T> = await this.api.get<T>(`${this.baseUrl}/${id}`);
     return response.data;
   }
 
   // Create new item
   async create(data: Partial<T>): Promise<T> {
-    const response: AxiosResponse<T> = await this.api.post<T>('', data);
+    const response: AxiosResponse<T> = await this.api.post<T>(`${this.baseUrl}`, data);
     return response.data;
   }
 
   // Update item
   async update(id: string, data: Partial<T>): Promise<T> {
-    const response: AxiosResponse<T> = await this.api.put<T>(`/${id}`, data);
+    const response: AxiosResponse<T> = await this.api.put<T>(`${this.baseUrl}/${id}`, data);
     return response.data;
   }
 
   // Delete item
   async delete(id: string): Promise<void> {
-    await this.api.delete(`/${id}`);
+    await this.api.delete(`${this.baseUrl}/${id}`);
   }
 
   // Custom request method
   async request<T>(config: AxiosRequestConfig): Promise<T> {
-    const response: AxiosResponse<T> = await this.api.request(config);
+    // Ensure the URL is properly constructed with the baseUrl
+    const url = config.url?.startsWith('/') 
+      ? `${this.baseUrl}${config.url}` 
+      : `${this.baseUrl}/${config.url}`;
+    
+    const response: AxiosResponse<T> = await this.api.request({
+      ...config,
+      url
+    });
     return response.data;
   }
 }

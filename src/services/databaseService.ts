@@ -111,7 +111,7 @@ export function clearCache(): void {
 export async function getAvailableSchemas(): Promise<string[]> {
   try {
     if (isCacheValid() && tablesCache) {
-      return [...new Set(tablesCache.map(table => table.schema))];
+      return Array.from(new Set(tablesCache.map(table => table.schema)));
     }
 
     const response = await fetch('http://localhost:8080/api/metadata/schemas');
@@ -121,6 +121,73 @@ export async function getAvailableSchemas(): Promise<string[]> {
     return await response.json();
   } catch (error) {
     console.error('Error fetching schemas:', error);
+    throw error;
+  }
+}
+
+export interface TableMetadata {
+  tableName: string;
+  schema: string;
+  columns: ColumnMetadata[];
+}
+
+export interface ColumnMetadata {
+  name: string;
+  dataType: string;
+  nullable: boolean;
+  primaryKey: boolean;
+  foreignKey: boolean;
+  referencedTable: string | null;
+  referencedColumn: string | null;
+}
+
+export async function getMetadataTables(
+  page: number = 1,
+  pageSize: number = 20
+): Promise<PaginatedResponse<TableMetadata>> {
+  try {
+    const queryParams = new URLSearchParams({
+      page: page.toString(),
+      size: pageSize.toString()
+    });
+
+    const response = await fetch(`http://localhost:8080/api/metadata/tables?${queryParams}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch metadata tables');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching metadata tables:', error);
+    throw error;
+  }
+}
+
+export async function searchTables(query?: string, schema?: string): Promise<TableMetadata[]> {
+  try {
+    const params = new URLSearchParams();
+    if (query) params.append('query', query);
+    if (schema) params.append('schema', schema);
+    
+    const response = await fetch(`http://localhost:8080/api/metadata/tables/search?${params.toString()}`);
+    if (!response.ok) {
+      throw new Error('Failed to search tables');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error searching tables:', error);
+    throw error;
+  }
+}
+
+export async function getRelatedTables(schema: string, tableName: string): Promise<TableMetadata[]> {
+  try {
+    const response = await fetch(`http://localhost:8080/api/metadata/tables/${schema}/${tableName}/related`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch related tables');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching related tables:', error);
     throw error;
   }
 } 
