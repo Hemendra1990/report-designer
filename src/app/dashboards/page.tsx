@@ -81,6 +81,9 @@ export default function DashboardsPage() {
       day: 'numeric'
     });
   };
+  const createDashboard = () => {
+    router.push('/dashboards/create');
+  };
   
   return (
     <div className="container mx-auto px-4 py-6">
@@ -116,11 +119,11 @@ export default function DashboardsPage() {
         ))}
       </div>
       
-      <CreateDashboardModal
+      {/* <CreateDashboardModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onSubmit={handleCreateDashboard}
-      />
+      /> */}
     </div>
   );
 } 
