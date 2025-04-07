@@ -19,7 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Search, ChevronDown, X, FileText, Clock, ListChecks } from "lucide-react";
+import { Search, ChevronDown, X, FileText, Clock, ListChecks, BarChart4, Users, PieChart, ExternalLink, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -435,6 +435,16 @@ function ReportTypeSelectionModal({
     return matchesSearch && matchesCategory;
   });
 
+  // Helper function to get category icon
+  const getCategoryIcon = (category: string) => {
+    switch (category) {
+      case 'Analytics': return <BarChart4 className="h-4 w-4" />;
+      case 'Customer': return <Users className="h-4 w-4" />;
+      case 'Custom': return <Sparkles className="h-4 w-4" />;
+      default: return <PieChart className="h-4 w-4" />;
+    }
+  };
+
   const handleReportSelect = (report: RecentReportType) => {
     setSelectedReport(report);
   };
@@ -450,20 +460,23 @@ function ReportTypeSelectionModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[1200px] h-[80vh] p-0 flex overflow-hidden">
+      <DialogContent className="sm:max-w-[1200px] h-[80vh] p-0 flex overflow-hidden rounded-xl shadow-xl border-0">
         {/* Left side - Report Type List */}
         <div className="flex-1 flex overflow-hidden">
           {/* Categories Sidebar */}
-          <div className="w-48 p-6 border-r border-gray-200 flex-shrink-0 overflow-y-auto">
-            <h3 className="font-medium text-sm text-gray-500 mb-3">Categories</h3>
-            <div className="space-y-1">
+          <div className="w-52 py-6 border-r border-gray-100 flex-shrink-0 overflow-y-auto bg-gray-50">
+            <h3 className="font-medium text-sm text-gray-500 mb-3 px-6">Categories</h3>
+            <div className="space-y-1 px-3">
               <button
                 onClick={() => setSelectedCategory(null)}
                 className={cn(
-                  "w-full text-left px-3 py-2 text-sm rounded-lg",
-                  !selectedCategory ? "bg-primary/10 text-primary font-medium" : "hover:bg-gray-100"
+                  "w-full text-left px-3 py-2.5 text-sm rounded-lg flex items-center gap-2.5 transition-all",
+                  !selectedCategory 
+                    ? "bg-primary text-white font-medium shadow-md" 
+                    : "hover:bg-gray-100 text-gray-700"
                 )}
               >
+                <PieChart className={cn("h-4 w-4", !selectedCategory ? "text-white" : "text-gray-500")} />
                 All Reports
               </button>
               {categories.map((category) => (
