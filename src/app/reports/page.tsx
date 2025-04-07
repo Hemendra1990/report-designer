@@ -256,7 +256,7 @@ export default function ReportsPage() {
        {/* Page Header */}
        <div className="mb-2 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
           <div>
-            <h1 className="text-xl font-bold mb-2">Report Types</h1>
+            <h1 className="text-xl font-bold mb-2">Reports</h1>
             <p className="text-muted-foreground">Manage and create custom report types</p>
           </div>
           <div>
