@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Plus, X, Folder } from 'lucide-react';
 import CreateDashboardModal from '@/components/CreateDashboardModal';
+import { useRouter } from 'next/navigation';
 
 interface Dashboard {
   id: string;
@@ -14,6 +15,7 @@ interface Dashboard {
 }
 
 export default function DashboardsPage() {
+  const router = useRouter();
   const [dashboards, setDashboards] = useState<Dashboard[]>([
     {
       id: '1',
@@ -52,13 +54,18 @@ export default function DashboardsPage() {
       day: 'numeric'
     });
   };
+
+  const createDashboard = () => {
+    router.push('/dashboards/create');
+  };
   
   return (
     <div className="container mx-auto px-4 py-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-semibold">Dashboards</h1>
         <button
-          onClick={() => setIsCreateModalOpen(true)}
+          // onClick={() => setIsCreateModalOpen(true)}
+          onClick={createDashboard}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
         >
           New Dashboard
@@ -87,11 +94,11 @@ export default function DashboardsPage() {
         ))}
       </div>
       
-      <CreateDashboardModal
+      {/* <CreateDashboardModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onSubmit={handleCreateDashboard}
-      />
+      /> */}
     </div>
   );
 } 
