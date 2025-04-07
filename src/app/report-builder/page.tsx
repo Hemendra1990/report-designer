@@ -254,8 +254,9 @@ export default function ReportBuilderPage() {
   const [showGroupDropdown, setShowGroupDropdown] = useState(false);
   const [groupSearchTerm, setGroupSearchTerm] = useState("");
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
-  const [groupByField, setGroupByField] = useState<string | null>(null);
+  const [groupByFields, setGroupByFields] = useState<string[]>([]);
   const [expandedRowGroups, setExpandedRowGroups] = useState<Record<string, boolean>>({});
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   
   // Preview settings
   const [rowData, setRowData] = useState<AccountData[]>([]);
@@ -276,15 +277,17 @@ export default function ReportBuilderPage() {
     columnRefs.current = columnRefs.current.slice(0, selectedColumns.length);
   }, [selectedColumns]);
   
-  // Update selectedGroup when groupByField changes
+  // Update selectedGroup when groupByFields changes
   useEffect(() => {
-    setSelectedGroup(groupByField);
-    if (groupByField) {
-      setGroupSearchTerm(selectedColumns.find(col => col.id === groupByField)?.name || "");
+    const lastSelectedField = groupByFields[groupByFields.length - 1] || null;
+    setSelectedGroup(lastSelectedField);
+    if (groupByFields.length > 0) {
+      const lastColumn = selectedColumns.find(col => col.id === lastSelectedField);
+      setGroupSearchTerm(lastColumn?.name || "");
     } else {
       setGroupSearchTerm("");
     }
-  }, [groupByField, selectedColumns]);
+  }, [groupByFields, selectedColumns]);
   
   // Handle click outside to close menus
   useEffect(() => {
@@ -487,76 +490,44 @@ export default function ReportBuilderPage() {
       }
       
       // Sort data by group field if one is selected
-      if (groupByField) {
+      if (groupByFields.length > 0) {
         filteredData.sort((a, b) => {
-          const aValue = a[groupByField]?.toString() || 'undefined';
-          const bValue = b[groupByField]?.toString() || 'undefined';
-          return aValue.localeCompare(bValue);
+          const aValues = groupByFields.map(field => a[field]?.toString() || 'undefined');
+          const bValues = groupByFields.map(field => b[field]?.toString() || 'undefined');
+          return aValues.join(' | ').localeCompare(bValues.join(' | '));
         });
       }
       
       setRowData(filteredData);
     }
-  }, [filters, autoUpdatePreview, selectedColumns, allSampleData, groupByField]);
+  }, [filters, autoUpdatePreview, selectedColumns, allSampleData, groupByFields]);
   
   // Function to handle grouping by a field
-  const handleGroupBy = (fieldId: string | null) => {
-    console.log("Grouping by field:", fieldId);
+  const handleGroupBy = (fieldId: string) => {
+    console.log('Grouping by:', fieldId);
     
-    if (groupByField === fieldId || fieldId === null) {
-      // Ungroup
-      console.log("Ungrouping");
-      setGroupByField(null);
-      setExpandedRowGroups({});
-      setSelectedGroup(null);
-      setGroupSearchTerm("");
-      
-      // Sort data by the first selected column if any
-      const sortedData = [...rowData];
-      if (selectedColumns.length > 0) {
-        const firstColumn = selectedColumns[0];
-        sortedData.sort((a, b) => {
-          const aValue = a[firstColumn.id]?.toString() || 'undefined';
-          const bValue = b[firstColumn.id]?.toString() || 'undefined';
-          return aValue.localeCompare(bValue);
-        });
-        setRowData(sortedData);
+    setGroupByFields(prev => {
+      // If field is already in groups, remove it
+      if (prev.includes(fieldId)) {
+        const newGroups = prev.filter(f => f !== fieldId);
+        // If no groups left, reset all group-related state
+        if (newGroups.length === 0) {
+          setExpandedRowGroups({});
+          setSelectedGroups([]);
+          setGroupSearchTerm('');
+        }
+        return newGroups;
       }
-    } else {
-      // Set new group field
-      console.log("Setting new group field");
-      setGroupByField(fieldId);
-      
-      // Create a new object to manage expanded groups
-      const newExpandedGroups: Record<string, boolean> = {};
-      
-      // Get unique values for the selected field
-      const uniqueValues = new Set(rowData.map(item => item[fieldId]?.toString() || 'undefined'));
-      console.log("Unique values:", Array.from(uniqueValues));
-      
-      // Set all groups to expanded by default
-      uniqueValues.forEach(value => {
-        newExpandedGroups[value] = true;
-      });
-      
-      console.log("Setting expanded groups:", newExpandedGroups);
-      setExpandedRowGroups(newExpandedGroups);
-      
-      // Update the selected group and search term
-      setSelectedGroup(fieldId);
-      const selectedColumn = selectedColumns.find(col => col.id === fieldId);
-      if (selectedColumn) {
-        setGroupSearchTerm(selectedColumn.name);
-      }
-      
-      // Sort data by group field
-      const sortedData = [...rowData];
-      sortedData.sort((a, b) => {
-        const aValue = a[fieldId]?.toString() || 'undefined';
-        const bValue = b[fieldId]?.toString() || 'undefined';
-        return aValue.localeCompare(bValue);
-      });
-      setRowData(sortedData);
+      // Add new group field
+      return [...prev, fieldId];
+    });
+
+    // Update expanded groups for the new grouping
+    if (!expandedRowGroups[fieldId]) {
+      setExpandedRowGroups(prev => ({
+        ...prev,
+        [fieldId]: true
+      }));
     }
   };
   
@@ -573,8 +544,10 @@ export default function ReportBuilderPage() {
       // Expand all groups
       const expanded: Record<string, boolean> = {};
       rowData.forEach(row => {
-        if (groupByField && row[groupByField]) {
-          expanded[row[groupByField]] = true;
+        if (groupByFields.length > 0) {
+          groupByFields.forEach(field => {
+            expanded[row[field]?.toString() || ''] = true;
+          });
         }
       });
       setExpandedRowGroups(expanded);
@@ -1482,7 +1455,7 @@ export default function ReportBuilderPage() {
                   setPagination={setPagination}
                   showRowCounts={showRowCounts}
                   showDetailRows={showDetailRows}
-                  groupByField={groupByField}
+                  groupByFields={groupByFields}
                   expandedRowGroups={expandedRowGroups}
                   setExpandedRowGroups={setExpandedRowGroups}
                 />
@@ -2602,7 +2575,7 @@ interface DataTableProps<TData extends Record<string, any>> {
   setPagination: React.Dispatch<React.SetStateAction<{ pageIndex: number; pageSize: number }>>;
   showRowCounts: boolean;
   showDetailRows: boolean;
-  groupByField: string | null;
+  groupByFields: string[];  // Changed from groupByField to groupByFields array
   expandedRowGroups: Record<string, boolean>;
   setExpandedRowGroups: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
 }
@@ -2621,7 +2594,7 @@ function DataTable<TData extends Record<string, any>>(props: DataTableProps<TDat
     setPagination,
     showRowCounts,
     showDetailRows,
-    groupByField,
+    groupByFields,  // Added groupByFields prop
     expandedRowGroups,
     setExpandedRowGroups
   } = props;
@@ -2646,19 +2619,22 @@ function DataTable<TData extends Record<string, any>>(props: DataTableProps<TDat
     getPaginationRowModel: getPaginationRowModel(),
   });
 
-  // Process data for grouping if a group field is specified
+  // Process data for grouping if group fields are specified
   const groupedData = useMemo(() => {
-    if (!groupByField) return {};
+    if (!groupByFields.length) return {};
     
     return data.reduce((acc, row) => {
-      const groupValue = row[groupByField]?.toString() || 'undefined';
-      if (!acc[groupValue]) {
-        acc[groupValue] = [];
+      // Create a composite group key from all grouping fields
+      const groupValues = groupByFields.map(field => row[field]?.toString() || 'undefined');
+      const groupKey = groupValues.join(' | ');
+      
+      if (!acc[groupKey]) {
+        acc[groupKey] = [];
       }
-      acc[groupValue].push(row);
+      acc[groupKey].push(row);
       return acc;
     }, {} as Record<string, TData[]>);
-  }, [data, groupByField]);
+  }, [data, groupByFields]);
 
   const groupKeys = useMemo(() => {
     return Object.keys(groupedData).sort();
@@ -2673,9 +2649,9 @@ function DataTable<TData extends Record<string, any>>(props: DataTableProps<TDat
   };
 
   // Handle whether to show grouped view or flat view
-  const showGroupedView = groupByField && groupKeys.length > 0;
+  const showGroupedView = groupByFields.length > 0 && groupKeys.length > 0;
 
-  console.log("Show grouped view:", showGroupedView, "Group by field:", groupByField, "Group keys:", groupKeys);
+  console.log("Show grouped view:", showGroupedView, "Group by field:", groupByFields, "Group keys:", groupKeys);
 
   // Render the table
   return (
@@ -2764,7 +2740,15 @@ function DataTable<TData extends Record<string, any>>(props: DataTableProps<TDat
                         >
                           <path d="m9 18 6-6-6-6" />
                         </svg>
-                        <span className="font-medium">{groupKey}</span>
+                        <span className="font-medium">
+                          {groupKey.split(' | ').map((value, index) => (
+                            <React.Fragment key={index}>
+                              {index > 0 && ' | '}
+                              <span className="text-gray-700">{groupByFields[index]}: </span>
+                              <span className="text-gray-900">{value}</span>
+                            </React.Fragment>
+                          ))}
+                        </span>
                         {showRowCounts && (
                           <span className="text-gray-500 text-sm">
                             ({groupedData[groupKey].length} items)
