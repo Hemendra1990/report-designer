@@ -198,7 +198,7 @@ export default function ReportTypesPage() {
   return (
     <div className="flex flex-col min-h-screen bg-background">
       {/* Navigation Bar */}
-      <nav className="bg-primary text-primary-foreground py-4 px-6 shadow-md">
+      {/* <nav className="bg-primary text-primary-foreground py-4 px-6 shadow-md">
         <div className="container mx-auto flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <Image 
@@ -222,7 +222,7 @@ export default function ReportTypesPage() {
             </Link>
           </div>
         </div>
-      </nav>
+      </nav> */}
 
       {/* Main Content */}
       <div className="flex-1 p-6 md:p-10">
@@ -230,7 +230,7 @@ export default function ReportTypesPage() {
           {isCreating ? (
             <>
               <div className="text-center">
-                <h1 className="text-3xl md:text-4xl font-bold mb-3 tracking-tight">Create Custom Report</h1>
+                <h1 className="text-2xl md:text-2xl font-bold mb-3 tracking-tight">Create Custom Report</h1>
                 <p className="text-muted-foreground text-lg max-w-xl mx-auto">
                   Select the type of report you want to create from the options below.
                 </p>
