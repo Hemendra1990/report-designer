@@ -512,31 +512,95 @@ function ReportTypeSelectionModal({
 
             <h3 className="text-lg font-medium mb-4">Recently Used Report Types</h3>
             
-            <div className="border rounded-md overflow-hidden">
-              {/* Table Header */}
-              <div className="grid grid-cols-2 bg-gray-50 p-3 border-b">
-                <div className="text-sm font-medium text-gray-600">Report Type Name</div>
-                <div className="text-sm font-medium text-gray-600">Category</div>
-              </div>
-              
-              {/* Table Rows */}
-              <div className="max-h-[calc(80vh-240px)] overflow-y-auto">
-                {filteredReports.map((report, index) => (
+            <div className="space-y-2.5">
+              {filteredReports.length > 0 ? (
+                filteredReports.map((report, index) => (
                   <div
                     key={index}
                     onClick={() => handleReportSelect(report)}
-                    className={`grid grid-cols-2 p-3 border-b cursor-pointer hover:bg-gray-50 transition-colors ${
-                      selectedReport?.name === report.name ? 'bg-gray-100' : ''
+                    className={`group p-4 rounded-lg transition-all cursor-pointer border ${
+                      selectedReport?.name === report.name 
+                        ? 'bg-primary/5 border-primary shadow-sm' 
+                        : 'hover:bg-slate-50 border-slate-200 hover:border-slate-300'
                     }`}
                   >
-                    <div>{report.name}</div>
-                    <div className="flex items-center justify-between">
-                      <span>{report.category}</span>
-                      <ChevronDown className="h-4 w-4 text-gray-400" />
+                    <div className="flex items-start justify-between">
+                      <div className="flex gap-3">
+                        <div 
+                          className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                          style={{ backgroundColor: `${report.type === 'tabular' ? '#EBF5FF' : 
+                                                    report.type === 'summary' ? '#E6FFFA' : 
+                                                    report.type === 'matrix' ? '#FFF5F5' : 
+                                                    '#FFFBEB'}` }}
+                        >
+                          {report.type === 'tabular' && <BarChart4 className="h-5 w-5 text-blue-600" />}
+                          {report.type === 'summary' && <PieChart className="h-5 w-5 text-emerald-600" />}
+                          {report.type === 'matrix' && <Users className="h-5 w-5 text-rose-600" />}
+                          {report.type === 'joined' && <Sparkles className="h-5 w-5 text-amber-600" />}
+                        </div>
+                        
+                        <div className="flex-1">
+                          <h4 className="font-medium text-gray-900 group-hover:text-primary flex items-center gap-2">
+                            {report.name}
+                            <Badge variant={report.status === "Active" ? "default" : "secondary"} className="ml-2">
+                              {report.status}
+                            </Badge>
+                          </h4>
+                          
+                          <div className="flex items-center mt-1 text-sm gap-3">
+                            <span className="flex items-center gap-1.5 text-gray-500">
+                              {getCategoryIcon(report.category)}
+                              <span>{report.category}</span>
+                            </span>
+                            <span className="text-gray-400 flex items-center">
+                              <Clock className="h-3.5 w-3.5 mr-1" />
+                              <span>{report.lastUsed}</span>
+                            </span>
+                            {report.fieldsCount && (
+                              <span className="text-gray-400 flex items-center">
+                                <ListChecks className="h-3.5 w-3.5 mr-1" />
+                                <span>{report.fieldsCount} fields</span>
+                              </span>
+                            )}
+                          </div>
+                          
+                          {report.description && (
+                            <p className="text-sm text-gray-500 mt-2 line-clamp-1">
+                              {report.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <ChevronDown className={`h-5 w-5 transition-transform ${
+                        selectedReport?.name === report.name ? 'rotate-180 text-primary' : 'text-gray-400'
+                      }`} />
                     </div>
+                    
+                    {report.objects && report.objects.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-dashed border-gray-200 flex gap-2 flex-wrap">
+                        {report.objects.slice(0, 3).map((obj, idx) => (
+                          <div key={idx} className="flex items-center gap-1.5 bg-gray-50 px-2 py-1 rounded-md text-xs">
+                            <span style={{ color: obj.color }}>{obj.icon}</span>
+                            <span className="text-gray-700">{obj.name}</span>
+                          </div>
+                        ))}
+                        {report.objects.length > 3 && (
+                          <div className="bg-gray-50 px-2 py-1 rounded-md text-xs text-gray-500">
+                            +{report.objects.length - 3} more
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                ))}
-              </div>
+                ))
+              ) : (
+                <div className="p-8 text-center bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                  <Search className="h-10 w-10 mx-auto mb-3 text-gray-300" />
+                  <p className="text-gray-500 font-medium">No matching report types</p>
+                  <p className="text-sm text-gray-400 mt-1">Try adjusting your search or category filters</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
