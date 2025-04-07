@@ -1,5 +1,5 @@
 import { METADATA } from "@/components/enum/query-keys";
-import { findAllTableMetaData, findColumnMetaDataByTableName } from "@/services/crm/metadata-service";
+import { findAllTableMetaData, findColumnMetaDataByTableName, getRelatedData } from "@/services/crm/metadata-service";
 import { TableMetadata } from "@/services/databaseService";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -42,4 +42,26 @@ export const useInvalidateAllTableMetaData = () => {
         queryClient.invalidateQueries({ queryKey: [METADATA.ALL_TABLE_METADATA] });
     }
     return { invalidateAllTableMetaData };
+}
+
+
+export const useRelatedData = (tableName: string) => {
+    const allRelatedData = () => {
+        return getRelatedData(tableName).then((res) => res?.data?.data);
+    };
+
+    const relatedData = useQuery({
+        queryKey: [METADATA.ALL_RELATED_DATA, tableName],
+        enabled: !!tableName,
+        queryFn: allRelatedData,
+    });
+    return relatedData;
+};
+
+export const useInvalidateAllRelatedData = () => {
+    const queryClient = useQueryClient();
+    const invalidateAllRelatedData = () => {
+        queryClient.invalidateQueries({ queryKey: [METADATA.ALL_RELATED_DATA] });
+    }
+    return { invalidateAllRelatedData };
 }

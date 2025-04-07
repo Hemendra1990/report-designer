@@ -4,5 +4,6 @@ export enum QueryKeys {
 
 export enum METADATA {
     ALL_COLUMNMETADATA_INFO = "getAllColumnMetaDataInfo",
-    ALL_TABLE_METADATA  = "allTableMetaData"
- }
+    ALL_TABLE_METADATA = "allTableMetaData",
+    ALL_RELATED_DATA = "allRelatedData"
+}
