@@ -24,6 +24,10 @@ import {
   ColumnFiltersState,
   SortingState,
   VisibilityState,
+  GroupingState,
+  getGroupedRowModel,
+  getExpandedRowModel,
+  OnChangeFn,
 } from "@tanstack/react-table";
 
 // Sample Account fields with type indicators
@@ -506,11 +510,14 @@ export default function ReportBuilderPage() {
   const handleGroupBy = (fieldId: string) => {
     console.log('Grouping by:', fieldId);
     
-    setGroupByFields(prev => {
-      // If field is already in groups, remove it
+    const updateGrouping: OnChangeFn<GroupingState> = (updater) => {
+      const prevGrouping = typeof updater === 'function' ? updater(grouping) : updater;
+      setGrouping(prevGrouping);
+    };
+
+    updateGrouping((prev) => {
       if (prev.includes(fieldId)) {
-        const newGroups = prev.filter(f => f !== fieldId);
-        // If no groups left, reset all group-related state
+        const newGroups = prev.filter(id => id !== fieldId);
         if (newGroups.length === 0) {
           setExpandedRowGroups({});
           setSelectedGroups([]);
@@ -518,7 +525,6 @@ export default function ReportBuilderPage() {
         }
         return newGroups;
       }
-      // Add new group field
       return [...prev, fieldId];
     });
 
@@ -556,6 +562,29 @@ export default function ReportBuilderPage() {
       setExpandedRowGroups({});
     }
   };
+
+  // Create columns for the table
+  const columns = useMemo<ColumnDef<AccountData>[]>(
+    () => selectedColumns.map(field => ({
+      id: field.id,
+      accessorKey: field.id,
+      header: field.name,
+      cell: info => info.getValue(),
+      enableGrouping: true,
+      aggregationFn: field.type === 'number' || field.type === 'currency' ? 'mean' : 'count',
+      aggregatedCell: info => {
+        const value = info.getValue();
+        if (typeof value === 'number') {
+          return Math.round(value * 100) / 100;
+        }
+        return value;
+      },
+    })),
+    [selectedColumns]
+  );
+
+  // Add grouping state
+  const [grouping, setGrouping] = useState<GroupingState>([]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -1429,22 +1458,7 @@ export default function ReportBuilderPage() {
               <div className="w-full h-full rounded-md overflow-hidden border border-border">
                 <DataTable<AccountData>
                   data={rowData}
-                  columns={selectedColumns.map(col => ({
-                    accessorKey: col.id,
-                    header: col.name,
-                    cell: ({ row }: { row: any }) => {
-                      const value = row.getValue(col.id);
-                      // Format based on column type
-                      if (col.type === 'currency' && value !== undefined) {
-                        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(value));
-                      } else if (col.type === 'datetime' && value) {
-                        return new Date(value as string).toLocaleDateString();
-                      } else if (col.type === 'checkbox') {
-                        return value ? '✓' : '';
-                      }
-                      return value;
-                    },
-                  }))}
+                  columns={columns}
                   sorting={sorting}
                   setSorting={setSorting}
                   columnFilters={columnFilters}
@@ -1455,7 +1469,8 @@ export default function ReportBuilderPage() {
                   setPagination={setPagination}
                   showRowCounts={showRowCounts}
                   showDetailRows={showDetailRows}
-                  groupByFields={groupByFields}
+                  grouping={grouping}
+                  onGroupingChange={setGrouping}
                   expandedRowGroups={expandedRowGroups}
                   setExpandedRowGroups={setExpandedRowGroups}
                 />
@@ -2575,7 +2590,8 @@ interface DataTableProps<TData extends Record<string, any>> {
   setPagination: React.Dispatch<React.SetStateAction<{ pageIndex: number; pageSize: number }>>;
   showRowCounts: boolean;
   showDetailRows: boolean;
-  groupByFields: string[];  // Changed from groupByField to groupByFields array
+  grouping: GroupingState;
+  onGroupingChange: OnChangeFn<GroupingState>;
   expandedRowGroups: Record<string, boolean>;
   setExpandedRowGroups: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
 }
@@ -2594,12 +2610,13 @@ function DataTable<TData extends Record<string, any>>(props: DataTableProps<TDat
     setPagination,
     showRowCounts,
     showDetailRows,
-    groupByFields,  // Added groupByFields prop
+    grouping,
+    onGroupingChange,
     expandedRowGroups,
     setExpandedRowGroups
   } = props;
-  
-  // Initialize the table
+
+  // Initialize the table with grouping support
   const table = useReactTable({
     data,
     columns,
@@ -2608,55 +2625,23 @@ function DataTable<TData extends Record<string, any>>(props: DataTableProps<TDat
       columnFilters,
       columnVisibility,
       pagination,
+      grouping,
     },
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
     onPaginationChange: setPagination,
+    onGroupingChange,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    getGroupedRowModel: getGroupedRowModel(),
+    getExpandedRowModel: getExpandedRowModel(),
   });
 
-  // Process data for grouping if group fields are specified
-  const groupedData = useMemo(() => {
-    if (!groupByFields.length) return {};
-    
-    return data.reduce((acc, row) => {
-      // Create a composite group key from all grouping fields
-      const groupValues = groupByFields.map(field => row[field]?.toString() || 'undefined');
-      const groupKey = groupValues.join(' | ');
-      
-      if (!acc[groupKey]) {
-        acc[groupKey] = [];
-      }
-      acc[groupKey].push(row);
-      return acc;
-    }, {} as Record<string, TData[]>);
-  }, [data, groupByFields]);
-
-  const groupKeys = useMemo(() => {
-    return Object.keys(groupedData).sort();
-  }, [groupedData]);
-
-  // Toggle group expansion
-  const toggleGroupExpansion = (groupKey: string) => {
-    setExpandedRowGroups(prev => ({
-      ...prev,
-      [groupKey]: !prev[groupKey]
-    }));
-  };
-
-  // Handle whether to show grouped view or flat view
-  const showGroupedView = groupByFields.length > 0 && groupKeys.length > 0;
-
-  console.log("Show grouped view:", showGroupedView, "Group by field:", groupByFields, "Group keys:", groupKeys);
-
-  // Render the table
   return (
     <div className="space-y-4">
-      {/* Table */}
       <div className="rounded-md border">
         <table className="w-full text-sm">
           <thead className="bg-gray-100 text-gray-600">
@@ -2665,48 +2650,30 @@ function DataTable<TData extends Record<string, any>>(props: DataTableProps<TDat
                 {headerGroup.headers.map((header) => (
                   <th key={header.id} className="px-4 py-3 text-left font-medium">
                     {header.isPlaceholder ? null : (
-                      <div
-                        className={`flex items-center gap-1 ${
-                          header.column.getCanSort() ? "cursor-pointer select-none" : ""
-                        }`}
-                        onClick={header.column.getToggleSortingHandler()}
-                      >
+                      <div className="flex items-center gap-2">
+                        {header.column.getCanGroup() && (
+                          <button
+                            onClick={header.column.getToggleGroupingHandler()}
+                            className="cursor-pointer"
+                          >
+                            {header.column.getIsGrouped() ? '🛑' : '👊'}
+                          </button>
+                        )}
                         {flexRender(
                           header.column.columnDef.header,
                           header.getContext()
                         )}
-                        {{
-                          asc: (
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="16"
-                              height="16"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <path d="m18 15-6-6-6 6" />
-                            </svg>
-                          ),
-                          desc: (
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="16"
-                              height="16"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <path d="m6 9 6 6 6-6" />
-                            </svg>
-                          ),
-                        }[header.column.getIsSorted() as string] ?? null}
+                        {header.column.getCanSort() && (
+                          <button
+                            className="ml-2"
+                            onClick={header.column.getToggleSortingHandler()}
+                          >
+                            {{
+                              asc: '↑',
+                              desc: '↓',
+                            }[header.column.getIsSorted() as string] ?? '⇅'}
+                          </button>
+                        )}
                       </div>
                     )}
                   </th>
@@ -2715,105 +2682,51 @@ function DataTable<TData extends Record<string, any>>(props: DataTableProps<TDat
             ))}
           </thead>
           <tbody>
-            {showGroupedView ? (
-              // Render grouped view
-              groupKeys.map((groupKey) => (
-                <React.Fragment key={groupKey}>
-                  {/* Group header row */}
-                  <tr 
-                    className="bg-gray-50 cursor-pointer hover:bg-gray-100"
-                    onClick={() => toggleGroupExpansion(groupKey)}
+            {table.getRowModel().rows.map(row => (
+              <tr key={row.id} className="border-t hover:bg-gray-50">
+                {row.getVisibleCells().map(cell => (
+                  <td
+                    key={cell.id}
+                    className={`px-4 py-2 ${
+                      cell.getIsGrouped()
+                        ? 'bg-green-100'
+                        : cell.getIsAggregated()
+                          ? 'bg-orange-100'
+                          : cell.getIsPlaceholder()
+                            ? 'bg-red-100'
+                            : ''
+                    }`}
                   >
-                    <td colSpan={columns.length} className="px-4 py-2">
-                      <div className="flex items-center gap-2">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className={`transform transition-transform ${expandedRowGroups[groupKey] ? 'rotate-90' : ''}`}
-                        >
-                          <path d="m9 18 6-6-6-6" />
-                        </svg>
-                        <span className="font-medium">
-                          {groupKey.split(' | ').map((value, index) => (
-                            <React.Fragment key={index}>
-                              {index > 0 && ' | '}
-                              <span className="text-gray-700">{groupByFields[index]}: </span>
-                              <span className="text-gray-900">{value}</span>
-                            </React.Fragment>
-                          ))}
-                        </span>
-                        {showRowCounts && (
-                          <span className="text-gray-500 text-sm">
-                            ({groupedData[groupKey].length} items)
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                  
-                  {/* Group detail rows */}
-                  {expandedRowGroups[groupKey] && showDetailRows && groupedData[groupKey].map((rowData, index) => {
-                    const rowKey = `${groupKey}-row-${index}`;
-                    return (
-                      <tr key={rowKey} className="border-t hover:bg-gray-50">
-                        {table.getAllColumns().map((column) => {
-                          const cellId = `${rowKey}-${column.id}`;
-                          const value = rowData[column.id as keyof typeof rowData];
-                          return (
-                            <td key={cellId} className="px-4 py-2">
-                              {typeof value === 'number' ? value.toLocaleString() : value}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    );
-                  })}
-                </React.Fragment>
-              ))
-            ) : (
-              // Render flat view
-              table.getRowModel().rows.map((row) => (
-                <tr key={row.id} className="border-t hover:bg-gray-50">
-                  {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="px-4 py-2">
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
-                  ))}
-                </tr>
-              ))
-            )}
+                    {cell.getIsGrouped() ? (
+                      <button
+                        onClick={row.getToggleExpandedHandler()}
+                        className="flex items-center gap-2"
+                      >
+                        {row.getIsExpanded() ? '👇' : '👉'}{' '}
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}{' '}
+                        ({row.subRows.length})
+                      </button>
+                    ) : cell.getIsAggregated() ? (
+                      flexRender(
+                        cell.column.columnDef.aggregatedCell ??
+                          cell.column.columnDef.cell,
+                        cell.getContext()
+                      )
+                    ) : cell.getIsPlaceholder() ? null : (
+                      flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )
+                    )}
+                  </td>
+                ))}
+              </tr>
+            ))}
           </tbody>
         </table>
-      </div>
-      
-      {/* Pagination */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <button
-            className="px-3 py-1 border rounded hover:bg-gray-100"
-            onClick={() => setPagination(prev => ({ ...prev, pageIndex: prev.pageIndex - 1 }))}
-            disabled={pagination.pageIndex === 0}
-          >
-            Previous
-          </button>
-          <button
-            className="px-3 py-1 border rounded hover:bg-gray-100"
-            onClick={() => setPagination(prev => ({ ...prev, pageIndex: prev.pageIndex + 1 }))}
-            disabled={pagination.pageIndex >= table.getPageCount() - 1}
-          >
-            Next
-          </button>
-        </div>
-        <div className="text-sm text-gray-500">
-          Page {pagination.pageIndex + 1} of {table.getPageCount()}
-        </div>
       </div>
     </div>
   );
