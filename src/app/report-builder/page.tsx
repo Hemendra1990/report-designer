@@ -1331,21 +1331,25 @@ export default function ReportBuilderPage() {
                   <div className="space-y-4">
                     {/* Filter Logic Selector */}
                     <div className="bg-gray-50 p-3 rounded-md border border-gray-200">
-                      <div className="flex items-center gap-2 text-sm">
-                        <span className="font-medium">Filter Logic:</span>
-                        <Select 
-                          value={filterLogic} 
-                          onValueChange={(value: 'and' | 'or' | 'custom') => setFilterLogic(value)}
-                        >
-                          <SelectTrigger className="w-[120px] h-8 text-xs">
-                            <SelectValue placeholder="Logic" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="and">AND (1 AND 2 AND 3)</SelectItem>
-                            <SelectItem value="or">OR (1 OR 2 OR 3)</SelectItem>
-                            <SelectItem value="custom">Custom Formula</SelectItem>
-                          </SelectContent>
-                        </Select>
+                      <div className="flex flex-col space-y-3">
+                        <div className="text-sm">
+                          <span className="font-medium">Filter Logic:</span>
+                        </div>
+                        <div>
+                          <Select 
+                            value={filterLogic} 
+                            onValueChange={(value: 'and' | 'or' | 'custom') => setFilterLogic(value)}
+                          >
+                            <SelectTrigger className="w-[200px] h-8 text-xs">
+                              <SelectValue placeholder="Logic" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="and">AND (1 AND 2 AND 3)</SelectItem>
+                              <SelectItem value="or">OR (1 OR 2 OR 3)</SelectItem>
+                              <SelectItem value="custom">Custom Formula</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                         <div className="text-xs text-gray-500">
                           {filterLogic === 'and' ? 'All conditions must be true' : 
                            filterLogic === 'or' ? 'Any condition can be true' : 
