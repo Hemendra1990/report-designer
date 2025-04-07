@@ -2,7 +2,7 @@ import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 
 // Create axios instance with default config
 const api: AxiosInstance = axios.create({
-  baseURL: 'http://localhost:8080/api',
+  baseURL: process.env.NEXT_PUBLIC_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -16,7 +16,7 @@ export class ApiService<T> {
   constructor(endpoint: string) {
     this.baseUrl = `/${endpoint}`;
     this.api = axios.create({
-      baseURL: 'http://localhost:8080/api',
+      baseURL: process.env.NEXT_PUBLIC_BASE_URL,
       headers: {
         'Content-Type': 'application/json',
       },

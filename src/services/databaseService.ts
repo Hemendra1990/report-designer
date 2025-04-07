@@ -36,6 +36,9 @@ export async function getAllTables(
   schema?: string
 ): Promise<PaginatedResponse<TableInfo>> {
   try {
+
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+
     // Try to use cached data first
     if (isCacheValid() && tablesCache) {
       let filteredTables = tablesCache;
@@ -62,7 +65,7 @@ export async function getAllTables(
       ...(schema && { schema })
     });
 
-    const response = await fetch(`http://localhost:8080/api/metadata/tables?${queryParams}`);
+    const response = await fetch(`${baseUrl}/metadata/tables?${queryParams}`);
     if (!response.ok) {
       throw new Error('Failed to fetch tables');
     }
@@ -92,7 +95,7 @@ export async function getTableColumns(schema: string, tableName: string): Promis
       }
     }
 
-    const response = await fetch(`http://localhost:8080/api/metadata/tables/${schema}/${tableName}/columns`);
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/metadata/tables/${schema}/${tableName}/columns`);
     if (!response.ok) {
       throw new Error('Failed to fetch columns');
     }
@@ -114,7 +117,7 @@ export async function getAvailableSchemas(): Promise<string[]> {
       return Array.from(new Set(tablesCache.map(table => table.schema)));
     }
 
-    const response = await fetch('http://localhost:8080/api/metadata/schemas');
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/metadata/schemas`);
     if (!response.ok) {
       throw new Error('Failed to fetch schemas');
     }
@@ -151,7 +154,8 @@ export async function getMetadataTables(
       size: pageSize.toString()
     });
 
-    const response = await fetch(`http://localhost:8080/api/metadata/tables?${queryParams}`);
+    console.log(`${process.env.NEXT_PUBLIC_BASE_URL}`);
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/metadata/tables?${queryParams}`);
     if (!response.ok) {
       throw new Error('Failed to fetch metadata tables');
     }
@@ -168,7 +172,7 @@ export async function searchTables(query?: string, schema?: string): Promise<Tab
     if (query) params.append('query', query);
     if (schema) params.append('schema', schema);
     
-    const response = await fetch(`http://localhost:8080/api/metadata/tables/search?${params.toString()}`);
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/metadata/tables/search?${params.toString()}`);
     if (!response.ok) {
       throw new Error('Failed to search tables');
     }
@@ -181,7 +185,7 @@ export async function searchTables(query?: string, schema?: string): Promise<Tab
 
 export async function getRelatedTables(schema: string, tableName: string): Promise<TableMetadata[]> {
   try {
-    const response = await fetch(`http://localhost:8080/api/metadata/tables/${schema}/${tableName}/related`);
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/metadata/tables/${schema}/${tableName}/related`);
     if (!response.ok) {
       throw new Error('Failed to fetch related tables');
     }
