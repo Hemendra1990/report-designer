@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Plus, Edit2, Trash2, ArrowUpDown, ChevronLeft, ChevronRight, MoreHorizontal, FileText, Calendar, User } from "lucide-react";
+import { Search, Plus, Edit2, Trash2, ArrowUpDown, ChevronLeft, ChevronRight, MoreHorizontal, FileText, Calendar, User, Users } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -31,9 +31,11 @@ interface BaseReportType {
   description: string;
   icon: string;
   color: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-interface ReportTypeTemplate extends BaseReportType {}
+interface ReportTypeTemplate extends BaseReportType { }
 
 interface ExistingReportType extends BaseReportType {
   createdAt: string;
@@ -128,34 +130,34 @@ export default function ReportTypesPage() {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
     });
   };
 
   // Enhanced sort and filter logic
-  const sortedAndFilteredReportTypes = isCreating 
+  const sortedAndFilteredReportTypes = isCreating
     ? reportTypes.filter((report) =>
+      report.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      report.description.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    : existingReportTypes
+      .filter((report) =>
         report.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         report.description.toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : existingReportTypes
-        .filter((report) =>
-          report.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          report.description.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-        .sort((a, b) => {
-          if (sortBy === "name") {
-            return sortOrder === "asc" 
-              ? a.name.localeCompare(b.name)
-              : b.name.localeCompare(a.name);
-          }
-          const dateA = new Date(a[sortBy]).getTime();
-          const dateB = new Date(b[sortBy]).getTime();
-          return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
-        });
+      .sort((a, b) => {
+        if (sortBy === "name") {
+          return sortOrder === "asc"
+            ? a.name.localeCompare(b.name)
+            : b.name.localeCompare(a.name);
+        }
+        const dateA = new Date(a[sortBy]).getTime();
+        const dateB = new Date(b[sortBy]).getTime();
+        return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
+      });
 
   // Pagination logic
   const totalItems = sortedAndFilteredReportTypes.length;
@@ -183,7 +185,7 @@ export default function ReportTypesPage() {
   };
 
   // Find the selected report object to access its color
-  const selectedReport = isCreating 
+  const selectedReport = isCreating
     ? reportTypes.find(r => r.id === selectedReportType)
     : existingReportTypes.find(r => r.id === selectedReportType);
 
@@ -198,7 +200,7 @@ export default function ReportTypesPage() {
   return (
     <div className="flex flex-col min-h-screen bg-background">
       {/* Navigation Bar */}
-      <nav className="bg-primary text-primary-foreground py-4 px-6 shadow-md">
+      {/* <nav className="bg-primary text-primary-foreground py-4 px-6 shadow-md">
         <div className="container mx-auto flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <Image 
@@ -222,7 +224,7 @@ export default function ReportTypesPage() {
             </Link>
           </div>
         </div>
-      </nav>
+      </nav> */}
 
       {/* Main Content */}
       <div className="flex-1 p-6 md:p-10">
@@ -235,7 +237,7 @@ export default function ReportTypesPage() {
                   Select the type of report you want to create from the options below.
                 </p>
               </div>
-              
+
               {/* Search Bar */}
               <div className="relative">
                 <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
@@ -253,31 +255,30 @@ export default function ReportTypesPage() {
                 <div className="grid md:grid-cols-2 gap-6">
                   {sortedAndFilteredReportTypes.map((report) => (
                     <div key={report.id}>
-                      <Card 
-                        className={`cursor-pointer transition-all duration-200 ease-in-out hover:shadow-lg border ${
-                          selectedReportType === report.id 
+                      <Card
+                        className={`cursor-pointer transition-all duration-200 ease-in-out hover:shadow-lg border ${selectedReportType === report.id
                             ? `border-2`
                             : "border-border hover:border-muted-foreground/50"
-                        }`}
-                        style={{ 
+                          }`}
+                        style={{
                           borderColor: selectedReportType === report.id ? report.color : undefined,
                           backgroundColor: selectedReportType === report.id ? `${report.color}10` : ''
                         }}
                       >
                         <label htmlFor={`report-type-${report.id}`} className="block cursor-pointer p-6">
                           <div className="flex items-start gap-5">
-                            <RadioGroupItem 
-                              value={report.id} 
-                              id={`report-type-${report.id}`} 
+                            <RadioGroupItem
+                              value={report.id}
+                              id={`report-type-${report.id}`}
                               className="mt-1 flex-shrink-0"
-                              style={{ 
+                              style={{
                                 borderColor: selectedReportType === report.id ? report.color : undefined,
                               }}
                             />
                             <div className="flex-grow">
                               <div className="flex items-center gap-3 mb-3">
-                                <div 
-                                  className="p-2 rounded-md flex items-center justify-center" 
+                                <div
+                                  className="p-2 rounded-md flex items-center justify-center"
                                   style={{ backgroundColor: `${report.color}20` }}
                                 >
                                   <Image
@@ -298,35 +299,35 @@ export default function ReportTypesPage() {
                   ))}
                 </div>
               </RadioGroup>
-              
+
               {/* Action Buttons */}
               <div className="flex justify-end items-center gap-4 mt-10">
-                <Button 
-                  variant="outline" 
-                  size="lg" 
+                <Button
+                  variant="outline"
+                  size="lg"
                   className="px-6"
                   onClick={() => setIsCreating(false)}
                 >
                   Cancel
                 </Button>
-                <Link 
+                <Link
                   href={selectedReportType ? `/report-types/select-object?type=${selectedReportType}` : "#"}
                   aria-disabled={!selectedReportType}
                   tabIndex={!selectedReportType ? -1 : undefined}
                   className={`${!selectedReportType ? "cursor-not-allowed" : ""}`}
                 >
-                  <Button 
-                    disabled={!selectedReportType} 
-                    size="lg" 
+                  <Button
+                    disabled={!selectedReportType}
+                    size="lg"
                     className={`px-8 transition-colors duration-200 ease-in-out ${!selectedReportType ? "opacity-50 cursor-not-allowed" : "hover:opacity-90"}`}
-                    style={{ 
+                    style={{
                       backgroundColor: selectedReport?.color,
                       color: selectedReport ? getContrastYIQ(selectedReport.color) : undefined
                     }}
                   >
-                    Next 
+                    Next
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="ml-2">
-                      <path d="m9 18 6-6-6-6"/>
+                      <path d="m9 18 6-6-6-6" />
                     </svg>
                   </Button>
                 </Link>
@@ -334,180 +335,151 @@ export default function ReportTypesPage() {
             </>
           ) : (
             <>
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center mb-4">
                 <div>
-                  <h1 className="text-3xl font-bold tracking-tight">Report Types</h1>
-                  <p className="text-muted-foreground mt-2">
+                  <h1 className="text-2xl font-semibold tracking-tight">Report Types</h1>
+                  <p className="text-muted-foreground text-sm mt-1">
                     Manage and organize your report templates
                   </p>
                 </div>
-                <Button onClick={() => setIsCreating(true)}>
+                <Button size="sm" onClick={() => setIsCreating(true)}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Create New Report Type
+                  New Report Type
                 </Button>
               </div>
-              
-              {/* Statistics Section */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                    <CardTitle className="text-sm font-medium">Total Report Types</CardTitle>
+
+              {/* Stats Section */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                <Card className="p-3">
+                  <CardHeader className="flex flex-row items-center justify-between pb-1 space-y-0">
+                    <CardTitle className="text-xs font-medium">Total Report Types</CardTitle>
                     <FileText className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{totalItems}</div>
-                    <p className="text-xs text-muted-foreground">
+                  <CardContent className="pt-1">
+                    <div className="text-xl font-semibold">{totalItems}</div>
+                    <p className="text-xs text-muted-foreground mt-1">
                       {totalItems === 1 ? '1 report type' : `${totalItems} report types`} available
                     </p>
                   </CardContent>
                 </Card>
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                    <CardTitle className="text-sm font-medium">Recently Updated</CardTitle>
+
+                <Card className="p-3">
+                  <CardHeader className="flex flex-row items-center justify-between pb-1 space-y-0">
+                    <CardTitle className="text-xs font-medium">Recently Updated</CardTitle>
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">
-                      {existingReportTypes.length > 0 
-                        ? formatDate(existingReportTypes.sort((a, b) => 
-                            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-                          )[0].updatedAt)
-                        : "N/A"}
+                  <CardContent className="pt-1">
+                    <div className="text-xl font-semibold">
+                      {existingReportTypes.length > 0
+                        ? formatDate(
+                          existingReportTypes
+                            .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0]
+                            .updatedAt
+                        )
+                        : 'N/A'}
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      Last report type update
-                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">Last update</p>
                   </CardContent>
                 </Card>
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                    <CardTitle className="text-sm font-medium">Available Templates</CardTitle>
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      className="h-4 w-4 text-muted-foreground"
-                    >
-                      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                      <circle cx="9" cy="7" r="4" />
-                      <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
-                    </svg>
+
+                <Card className="p-3">
+                  <CardHeader className="flex flex-row items-center justify-between pb-1 space-y-0">
+                    <CardTitle className="text-xs font-medium">Templates</CardTitle>
+                    <Users className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{reportTypes.length}</div>
-                    <p className="text-xs text-muted-foreground">
-                      Base templates for new reports
-                    </p>
+                  <CardContent className="pt-1">
+                    <div className="text-xl font-semibold">{reportTypes.length}</div>
+                    <p className="text-xs text-muted-foreground mt-1">Available for use</p>
                   </CardContent>
                 </Card>
               </div>
 
+              {/* Search, Sort, Filters */}
               <div className="bg-card rounded-lg border shadow-sm">
-                <div className="p-6 flex flex-col gap-6">
-                  {/* Filters and Search */}
+                <div className="p-4 space-y-4">
                   <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-4 flex-1">
+                    <div className="flex items-center gap-3 flex-1">
                       <div className="relative flex-1 max-w-sm">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                         <Input
                           type="text"
-                          placeholder="Search report types..."
+                          placeholder="Search..."
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
-                          className="pl-9"
+                          className="pl-9 h-8 text-sm"
                         />
                       </div>
-                      <Select value={sortBy} onValueChange={(value: "name" | "createdAt" | "updatedAt") => handleSortChange(value)}>
-                        <SelectTrigger className="w-[180px]">
+                      <Select value={sortBy} onValueChange={handleSortChange}>
+                        <SelectTrigger className="w-[160px] h-8 text-sm">
                           <SelectValue placeholder="Sort by" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="name">Name</SelectItem>
-                          <SelectItem value="createdAt">Creation Date</SelectItem>
-                          <SelectItem value="updatedAt">Last Updated</SelectItem>
+                          <SelectItem value="createdAt">Created</SelectItem>
+                          <SelectItem value="updatedAt">Updated</SelectItem>
                         </SelectContent>
                       </Select>
                       <Button
                         variant="outline"
                         size="icon"
+                        className="h-8 w-8"
                         onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
                       >
                         <ArrowUpDown className="h-4 w-4" />
                       </Button>
                     </div>
                     <Select value={String(itemsPerPage)} onValueChange={handleItemsPerPageChange}>
-                      <SelectTrigger className="w-[110px]">
+                      <SelectTrigger className="w-[100px] h-8 text-sm">
                         <SelectValue placeholder="Per page" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="5">5 / page</SelectItem>
-                        <SelectItem value="10">10 / page</SelectItem>
-                        <SelectItem value="20">20 / page</SelectItem>
-                        <SelectItem value="50">50 / page</SelectItem>
+                        <SelectItem value="5">5</SelectItem>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="20">20</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
-                  {/* Report Types List */}
-                  <div className="space-y-4">
+                  {/* Report Cards */}
+                  <div className="space-y-3">
                     {currentItems.length === 0 ? (
                       <div className="text-center py-8">
-                        <FileText className="mx-auto h-12 w-12 text-muted-foreground/50" />
-                        <h3 className="mt-4 text-lg font-semibold">No report types found</h3>
-                        <p className="text-muted-foreground mt-2">
-                          Create your first report type to get started.
-                        </p>
+                        <FileText className="mx-auto h-10 w-10 text-muted-foreground/50" />
+                        <h3 className="mt-3 text-md font-semibold">No report types</h3>
+                        <p className="text-sm text-muted-foreground">Create one to get started</p>
                       </div>
                     ) : (
                       currentItems.map((reportType) => (
-                        <Card key={reportType.id} className="hover:shadow-md transition-shadow">
-                          <CardHeader className="flex flex-row items-start justify-between space-y-0">
+                        <Card key={reportType.id} className="hover:shadow transition-shadow">
+                          <CardHeader className="flex flex-row items-start justify-between py-4">
                             <div className="flex gap-4">
-                              <div 
-                                className="p-2 rounded-md flex items-center justify-center" 
+                              <div
+                                className="p-2 rounded-md flex items-center justify-center"
                                 style={{ backgroundColor: `${reportType.color}20` }}
                               >
-                                <Image
-                                  src={reportType.icon}
-                                  alt={`${reportType.name} icon`}
-                                  width={24}
-                                  height={24}
-                                />
+                                <Image src={reportType.icon} alt={`${reportType.name} icon`} width={24} height={24} />
                               </div>
                               <div>
-                                <CardTitle className="text-xl font-semibold">
-                                  {reportType.name}
-                                </CardTitle>
-                                <CardDescription className="mt-1.5 line-clamp-2">
+                                <CardTitle className="text-lg font-semibold">{reportType.name}</CardTitle>
+                                <CardDescription className="text-sm line-clamp-2">
                                   {reportType.description}
                                 </CardDescription>
-                                {'createdAt' in reportType && 'updatedAt' in reportType && (
-                                  <div className="flex gap-6 mt-3 text-sm text-muted-foreground">
-                                    <div className="flex items-center gap-2">
-                                      <Calendar className="h-4 w-4" />
-                                      Created {formatDate(reportType.createdAt as string)}
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      <User className="h-4 w-4" />
-                                      Updated {formatDate(reportType.updatedAt as string)}
-                                    </div>
+                                <div className="flex gap-6 mt-2 text-xs text-muted-foreground">
+                                  <div className="flex items-center gap-1">
+                                    <Calendar className="h-3 w-3" />
+                                    {formatDate(reportType.createdAt as string)}
                                   </div>
-                                )}
+                                  <div className="flex items-center gap-1">
+                                    <User className="h-3 w-3" />
+                                    {formatDate(reportType.updatedAt as string)}
+                                  </div>
+                                </div>
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                asChild
-                              >
-                                <Link href={`/reports/create?type=${reportType.id}`}>
-                                  Create Report
-                                </Link>
+                              <Button variant="outline" size="sm" asChild>
+                                <Link href={`/reports/create?type=${reportType.id}`}>Create</Link>
                               </Button>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -540,24 +512,26 @@ export default function ReportTypesPage() {
 
                   {/* Pagination */}
                   {totalPages > 1 && (
-                    <div className="flex items-center justify-between pt-4 border-t">
-                      <div className="text-sm text-muted-foreground">
-                        Showing {startIndex + 1} to {Math.min(endIndex, totalItems)} of {totalItems} results
-                      </div>
-                      <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-between pt-3 border-t">
+                      <p className="text-xs text-muted-foreground">
+                        Showing {startIndex + 1} to {Math.min(endIndex, totalItems)} of {totalItems}
+                      </p>
+                      <div className="flex items-center gap-1">
                         <Button
                           variant="outline"
                           size="icon"
                           onClick={() => handlePageChange(currentPage - 1)}
                           disabled={currentPage === 1}
+                          className="h-7 w-7"
                         >
-                          <ChevronLeft className="h-4 w-4" />
+                          <ChevronLeft className="h-3 w-3" />
                         </Button>
                         {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                           <Button
                             key={page}
                             variant={currentPage === page ? "default" : "outline"}
                             size="icon"
+                            className="h-7 w-7 text-xs"
                             onClick={() => handlePageChange(page)}
                           >
                             {page}
@@ -568,8 +542,9 @@ export default function ReportTypesPage() {
                           size="icon"
                           onClick={() => handlePageChange(currentPage + 1)}
                           disabled={currentPage === totalPages}
+                          className="h-7 w-7"
                         >
-                          <ChevronRight className="h-4 w-4" />
+                          <ChevronRight className="h-3 w-3" />
                         </Button>
                       </div>
                     </div>
@@ -577,6 +552,7 @@ export default function ReportTypesPage() {
                 </div>
               </div>
             </>
+
           )}
         </div>
       </div>

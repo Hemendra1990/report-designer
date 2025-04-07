@@ -121,7 +121,7 @@ export default function ReportTypesListPage() {
   return (
     <div className="flex flex-col min-h-screen bg-background">
       {/* Navigation Bar */}
-      <nav className="bg-primary text-primary-foreground py-4 px-6 shadow-md">
+      {/* <nav className="bg-primary text-primary-foreground py-4 px-6 shadow-md">
         <div className="container mx-auto flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <Image 
@@ -145,7 +145,7 @@ export default function ReportTypesListPage() {
             </Link>
           </div>
         </div>
-      </nav>
+      </nav> */}
 
       {/* Main Content */}
       <div className="flex-1 p-6 md:p-10">
