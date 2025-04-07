@@ -1,144 +1,38 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
-import Image from "next/image";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
+import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Search, ChevronDown, X, FileText, Clock, ListChecks, BarChart4, Users, PieChart, ExternalLink, Sparkles } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 // Import TanStack Table
 import {
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
   ColumnDef,
   ColumnFiltersState,
-  SortingState,
-  VisibilityState,
   GroupingState,
-  getGroupedRowModel,
-  getExpandedRowModel,
   OnChangeFn,
+  SortingState,
+  VisibilityState
 } from "@tanstack/react-table";
+import { DataTable } from "./components/DataTable";
+import { FilterRow } from "./components/FilterRow";
+import { ReportTypeSelectionModal } from "./components/ReportTypeSelectionModal";
+import { getDefaultOperator, getFieldIcon } from "./helper/ReportBuilderHelper";
+import { AccountData } from "./model/AccountData";
+import { accountFields, moreSampleData, sampleData } from "./model/fake-data";
+import { Field, FieldType } from "./model/Field";
+import { Filter } from "./model/Filter";
+import { ReportTypeTemplate } from "./model/ReportType";
+import { FetchDataOptions, ServerResponse } from "./model/ServerReqRes";
+import { formulaFunctions } from "./util/ReportBuilderUtil";
 
-// Sample Account fields with type indicators
-const accountFields = [
-  { id: "account_owner", name: "Account Owner", category: "general", type: "user", icon: "A" },
-  { id: "created_by", name: "Created By", category: "general", type: "user", icon: "A" },
-  { id: "account_name", name: "Account Name", category: "general", type: "text", icon: "A" },
-  { id: "account_number", name: "Account Number", category: "general", type: "number", icon: "#" },
-  { id: "type", name: "Type", category: "general", type: "picklist", icon: "A" },
-  { id: "industry", name: "Industry", category: "general", type: "picklist", icon: "A" },
-  { id: "annual_revenue", name: "Annual Revenue", category: "general", type: "currency", icon: "#" },
-  { id: "rating", name: "Rating", category: "general", type: "picklist", icon: "A" },
-  { id: "phone", name: "Phone", category: "general", type: "phone", icon: "A" },
-  { id: "billing_street", name: "Billing Street", category: "address", type: "text", icon: "A" },
-  { id: "billing_city", name: "Billing City", category: "address", type: "text", icon: "A" },
-  { id: "billing_state", name: "Billing State/Province", category: "address", type: "text", icon: "A" },
-  { id: "billing_postal_code", name: "Billing Postal Code", category: "address", type: "text", icon: "A" },
-  { id: "billing_country", name: "Billing Country", category: "address", type: "text", icon: "A" },
-  { id: "shipping_street", name: "Shipping Street", category: "address", type: "text", icon: "A" },
-  { id: "shipping_city", name: "Shipping City", category: "address", type: "text", icon: "A" },
-  { id: "shipping_state", name: "Shipping State/Province", category: "address", type: "text", icon: "A" },
-  { id: "shipping_postal_code", name: "Shipping Postal Code", category: "address", type: "text", icon: "A" },
-  { id: "shipping_country", name: "Shipping Country", category: "address", type: "text", icon: "A" },
-  { id: "website", name: "Website", category: "general", type: "url", icon: "A" },
-  { id: "description", name: "Description", category: "general", type: "textarea", icon: "A" },
-  { id: "employees", name: "Employees", category: "general", type: "number", icon: "#" },
-  { id: "ownership", name: "Ownership", category: "general", type: "picklist", icon: "A" },
-  { id: "parent_account", name: "Parent Account", category: "general", type: "lookup", icon: "A" },
-  { id: "created_date", name: "Created Date", category: "system", type: "datetime", icon: "A" },
-  { id: "last_modified_date", name: "Last Modified Date", category: "system", type: "datetime", icon: "A" },
-  { id: "last_activity", name: "Last Activity", category: "system", type: "datetime", icon: "A" },
-  { id: "sic_code", name: "SIC Code", category: "general", type: "text", icon: "A" },
-  { id: "account_source", name: "Account Source", category: "general", type: "picklist", icon: "A" },
-  { id: "customer_priority", name: "Customer Priority", category: "general", type: "picklist", icon: "A" },
-  { id: "active", name: "Active", category: "general", type: "checkbox", icon: "A" },
-  { id: "sla", name: "SLA", category: "general", type: "picklist", icon: "A" },
-  { id: "sla_expiration_date", name: "SLA Expiration Date", category: "general", type: "date", icon: "A" },
-  { id: "sla_serial_number", name: "SLA Serial Number", category: "general", type: "text", icon: "A" },
-  { id: "number_of_locations", name: "Number of Locations", category: "general", type: "number", icon: "#" },
-  { id: "upsell_opportunity", name: "Upsell Opportunity", category: "general", type: "picklist", icon: "A" },
-  { id: "last_viewed_date", name: "Last Viewed Date", category: "system", type: "datetime", icon: "A" },
-];
 
-// Sample formula functions
-const formulaFunctions = [
-  {
-    category: "Text",
-    functions: [
-      { name: "CONCATENATE", description: "Joins text values into one string" },
-      { name: "LEFT", description: "Returns the specified number of characters from the start of a text string" },
-      { name: "RIGHT", description: "Returns the specified number of characters from the end of a text string" },
-      { name: "MID", description: "Returns characters from the middle of a text string" },
-      { name: "FIND", description: "Returns the position of a text string within another text string" },
-      { name: "LEN", description: "Returns the number of characters in a text string" },
-      { name: "LOWER", description: "Converts all characters to lowercase" },
-      { name: "UPPER", description: "Converts all characters to uppercase" },
-      { name: "TRIM", description: "Removes spaces from both ends of a text string" },
-    ]
-  },
-  {
-    category: "Date & Time",
-    functions: [
-      { name: "DATE", description: "Returns a date value from year, month, and day values" },
-      { name: "DATEVALUE", description: "Converts a text date to a date value" },
-      { name: "DAY", description: "Returns the day of the month (1-31)" },
-      { name: "MONTH", description: "Returns the month (1-12)" },
-      { name: "YEAR", description: "Returns the year as a four-digit number" },
-      { name: "NOW", description: "Returns the current date and time" },
-      { name: "TODAY", description: "Returns the current date" },
-    ]
-  },
-  {
-    category: "Math",
-    functions: [
-      { name: "ABS", description: "Returns the absolute value of a number" },
-      { name: "CEILING", description: "Rounds a number up to the nearest multiple of specified value" },
-      { name: "FLOOR", description: "Rounds a number down to the nearest multiple of specified value" },
-      { name: "ROUND", description: "Rounds a number to a specified number of digits" },
-      { name: "MAX", description: "Returns the maximum value from list of numbers" },
-      { name: "MIN", description: "Returns the minimum value from list of numbers" },
-      { name: "MOD", description: "Returns the remainder after a number is divided by a divisor" },
-      { name: "POWER", description: "Returns a number raised to a power" },
-      { name: "SQRT", description: "Returns the square root of a number" },
-      { name: "SUM", description: "Adds all the numbers in a range of cells" },
-    ]
-  },
-  {
-    category: "Logical",
-    functions: [
-      { name: "AND", description: "Returns TRUE if all arguments are TRUE" },
-      { name: "OR", description: "Returns TRUE if any argument is TRUE" },
-      { name: "NOT", description: "Reverses the logical value of its argument" },
-      { name: "IF", description: "Returns one value if a condition is TRUE and another value if FALSE" },
-      { name: "ISBLANK", description: "Returns TRUE if the value is blank" },
-      { name: "ISNUMBER", description: "Returns TRUE if the value is a number" },
-      { name: "ISTEXT", description: "Returns TRUE if the value is text" },
-    ]
-  }
-];
 
 // Group fields by category
 const fieldsByCategory = accountFields.reduce((acc, field) => {
@@ -166,108 +60,14 @@ const reorder = (list: any[], startIndex: number, endIndex: number) => {
   return result;
 };
 
-// Add these interfaces near the top of the file, after the initial imports
-
-// Field types definition
-type FieldType = 'text' | 'textarea' | 'url' | 'email' | 'phone' | 'number' | 'currency' | 
-                'date' | 'datetime' | 'picklist' | 'multipicklist' | 'lookup' | 'user' | 'checkbox';
-
-// Field interface
-interface Field {
-  id: string;
-  name: string;
-  type: FieldType;
-  category?: string;
-  icon?: string;
-}
-
-// Operator interface
-interface Operator {
-  value: string;
-  label: string;
-}
-
-// Filter state interface
-interface FilterState {
-  value: string;
-  setValue: (value: string) => void;
-  rangeStart: string;
-  setRangeStart: (value: string) => void;
-  rangeEnd: string;
-  setRangeEnd: (value: string) => void;
-  selectedOptions: string[];
-  setSelectedOptions: (options: string[]) => void;
-}
-
-// Add this interface for filter state
-interface Filter {
-  id: string;
-  field: Field;
-  operator: string;
-  value: string;
-  rangeStart?: string;
-  rangeEnd?: string;
-  selectedOptions?: string[];
-}
-
-// Add sample data for the preview
-interface AccountData {
-  id: number;
-  account_name: string;
-  account_owner: string;
-  billing_state: string;
-  type: string;
-  rating: string;
-  last_activity: string;
-  annual_revenue: number;
-  [key: string]: any; // Add index signature to allow string indexing
-}
-
-const sampleData: AccountData[] = [
-  { id: 1, account_name: "Acme Corporation", account_owner: "John Smith", billing_state: "CA", type: "Customer", rating: "Hot", last_activity: "2023-05-15", annual_revenue: 5000000 },
-  { id: 2, account_name: "Globex Industries", account_owner: "Sarah Johnson", billing_state: "NY", type: "Customer", rating: "Warm", last_activity: "2023-05-10", annual_revenue: 3200000 },
-  { id: 3, account_name: "Initech", account_owner: "Michael Brown", billing_state: "TX", type: "Prospect", rating: "Cold", last_activity: "2023-04-28", annual_revenue: 1200000 },
-  { id: 4, account_name: "Umbrella Corporation", account_owner: "Emily Davis", billing_state: "CA", type: "Customer", rating: "Hot", last_activity: "2023-05-18", annual_revenue: 7800000 },
-  { id: 5, account_name: "Stark Industries", account_owner: "John Smith", billing_state: "NY", type: "Customer", rating: "Hot", last_activity: "2023-05-20", annual_revenue: 9500000 },
-  { id: 6, account_name: "Wayne Enterprises", account_owner: "Sarah Johnson", billing_state: "NJ", type: "Customer", rating: "Warm", last_activity: "2023-05-05", annual_revenue: 4200000 },
-  { id: 7, account_name: "Cyberdyne Systems", account_owner: "Michael Brown", billing_state: "CA", type: "Prospect", rating: "Cold", last_activity: "2023-04-15", annual_revenue: 800000 },
-  { id: 8, account_name: "Oscorp", account_owner: "Emily Davis", billing_state: "NY", type: "Customer", rating: "Warm", last_activity: "2023-05-12", annual_revenue: 6100000 },
-  { id: 9, account_name: "Soylent Corporation", account_owner: "John Smith", billing_state: "TX", type: "Customer", rating: "Hot", last_activity: "2023-05-22", annual_revenue: 8900000 },
-  { id: 10, account_name: "Massive Dynamic", account_owner: "Sarah Johnson", billing_state: "CA", type: "Customer", rating: "Warm", last_activity: "2023-05-08", annual_revenue: 4500000 },
-];
-
-// Add more sample data for better grouping demonstration
-const moreSampleData: AccountData[] = [
-  { id: 11, account_name: "Aperture Science", account_owner: "Michael Brown", billing_state: "CA", type: "Prospect", rating: "Cold", last_activity: "2023-04-20", annual_revenue: 1500000 },
-  { id: 12, account_name: "Black Mesa", account_owner: "Emily Davis", billing_state: "NY", type: "Customer", rating: "Hot", last_activity: "2023-05-19", annual_revenue: 7200000 },
-  { id: 13, account_name: "Vault-Tec", account_owner: "John Smith", billing_state: "TX", type: "Customer", rating: "Warm", last_activity: "2023-05-14", annual_revenue: 3800000 },
-  { id: 14, account_name: "Abstergo Industries", account_owner: "Sarah Johnson", billing_state: "CA", type: "Customer", rating: "Hot", last_activity: "2023-05-21", annual_revenue: 8200000 },
-  { id: 15, account_name: "Weyland-Yutani", account_owner: "Michael Brown", billing_state: "NY", type: "Prospect", rating: "Cold", last_activity: "2023-04-25", annual_revenue: 2000000 },
-];
-
 // Combine all sample data
 const allSampleData: AccountData[] = [...sampleData, ...moreSampleData];
 
-// Add these interfaces near the top after other interfaces
-interface FetchDataOptions {
-  pageIndex: number;
-  pageSize: number;
-  sorting: SortingState;
-  grouping: GroupingState;
-  selectedColumns: { id: string; name: string; type: string }[];
-  filters: Filter[];
-}
-
-interface ServerResponse {
-  data: AccountData[];
-  pageCount: number;
-  totalRows: number;
-}
 
 // Add this before the ReportBuilderPage component
 async function fetchTableData(options: FetchDataOptions): Promise<ServerResponse> {
   const { pageIndex, pageSize, sorting, grouping, selectedColumns, filters } = options;
-  
+
   try {
     const response = await fetch('/api/report-data', {
       method: 'POST',
@@ -299,626 +99,6 @@ async function fetchTableData(options: FetchDataOptions): Promise<ServerResponse
   }
 }
 
-interface ReportTypeTemplate {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  color: string;
-}
-
-const reportTypes: ReportTypeTemplate[] = [
-  {
-    id: "tabular",
-    name: "Tabular",
-    description: "Simple list of records with optional grouping. Best for creating a straightforward list of records.",
-    icon: "/file.svg",
-    color: "#1E88E5" // Blue
-  },
-  {
-    id: "summary",
-    name: "Summary",
-    description: "Grouped report records with subtotals and grand totals. Perfect for analyzing data across different categories.",
-    icon: "/file.svg",
-    color: "#43A047" // Green
-  },
-  {
-    id: "matrix",
-    name: "Matrix",
-    description: "Show data in rows and columns with grand summaries. Ideal for comparing related data points in a grid layout.",
-    icon: "/file.svg",
-    color: "#E53935" // Red
-  },
-  {
-    id: "joined",
-    name: "Joined",
-    description: "Combine data from multiple related objects. Great for creating reports that span across different data entities.",
-    icon: "/file.svg",
-    color: "#FB8C00" // Orange
-  }
-];
-
-// Update the RecentReportType interface to include additional fields
-interface RecentReportType {
-  name: string;
-  category: string;
-  lastUsed: string;
-  status: "Active" | "Draft";
-  description: string;
-  type: "tabular" | "summary" | "matrix" | "joined";
-  createdBy?: string;
-  objects?: Array<{
-    name: string;
-    icon: string;
-    color: string;
-    relatedObjects?: Array<{
-      name: string;
-      icon: string;
-      color: string;
-      relation: string;
-    }>;
-  }>;
-  fieldsCount?: number;
-}
-
-// Update mock data with additional details
-const recentReportTypes: RecentReportType[] = [
-  {
-    name: "Demo With SS",
-    category: "Custom",
-    lastUsed: "2 days ago",
-    status: "Active",
-    description: "ashdasd",
-    type: "tabular",
-    createdBy: "You",
-    objects: [
-      {
-        name: "Account",
-        icon: "📊",
-        color: "#4299e1",
-        relatedObjects: []
-      },
-      {
-        name: "Contact",
-        icon: "👤",
-        color: "#805ad5",
-        relatedObjects: []
-      },
-      {
-        name: "Opportunity Contact Role",
-        icon: "🔗",
-        color: "#38a169",
-        relatedObjects: []
-      }
-    ],
-    fieldsCount: 148
-  },
-  // Keep the other report types with updated structure
-  {
-    name: "Sales Performance Dashboard",
-    category: "Analytics",
-    lastUsed: "2 days ago",
-    status: "Active",
-    description: "Track sales metrics and team performance",
-    type: "tabular",
-    objects: [
-      {
-        name: "Opportunity",
-        icon: "💰",
-        color: "#3182ce"
-      }
-    ],
-    fieldsCount: 56
-  },
-  // ... other report types
-];
-
-function ReportTypeSelectionModal({ 
-  isOpen, 
-  onClose, 
-  onSelect 
-}: { 
-  isOpen: boolean; 
-  onClose: () => void; 
-  onSelect: (reportType: ReportTypeTemplate) => void;
-}) {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [selectedReport, setSelectedReport] = useState<RecentReportType | null>(null);
-  const [activeTab, setActiveTab] = useState<"details" | "fields">("details");
-  const [fieldsData, setFieldsData] = useState<Array<{
-    id: string;
-    name: string;
-    type: string;
-    label: string;
-    category: string;
-    isCustom?: boolean;
-  }>>([]);
-  const [fieldsLoading, setFieldsLoading] = useState(false);
-  const [fieldsError, setFieldsError] = useState<string | null>(null);
-  const [fieldSearchTerm, setFieldSearchTerm] = useState("");
-
-  // Mocked fields data (in a real app, this would be fetched from the server)
-  const mockFields = useMemo(() => [
-    { id: "id", name: "Id", type: "id", label: "Record ID", category: "System Fields", isCustom: false },
-    { id: "name", name: "Name", type: "text", label: "Name", category: "Standard Fields", isCustom: false },
-    { id: "created_date", name: "CreatedDate", type: "datetime", label: "Created Date", category: "System Fields", isCustom: false },
-    { id: "last_modified_date", name: "LastModifiedDate", type: "datetime", label: "Last Modified Date", category: "System Fields", isCustom: false },
-    { id: "owner", name: "Owner", type: "reference", label: "Owner", category: "Standard Fields", isCustom: false },
-    { id: "status", name: "Status", type: "picklist", label: "Status", category: "Standard Fields", isCustom: false },
-    { id: "type", name: "Type", type: "picklist", label: "Type", category: "Standard Fields", isCustom: false },
-    { id: "amount", name: "Amount", type: "currency", label: "Amount", category: "Standard Fields", isCustom: false },
-    { id: "close_date", name: "CloseDate", type: "date", label: "Close Date", category: "Standard Fields", isCustom: false },
-    { id: "stage", name: "Stage", type: "picklist", label: "Stage", category: "Standard Fields", isCustom: false },
-    { id: "probability", name: "Probability", type: "percent", label: "Probability", category: "Standard Fields", isCustom: false },
-    { id: "description", name: "Description", type: "textarea", label: "Description", category: "Standard Fields", isCustom: false },
-    { id: "account_id", name: "AccountId", type: "reference", label: "Account ID", category: "Standard Fields", isCustom: false },
-    { id: "contact_id", name: "ContactId", type: "reference", label: "Contact ID", category: "Standard Fields", isCustom: false },
-    { id: "custom_field_1", name: "CustomField1__c", type: "text", label: "Custom Field 1", category: "Custom Fields", isCustom: true },
-    { id: "custom_field_2", name: "CustomField2__c", type: "number", label: "Custom Field 2", category: "Custom Fields", isCustom: true },
-    { id: "custom_field_3", name: "CustomField3__c", type: "checkbox", label: "Custom Field 3", category: "Custom Fields", isCustom: true },
-    { id: "custom_field_4", name: "CustomField4__c", type: "date", label: "Custom Field 4", category: "Custom Fields", isCustom: true },
-    { id: "custom_field_5", name: "CustomField5__c", type: "url", label: "Custom Field 5", category: "Custom Fields", isCustom: true },
-    { id: "custom_field_6", name: "CustomField6__c", type: "email", label: "Custom Field 6", category: "Custom Fields", isCustom: true },
-    { id: "custom_field_7", name: "CustomField7__c", type: "phone", label: "Custom Field 7", category: "Custom Fields", isCustom: true },
-    { id: "custom_field_8", name: "CustomField8__c", type: "picklist", label: "Custom Field 8", category: "Custom Fields", isCustom: true },
-    { id: "custom_field_9", name: "CustomField9__c", type: "multipicklist", label: "Custom Field 9", category: "Custom Fields", isCustom: true },
-    { id: "custom_field_10", name: "CustomField10__c", type: "currency", label: "Custom Field 10", category: "Custom Fields", isCustom: true },
-    // Add more fields as needed for testing
-  ], []);
-
-  // Group fields by category for better organization
-  const fieldsByCategory = useMemo(() => {
-    if (!fieldsData.length) return {};
-    
-    const filtered = fieldsData.filter(field => 
-      !fieldSearchTerm || 
-      field.label.toLowerCase().includes(fieldSearchTerm.toLowerCase()) ||
-      field.name.toLowerCase().includes(fieldSearchTerm.toLowerCase())
-    );
-    
-    return filtered.reduce((acc, field) => {
-      if (!acc[field.category]) {
-        acc[field.category] = [];
-      }
-      acc[field.category].push(field);
-      return acc;
-    }, {} as Record<string, typeof fieldsData>);
-  }, [fieldsData, fieldSearchTerm]);
-
-  // Fetch fields data when tab changes to "fields" or when selected report changes
-  useEffect(() => {
-    if (activeTab === "fields" && selectedReport) {
-      const fetchFields = async () => {
-        setFieldsLoading(true);
-        setFieldsError(null);
-        
-        try {
-          // Simulate API call with setTimeout
-          await new Promise(resolve => setTimeout(resolve, 800));
-          
-          // In a real app, this would be an API call like:
-          // const response = await fetch(`/api/reports/${selectedReport.id}/fields`);
-          // const data = await response.json();
-          // setFieldsData(data);
-          
-          // Using mock data for now
-          setFieldsData(mockFields);
-        } catch (error) {
-          console.error("Error fetching fields:", error);
-          setFieldsError("Failed to load fields. Please try again.");
-        } finally {
-          setFieldsLoading(false);
-        }
-      };
-      
-      fetchFields();
-    }
-  }, [activeTab, selectedReport, mockFields]);
-
-  const categories = Array.from(new Set(recentReportTypes.map(report => report.category)));
-
-  const filteredReports = recentReportTypes.filter(report => {
-    const matchesSearch = report.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        report.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = !selectedCategory || report.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
-
-  // Helper function to get field icon based on type
-  const getFieldTypeIcon = (type: string) => {
-    switch (type) {
-      case 'text':
-        return <span className="text-blue-600">Aa</span>;
-      case 'textarea':
-        return <span className="text-blue-600">¶</span>;
-      case 'number':
-        return <span className="text-purple-600">#</span>;
-      case 'currency':
-        return <span className="text-green-600">$</span>;
-      case 'percent':
-        return <span className="text-orange-600">%</span>;
-      case 'date':
-      case 'datetime':
-        return <Clock className="h-3 w-3" />;
-      case 'picklist':
-      case 'multipicklist':
-        return <ListChecks className="h-3 w-3" />;
-      case 'reference':
-        return <ExternalLink className="h-3 w-3" />;
-      case 'id':
-        return <span className="text-gray-600">ID</span>;
-      case 'checkbox':
-        return <span className="text-green-600">✓</span>;
-      case 'email':
-        return <span className="text-blue-600">@</span>;
-      case 'url':
-        return <span className="text-blue-600">🔗</span>;
-      case 'phone':
-        return <span className="text-blue-600">📞</span>;
-      default:
-        return <span className="text-gray-600">•</span>;
-    }
-  };
-
-  // Helper function to get category icon
-  const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case 'Analytics': return <BarChart4 className="h-4 w-4" />;
-      case 'Customer': return <Users className="h-4 w-4" />;
-      case 'Custom': return <Sparkles className="h-4 w-4" />;
-      default: return <PieChart className="h-4 w-4" />;
-    }
-  };
-
-  const handleReportSelect = (report: RecentReportType) => {
-    setSelectedReport(report);
-    setActiveTab("details"); // Reset to details tab when selecting a new report
-  };
-
-  const handleStartReport = () => {
-    if (selectedReport) {
-      const reportTemplate = reportTypes.find(rt => rt.id === selectedReport.type);
-      if (reportTemplate) {
-        onSelect(reportTemplate);
-      }
-    }
-  };
-
-  return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[1200px] h-[80vh] p-0 flex overflow-hidden rounded-xl shadow-xl border-0">
-        {/* Left side - Report Type List */}
-        <div className="flex-1 flex overflow-hidden">
-          {/* Categories Sidebar */}
-          <div className="w-52 py-6 border-r border-gray-100 flex-shrink-0 overflow-y-auto bg-gray-50">
-            <h3 className="font-medium text-sm text-gray-500 mb-3 px-6">Categories</h3>
-            <div className="space-y-1 px-3">
-              <button
-                onClick={() => setSelectedCategory(null)}
-                className={cn(
-                  "w-full text-left px-3 py-2.5 text-sm rounded-lg flex items-center gap-2.5 transition-all",
-                  !selectedCategory 
-                    ? "bg-primary text-white font-medium shadow-md" 
-                    : "hover:bg-gray-100 text-gray-700"
-                )}
-              >
-                <PieChart className={cn("h-4 w-4", !selectedCategory ? "text-white" : "text-gray-500")} />
-                All Reports
-              </button>
-              {categories.map((category) => (
-                <button
-                  key={category}
-                  onClick={() => setSelectedCategory(category)}
-                  className={cn(
-                    "w-full text-left px-3 py-2 text-sm rounded-lg",
-                    selectedCategory === category ? "bg-primary/10 text-primary font-medium" : "hover:bg-gray-100"
-                  )}
-                >
-                  {category}
-                </button>
-              ))}
-            </div>
-          </div>
-          
-          {/* Report List */}
-          <div className="flex-1 p-6 border-r border-gray-100 overflow-hidden flex flex-col">
-            <DialogHeader className="px-0">
-              <DialogTitle className="text-2xl font-semibold">Select a Report Type</DialogTitle>
-            </DialogHeader>
-            
-            <div className="relative my-4">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                placeholder="Search Report Types..."
-                className="pl-10"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-
-            <h3 className="text-lg font-medium mb-4">Recently Used Report Types</h3>
-            
-            <div className="space-y-2.5">
-              {filteredReports.length > 0 ? (
-                filteredReports.map((report, index) => (
-                  <div
-                    key={index}
-                    onClick={() => handleReportSelect(report)}
-                    className={`group p-4 rounded-lg transition-all cursor-pointer border ${
-                      selectedReport?.name === report.name 
-                        ? 'bg-primary/5 border-primary shadow-sm' 
-                        : 'hover:bg-slate-50 border-slate-200 hover:border-slate-300'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex gap-3">
-                        <div 
-                          className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                          style={{ backgroundColor: `${report.type === 'tabular' ? '#EBF5FF' : 
-                                                    report.type === 'summary' ? '#E6FFFA' : 
-                                                    report.type === 'matrix' ? '#FFF5F5' : 
-                                                    '#FFFBEB'}` }}
-                        >
-                          {report.type === 'tabular' && <BarChart4 className="h-5 w-5 text-blue-600" />}
-                          {report.type === 'summary' && <PieChart className="h-5 w-5 text-emerald-600" />}
-                          {report.type === 'matrix' && <Users className="h-5 w-5 text-rose-600" />}
-                          {report.type === 'joined' && <Sparkles className="h-5 w-5 text-amber-600" />}
-                        </div>
-                        
-                        <div className="flex-1">
-                          <h4 className="font-medium text-gray-900 group-hover:text-primary flex items-center gap-2">
-                            {report.name}
-                            <Badge variant={report.status === "Active" ? "default" : "secondary"} className="ml-2">
-                              {report.status}
-                            </Badge>
-                          </h4>
-                          
-                          <div className="flex items-center mt-1 text-sm gap-3">
-                            <span className="flex items-center gap-1.5 text-gray-500">
-                              {getCategoryIcon(report.category)}
-                              <span>{report.category}</span>
-                            </span>
-                            <span className="text-gray-400 flex items-center">
-                              <Clock className="h-3.5 w-3.5 mr-1" />
-                              <span>{report.lastUsed}</span>
-                            </span>
-                            {report.fieldsCount && (
-                              <span className="text-gray-400 flex items-center">
-                                <ListChecks className="h-3.5 w-3.5 mr-1" />
-                                <span>{report.fieldsCount} fields</span>
-                              </span>
-                            )}
-                          </div>
-                          
-                          {report.description && (
-                            <p className="text-sm text-gray-500 mt-2 line-clamp-1">
-                              {report.description}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <ChevronDown className={`h-5 w-5 transition-transform ${
-                        selectedReport?.name === report.name ? 'rotate-180 text-primary' : 'text-gray-400'
-                      }`} />
-                    </div>
-                    
-                    {report.objects && report.objects.length > 0 && (
-                      <div className="mt-3 pt-3 border-t border-dashed border-gray-200 flex gap-2 flex-wrap">
-                        {report.objects.slice(0, 3).map((obj, idx) => (
-                          <div key={idx} className="flex items-center gap-1.5 bg-gray-50 px-2 py-1 rounded-md text-xs">
-                            <span style={{ color: obj.color }}>{obj.icon}</span>
-                            <span className="text-gray-700">{obj.name}</span>
-                          </div>
-                        ))}
-                        {report.objects.length > 3 && (
-                          <div className="bg-gray-50 px-2 py-1 rounded-md text-xs text-gray-500">
-                            +{report.objects.length - 3} more
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))
-              ) : (
-                <div className="p-8 text-center bg-gray-50 rounded-lg border border-dashed border-gray-200">
-                  <Search className="h-10 w-10 mx-auto mb-3 text-gray-300" />
-                  <p className="text-gray-500 font-medium">No matching report types</p>
-                  <p className="text-sm text-gray-400 mt-1">Try adjusting your search or category filters</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-        
-        {/* Right side - Details Panel */}
-        {selectedReport ? (
-          <div className="w-1/3 p-6 flex flex-col overflow-hidden">
-            <div className="flex justify-between items-start mb-6">
-              <h2 className="text-xl font-semibold">Details</h2>
-              <Button variant="ghost" size="icon" onClick={() => setSelectedReport(null)}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <FileText className="h-6 w-6 text-green-600" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold">{selectedReport.name}</h3>
-                <p className="text-sm text-gray-600">{selectedReport.category} Report Type</p>
-              </div>
-            </div>
-            
-            <div className="flex gap-2 mb-6">
-              <Button 
-                className="flex-1" 
-                onClick={handleStartReport}
-              >
-                Start Report
-              </Button>
-              <Button variant="outline">
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </div>
-            
-            <div className="border-t pt-4 mb-6 flex-1 overflow-hidden flex flex-col">
-              <div className="flex gap-4 mb-4">
-                <Button 
-                  variant={activeTab === "details" ? "default" : "ghost"} 
-                  className="flex-1 justify-start px-0"
-                  onClick={() => setActiveTab("details")}
-                >
-                  <Clock className="h-4 w-4 mr-2" />
-                  Details
-                </Button>
-                <Button 
-                  variant={activeTab === "fields" ? "default" : "ghost"} 
-                  className="flex-1 justify-start px-0" 
-                  onClick={() => setActiveTab("fields")}
-                >
-                  <ListChecks className="h-4 w-4 mr-2" />
-                  Fields ({selectedReport.fieldsCount || 0})
-                </Button>
-              </div>
-              
-              {activeTab === "details" ? (
-                // Details tab content
-                <div className="overflow-y-auto flex-1">
-                  <div>
-                    <h4 className="font-medium mb-2">Description</h4>
-                    <p className="text-sm text-gray-600 mb-4">{selectedReport.description}</p>
-                    
-                    <h4 className="font-medium mb-2">Created By You</h4>
-                    <div className="flex items-center gap-2 mb-4">
-                      <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                        <FileText className="h-4 w-4 text-green-600" />
-                      </div>
-                      <span className="text-sm text-blue-600">New {selectedReport.name} Report</span>
-                    </div>
-                    
-                    <h4 className="font-medium mb-2">Created By Others</h4>
-                    <p className="text-sm text-gray-600 mb-4">No Reports Yet</p>
-                    
-                    <h4 className="font-medium mb-2">Objects Used in Report Type</h4>
-                    {selectedReport.objects?.map((obj, index) => (
-                      <div key={index} className="flex items-center gap-2 mb-2">
-                        <div 
-                          className="w-8 h-8 rounded-lg flex items-center justify-center"
-                          style={{ backgroundColor: `${obj.color}20` }}
-                        >
-                          <span className="text-sm" style={{ color: obj.color }}>{obj.icon}</span>
-                        </div>
-                        <span className="text-sm text-blue-600">{obj.name}</span>
-                        
-                        {obj.relatedObjects?.map((related, idx) => (
-                          <div key={idx} className="flex items-center">
-                            <div className="flex">
-                              <div className="w-4 h-8 border-t border-l border-gray-300 rounded-tl-md"></div>
-                            </div>
-                            <div 
-                              className="w-8 h-8 rounded-lg flex items-center justify-center"
-                              style={{ backgroundColor: `${related.color}20` }}
-                            >
-                              <span className="text-sm" style={{ color: related.color }}>{related.icon}</span>
-                            </div>
-                            <span className="text-sm text-blue-600">{related.name}</span>
-                          </div>
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                // Fields tab content
-                <div className="flex flex-col flex-1 overflow-hidden">
-                  <div className="relative mb-4">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <Input
-                      placeholder="Search fields..."
-                      className="pl-10"
-                      value={fieldSearchTerm}
-                      onChange={(e) => setFieldSearchTerm(e.target.value)}
-                    />
-                  </div>
-                  
-                  {fieldsLoading ? (
-                    <div className="flex-1 flex items-center justify-center">
-                      <div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div>
-                    </div>
-                  ) : fieldsError ? (
-                    <div className="flex-1 flex items-center justify-center">
-                      <div className="text-center">
-                        <p className="text-red-500 mb-2">{fieldsError}</p>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => setActiveTab("fields")}
-                        >
-                          Retry
-                        </Button>
-                      </div>
-                    </div>
-                  ) : Object.keys(fieldsByCategory).length === 0 ? (
-                    <div className="flex-1 flex items-center justify-center">
-                      <div className="text-center">
-                        <ListChecks className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                        <p className="text-gray-500">No fields found</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <ScrollArea className="flex-1 pr-4 -mr-4">
-                      <div className="space-y-6">
-                        {Object.entries(fieldsByCategory).map(([category, fields]) => (
-                          <div key={category}>
-                            <h4 className="font-medium text-sm text-gray-500 mb-2">{category.toUpperCase()}</h4>
-                            <div className="space-y-1">
-                              {fields.map((field) => (
-                                <div 
-                                  key={field.id}
-                                  className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-md text-sm group"
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <div className={`w-6 h-6 rounded-md flex items-center justify-center text-xs ${
-                                      field.isCustom 
-                                        ? 'bg-purple-100 text-purple-600' 
-                                        : 'bg-blue-100 text-blue-600'
-                                    }`}>
-                                      {getFieldTypeIcon(field.type)}
-                                    </div>
-                                    <div>
-                                      <div className="font-medium">{field.label}</div>
-                                      <div className="text-xs text-gray-500">{field.name}</div>
-                                    </div>
-                                  </div>
-                                  <div className="opacity-0 group-hover:opacity-100 text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">
-                                    {field.type}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className="w-1/3 p-6 flex flex-col items-center justify-center text-gray-500">
-            <FileText className="h-12 w-12 mb-4" />
-            <p className="text-center">Select a report type to view details</p>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 export default function ReportBuilderPage() {
   const router = useRouter();
   const [showReportTypeModal, setShowReportTypeModal] = useState(true);
@@ -944,15 +124,15 @@ export default function ReportBuilderPage() {
     address: false,
     system: false,
   });
-  
+
   // Context menu state
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
-  
+
   // Dragging state
   const [draggedItem, setDraggedItem] = useState<null | number>(null);
   const columnRefs = useRef<(HTMLDivElement | null)[]>([]);
-  
+
   // Group dropdown state
   const [showGroupDropdown, setShowGroupDropdown] = useState(false);
   const [groupSearchTerm, setGroupSearchTerm] = useState("");
@@ -960,7 +140,7 @@ export default function ReportBuilderPage() {
   const [groupByFields, setGroupByFields] = useState<string[]>([]);
   const [expandedRowGroups, setExpandedRowGroups] = useState<Record<string, boolean>>({});
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
-  
+
   // Preview settings
   const [rowData, setRowData] = useState<AccountData[]>([]);
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -970,16 +150,16 @@ export default function ReportBuilderPage() {
   const [showRowCounts, setShowRowCounts] = useState(true);
   const [showDetailRows, setShowDetailRows] = useState(true);
   const [autoUpdatePreview, setAutoUpdatePreview] = useState(true);
-  
+
   // Reference for click outside menu
   const menuRef = useRef<HTMLDivElement>(null);
   const groupSearchRef = useRef<HTMLDivElement>(null);
-  
+
   // Initialize column refs
   useEffect(() => {
     columnRefs.current = columnRefs.current.slice(0, selectedColumns.length);
   }, [selectedColumns]);
-  
+
   // Update selectedGroup when groupByFields changes
   useEffect(() => {
     const lastSelectedField = groupByFields[groupByFields.length - 1] || null;
@@ -991,7 +171,7 @@ export default function ReportBuilderPage() {
       setGroupSearchTerm("");
     }
   }, [groupByFields, selectedColumns]);
-  
+
   // Handle click outside to close menus
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -1002,20 +182,20 @@ export default function ReportBuilderPage() {
         setShowGroupDropdown(false);
       }
     }
-    
+
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
-  
+
   // Filter fields based on search term
-  const filteredFields = searchTerm.trim() === "" 
-    ? accountFields 
-    : accountFields.filter(field => 
-        field.name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      
+  const filteredFields = searchTerm.trim() === ""
+    ? accountFields
+    : accountFields.filter(field =>
+      field.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
   // Toggle category expansion
   const toggleCategory = (category: string) => {
     setExpandedCategories(prev => ({
@@ -1023,7 +203,7 @@ export default function ReportBuilderPage() {
       [category]: !prev[category as keyof typeof prev]
     }));
   };
-  
+
   // Handle adding a column to the report
   const addColumn = (field: typeof accountFields[0]) => {
     if (!selectedColumns.some(col => col.id === field.id)) {
@@ -1034,45 +214,45 @@ export default function ReportBuilderPage() {
       }
     }
   };
-  
+
   // Handle removing a column from the report
   const removeColumn = (fieldId: string) => {
     setSelectedColumns(selectedColumns.filter(col => col.id !== fieldId));
   };
-  
+
   // Handle dragging start
   const handleDragStart = (index: number) => {
     setDraggedItem(index);
   };
-  
+
   // Handle dragging over another column
   const handleDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault();
-    
+
     if (draggedItem === null) return;
     if (draggedItem === index) return;
-    
+
     const newSelectedColumns = reorder(
       selectedColumns,
       draggedItem,
       index
     );
-    
+
     setSelectedColumns(newSelectedColumns);
     setDraggedItem(index);
   };
-  
+
   // Handle context menu for columns
   const openColumnMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     setMenuPosition({ top: e.clientY, left: e.clientX });
     setIsMenuOpen(true);
   };
-  
+
   // Panel collapse state
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
   const [centerPanelCollapsed, setCenterPanelCollapsed] = useState(false);
-  
+
   // Formula editor state
   const [showFormulaBuilder, setShowFormulaBuilder] = useState(false);
   const [formulaName, setFormulaName] = useState("");
@@ -1081,28 +261,28 @@ export default function ReportBuilderPage() {
   const [formulaOutputType, setFormulaOutputType] = useState("number");
   const [decimalPoints, setDecimalPoints] = useState("2");
   const [formulaDialogTab, setFormulaDialogTab] = useState("fields");
-  
+
   // Filter formula functions based on search term
   const filteredFunctions = formulaSearchTerm.trim() === ""
     ? formulaFunctions
     : formulaFunctions.map(category => ({
-        category: category.category,
-        functions: category.functions.filter(func => 
-          func.name.toLowerCase().includes(formulaSearchTerm.toLowerCase()) ||
-          func.description.toLowerCase().includes(formulaSearchTerm.toLowerCase())
-        )
-      })).filter(category => category.functions.length > 0);
-  
+      category: category.category,
+      functions: category.functions.filter(func =>
+        func.name.toLowerCase().includes(formulaSearchTerm.toLowerCase()) ||
+        func.description.toLowerCase().includes(formulaSearchTerm.toLowerCase())
+      )
+    })).filter(category => category.functions.length > 0);
+
   // Handle adding a formula column
   const addFormulaColumn = () => {
     setIsMenuOpen(false);
     setShowFormulaBuilder(true);
   };
-  
+
   // Handle formula dialog submission
   const handleSubmitFormula = () => {
     if (!formulaName.trim()) return;
-    
+
     // Create a new formula column
     const newFormulaColumn = {
       id: `formula_${Date.now()}`,
@@ -1111,10 +291,10 @@ export default function ReportBuilderPage() {
       formula: formulaEditorValue,
       description: formulaDescription,
     };
-    
+
     setSelectedColumns([...selectedColumns, newFormulaColumn]);
     setShowFormulaBuilder(false);
-    
+
     // Reset form
     setFormulaName("");
     setFormulaDescription("");
@@ -1122,12 +302,12 @@ export default function ReportBuilderPage() {
     setFormulaOutputType("number");
     setDecimalPoints("2");
   };
-  
+
   // Insert a field into the formula editor
   const insertFieldIntoFormula = (field: typeof accountFields[0]) => {
     setFormulaEditorValue(prev => `${prev}[${field.name}]`);
   };
-  
+
   // Insert a function into the formula editor
   const insertFunctionIntoFormula = (funcName: string) => {
     setFormulaEditorValue(prev => `${prev}${funcName}()`);
@@ -1137,11 +317,11 @@ export default function ReportBuilderPage() {
   const [filters, setFilters] = useState<Filter[]>([]);
   const [filterLogic, setFilterLogic] = useState<'and' | 'or' | 'custom'>('and');
   const [customFormula, setCustomFormula] = useState('');
-  
+
   // Add state for filter field selector
   const [showFilterFieldSelector, setShowFilterFieldSelector] = useState(false);
   const [filterSearchTerm, setFilterSearchTerm] = useState('');
-  
+
   // Function to add a new filter
   const addFilter = (field: Field) => {
     const newFilter: Filter = {
@@ -1153,28 +333,28 @@ export default function ReportBuilderPage() {
       rangeEnd: '',
       selectedOptions: []
     };
-    
+
     setFilters([...filters, newFilter]);
   };
-  
+
   // Function to remove a filter
   const removeFilter = (filterId: string) => {
     setFilters(filters.filter(filter => filter.id !== filterId));
   };
-  
+
   // Function to update a filter
   const updateFilter = (filterId: string, updates: Partial<Filter>) => {
-    setFilters(filters.map(filter => 
+    setFilters(filters.map(filter =>
       filter.id === filterId ? { ...filter, ...updates } : filter
     ));
   };
-  
+
   // Update column definitions when selected columns change
   useEffect(() => {
     if (selectedColumns.length > 0 && autoUpdatePreview) {
       // Apply filters to sample data
       let filteredData = [...allSampleData];
-      
+
       // Apply filters based on the filter state
       if (filters.length > 0) {
         filteredData = filteredData.filter(item => {
@@ -1183,19 +363,19 @@ export default function ReportBuilderPage() {
           return filters.every(filter => {
             const fieldValue = item[filter.field.id];
             if (!fieldValue) return false;
-            
+
             // Simple filter implementation for demo
             if (filter.operator === 'equals') {
               return fieldValue === filter.value;
             } else if (filter.operator === 'contains') {
               return String(fieldValue).toLowerCase().includes(filter.value.toLowerCase());
             }
-            
+
             return true;
           });
         });
       }
-      
+
       // Sort data by group field if one is selected
       if (groupByFields.length > 0) {
         filteredData.sort((a, b) => {
@@ -1204,15 +384,15 @@ export default function ReportBuilderPage() {
           return aValues.join(' | ').localeCompare(bValues.join(' | '));
         });
       }
-      
+
       setRowData(filteredData);
     }
   }, [filters, autoUpdatePreview, selectedColumns, allSampleData, groupByFields]);
-  
+
   // Function to handle grouping by a field
   const handleGroupBy = (fieldId: string) => {
     console.log('Grouping by:', fieldId);
-    
+
     const updateGrouping: OnChangeFn<GroupingState> = (updater) => {
       const prevGrouping = typeof updater === 'function' ? updater(grouping) : updater;
       setGrouping(prevGrouping);
@@ -1244,12 +424,12 @@ export default function ReportBuilderPage() {
       fetchData();
     }
   };
-  
+
   // Function to toggle row counts
   const toggleRowCounts = () => {
     setShowRowCounts(!showRowCounts);
   };
-  
+
   // Function to toggle detail rows
   const toggleDetailRows = () => {
     setShowDetailRows(!showDetailRows);
@@ -1337,33 +517,6 @@ export default function ReportBuilderPage() {
         onSelect={handleReportTypeSelect}
       />
       <div className="min-h-screen bg-gray-50 flex flex-col">
-        {/* Navigation Bar */}
-        {/* <nav className="bg-primary text-primary-foreground py-4 px-6 shadow-md">
-          <div className="container mx-auto flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2">
-              <Image 
-                src="/next.svg" 
-                alt="Report Designer Logo" 
-                width={80} 
-                height={20}
-                className="dark:invert" 
-              />
-              <span className="font-bold text-lg">Report Designer</span>
-            </Link>
-            <div className="flex items-center gap-4">
-              <Link href="/">
-                <Button variant="ghost">Home</Button>
-              </Link>
-              <Link href="/reports">
-                <Button variant="ghost">Reports</Button>
-              </Link>
-              <Link href="/report-types">
-                <Button variant="ghost">Report Types</Button>
-              </Link>
-            </div>
-          </div>
-        </nav> */}
-        
         {/* Top Header Bar */}
         <header className="bg-white border-b border-gray-200 py-3 px-4 flex justify-between items-center">
           <div className="flex items-center gap-4">
@@ -1426,7 +579,7 @@ export default function ReportBuilderPage() {
               {filter.selectedOptions && filter.selectedOptions.length > 0 && (
                 <span className="text-gray-500">• {filter.selectedOptions.join(', ')}</span>
               )}
-              <button 
+              <button
                 onClick={() => removeFilter(filter.id)}
                 className="text-gray-400 hover:text-gray-600"
               >
@@ -1445,7 +598,7 @@ export default function ReportBuilderPage() {
           <div className={`${leftPanelCollapsed ? 'w-12' : 'w-64'} bg-card border-r border-border flex flex-col overflow-hidden transition-all duration-300`}>
             {/* Collapse Control */}
             <div className="flex justify-end p-1">
-              <button 
+              <button
                 onClick={() => setLeftPanelCollapsed(!leftPanelCollapsed)}
                 className="p-1 text-muted-foreground hover:text-foreground transition-colors"
                 title={leftPanelCollapsed ? "Expand fields panel" : "Collapse fields panel"}
@@ -1466,13 +619,13 @@ export default function ReportBuilderPage() {
                 </svg>
               </button>
             </div>
-            
+
             {!leftPanelCollapsed ? (
               <>
                 <div className="p-3 border-b border-gray-200">
                   <div className="relative">
-                    <Input 
-                      className="pl-8 text-sm" 
+                    <Input
+                      className="pl-8 text-sm"
                       placeholder="Search all fields..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
@@ -1503,7 +656,7 @@ export default function ReportBuilderPage() {
 
                   {Object.entries(fieldsByCategory).map(([category, fields]) => (
                     <div key={category} className="border-b border-gray-200">
-                      <div 
+                      <div
                         className="p-2 flex justify-between items-center cursor-pointer hover:bg-gray-50"
                         onClick={() => toggleCategory(category)}
                       >
@@ -1525,21 +678,21 @@ export default function ReportBuilderPage() {
                           <path d="m6 9 6 6 6-6" />
                         </svg>
                       </div>
-                      
+
                       {expandedCategories[category as keyof typeof expandedCategories] && (
                         <div className="pl-2">
                           {fields
-                            .filter(field => 
-                              !searchTerm.trim() || 
+                            .filter(field =>
+                              !searchTerm.trim() ||
                               field.name.toLowerCase().includes(searchTerm.toLowerCase())
                             )
                             .map(field => (
-                              <div 
+                              <div
                                 key={field.id}
                                 className="pl-2 pr-3 py-1.5 text-sm hover:bg-blue-50 flex items-center justify-between cursor-pointer group"
                                 onClick={() => addColumn(field)}
                                 draggable
-                                onDragStart={() => {/* Handle field drag if needed */}}
+                                onDragStart={() => {/* Handle field drag if needed */ }}
                               >
                                 <div className="flex items-center gap-2">
                                   <span className={`w-4 h-4 flex items-center justify-center rounded-sm text-xs ${field.type === 'number' || field.type === 'currency' ? 'bg-purple-100 text-purple-700' : 'bg-indigo-100 text-indigo-700'}`}>
@@ -1564,12 +717,12 @@ export default function ReportBuilderPage() {
                                 </svg>
                               </div>
                             ))}
-                          {fields.filter(field => 
-                            !searchTerm.trim() || 
+                          {fields.filter(field =>
+                            !searchTerm.trim() ||
                             field.name.toLowerCase().includes(searchTerm.toLowerCase())
                           ).length === 0 && searchTerm.trim() !== "" && (
-                            <div className="p-2 text-sm text-gray-500">No matching fields found</div>
-                          )}
+                              <div className="p-2 text-sm text-gray-500">No matching fields found</div>
+                            )}
                         </div>
                       )}
                     </div>
@@ -1581,7 +734,7 @@ export default function ReportBuilderPage() {
               <div className="flex flex-col items-center pt-4 space-y-4 overflow-y-auto">
                 <div className="text-xs font-medium text-muted-foreground">Field</div>
                 {Object.entries(fieldsByCategory).map(([category]) => (
-                  <div 
+                  <div
                     key={category}
                     className="p-2 cursor-pointer hover:bg-accent rounded-md"
                     title={`${category.toUpperCase()} fields`}
@@ -1603,7 +756,7 @@ export default function ReportBuilderPage() {
           <div className={`${centerPanelCollapsed ? 'w-12' : 'w-64'} flex flex-col bg-card border-r border-border transition-all duration-300`}>
             {/* Collapse Control */}
             <div className="flex justify-end p-1">
-              <button 
+              <button
                 onClick={() => setCenterPanelCollapsed(!centerPanelCollapsed)}
                 className="p-1 text-muted-foreground hover:text-foreground transition-colors"
                 title={centerPanelCollapsed ? "Expand builder panel" : "Collapse builder panel"}
@@ -1629,14 +782,14 @@ export default function ReportBuilderPage() {
               <Tabs defaultValue="outline" className="flex flex-col flex-1">
                 <div className="border-b border-gray-200">
                   <TabsList className="p-0 bg-transparent border-b-0">
-                    <TabsTrigger 
-                      value="outline" 
+                    <TabsTrigger
+                      value="outline"
                       className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 data-[state=active]:shadow-none"
                     >
                       Outline
                     </TabsTrigger>
-                    <TabsTrigger 
-                      value="filters" 
+                    <TabsTrigger
+                      value="filters"
                       className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 data-[state=active]:shadow-none"
                     >
                       Filters (2)
@@ -1649,8 +802,8 @@ export default function ReportBuilderPage() {
                   <div className="border-b border-gray-200 p-4">
                     <div className="text-xs font-semibold text-muted-foreground mb-2">GROUP ROWS</div>
                     <div className="relative" ref={groupSearchRef}>
-                      <Input 
-                        className="pl-8 text-sm bg-background" 
+                      <Input
+                        className="pl-8 text-sm bg-background"
                         placeholder="Add group..."
                         value={groupSearchTerm}
                         onChange={(e) => {
@@ -1674,19 +827,19 @@ export default function ReportBuilderPage() {
                         <circle cx="11" cy="11" r="8" />
                         <path d="m21 21-4.3-4.3" />
                       </svg>
-                      
+
                       {/* Group Dropdown */}
                       {showGroupDropdown && (
                         <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-md py-1 max-h-[300px] overflow-y-auto">
-                          {selectedColumns.filter(col => 
+                          {selectedColumns.filter(col =>
                             !groupSearchTerm.trim() || col.name.toLowerCase().includes(groupSearchTerm.toLowerCase())
                           ).length > 0 ? (
                             selectedColumns
-                              .filter(col => 
+                              .filter(col =>
                                 !groupSearchTerm.trim() || col.name.toLowerCase().includes(groupSearchTerm.toLowerCase())
                               )
                               .map(column => (
-                                <div 
+                                <div
                                   key={column.id}
                                   className="px-3 py-2 hover:bg-accent cursor-pointer flex items-center gap-2 text-sm"
                                   onClick={() => {
@@ -1710,7 +863,7 @@ export default function ReportBuilderPage() {
                         </div>
                       )}
                     </div>
-                    
+
                     {/* Selected Groups */}
                     {grouping.length > 0 && (
                       <div className="mt-2 space-y-2">
@@ -1723,7 +876,7 @@ export default function ReportBuilderPage() {
                                 <span className="font-medium">{groupColumn.name}</span>
                                 <span className="text-muted-foreground">Ascending</span>
                               </div>
-                              <button 
+                              <button
                                 onClick={() => {
                                   handleGroupBy(groupId);
                                 }}
@@ -1756,7 +909,7 @@ export default function ReportBuilderPage() {
                     <div className="flex justify-between items-center mb-3">
                       <div className="text-xs font-semibold text-gray-500">COLUMNS</div>
                       <div className="relative">
-                        <button 
+                        <button
                           className="text-sm text-blue-600 flex items-center"
                           onClick={openColumnMenu}
                         >
@@ -1791,14 +944,14 @@ export default function ReportBuilderPage() {
                             <path d="m6 9 6 6 6-6" />
                           </svg>
                         </button>
-                        
+
                         {/* Column Menu Dropdown */}
                         {isMenuOpen && (
-                          <div 
+                          <div
                             ref={menuRef}
                             className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-10 w-48"
-                            style={{ 
-                              top: menuPosition.top - 250, 
+                            style={{
+                              top: menuPosition.top - 250,
                               left: menuPosition.left - 100,
                               position: 'fixed'
                             }}
@@ -1902,10 +1055,10 @@ export default function ReportBuilderPage() {
                         )}
                       </div>
                     </div>
-                    
+
                     <div className="space-y-2">
                       {selectedColumns.map((column, index) => (
-                        <div 
+                        <div
                           key={column.id}
                           ref={(el) => {
                             // Fix the ref assignment
@@ -1942,7 +1095,7 @@ export default function ReportBuilderPage() {
                               <span className="ml-1 px-1.5 py-0.5 text-xs bg-blue-100 text-blue-800 rounded">Formula</span>
                             )}
                           </div>
-                          <button 
+                          <button
                             className="text-gray-400 hover:text-gray-600"
                             onClick={() => removeColumn(column.id)}
                           >
@@ -1971,8 +1124,8 @@ export default function ReportBuilderPage() {
                   <div className="space-y-6">
                     <div className="flex justify-between items-center">
                       <h3 className="text-lg font-medium">Filters</h3>
-                      <Button 
-                        size="sm" 
+                      <Button
+                        size="sm"
                         className="flex items-center gap-1"
                         onClick={() => setShowFilterFieldSelector(true)}
                       >
@@ -1993,7 +1146,7 @@ export default function ReportBuilderPage() {
                         Add Filter
                       </Button>
                     </div>
-                    
+
                     <div className="space-y-4">
                       {/* Filter Logic Selector */}
                       <div className="bg-gray-50 p-3 rounded-md border border-gray-200">
@@ -2002,8 +1155,8 @@ export default function ReportBuilderPage() {
                             <span className="font-medium">Filter Logic:</span>
                           </div>
                           <div>
-                            <Select 
-                              value={filterLogic} 
+                            <Select
+                              value={filterLogic}
                               onValueChange={(value: 'and' | 'or' | 'custom') => setFilterLogic(value)}
                             >
                               <SelectTrigger className="w-[200px] h-8 text-xs">
@@ -2017,15 +1170,15 @@ export default function ReportBuilderPage() {
                             </Select>
                           </div>
                           <div className="text-xs text-gray-500">
-                            {filterLogic === 'and' ? 'All conditions must be true' : 
-                             filterLogic === 'or' ? 'Any condition can be true' : 
-                             'Define a custom formula'}
+                            {filterLogic === 'and' ? 'All conditions must be true' :
+                              filterLogic === 'or' ? 'Any condition can be true' :
+                                'Define a custom formula'}
                           </div>
                         </div>
-                        
+
                         {filterLogic === 'custom' && (
                           <div className="mt-3">
-                            <Textarea 
+                            <Textarea
                               placeholder="Enter custom formula (e.g., 1 AND (2 OR 3))"
                               value={customFormula}
                               onChange={(e) => setCustomFormula(e.target.value)}
@@ -2037,10 +1190,10 @@ export default function ReportBuilderPage() {
                           </div>
                         )}
                       </div>
-                      
+
                       {/* Display existing filters */}
                       {filters.map((filter, index) => (
-                        <FilterRow 
+                        <FilterRow
                           key={filter.id}
                           filter={filter}
                           onRemove={() => removeFilter(filter.id)}
@@ -2048,7 +1201,7 @@ export default function ReportBuilderPage() {
                           index={index + 1}
                         />
                       ))}
-                      
+
                       {/* Show message when no filters exist */}
                       {filters.length === 0 && (
                         <div className="bg-gray-50 p-4 rounded-md border border-dashed border-gray-300 text-center">
@@ -2056,7 +1209,7 @@ export default function ReportBuilderPage() {
                         </div>
                       )}
                     </div>
-                    
+
                     {/* Filter Field Selection UI */}
                     <div className="mt-8 border border-dashed border-gray-300 rounded-md p-4 bg-gray-50">
                       <h4 className="text-sm font-medium mb-3">Add Another Filter</h4>
@@ -2103,7 +1256,7 @@ export default function ReportBuilderPage() {
               // Collapsed view for center panel
               <div className="flex flex-col items-center pt-4 space-y-4 overflow-hidden">
                 {/* Simple icon indicators for collapsed center panel */}
-                <div 
+                <div
                   className="p-2 cursor-pointer hover:bg-gray-50 rounded"
                   title="Report columns"
                   onClick={() => setCenterPanelCollapsed(false)}
@@ -2137,7 +1290,7 @@ export default function ReportBuilderPage() {
           <div className="flex-1 bg-accent/10 flex flex-col transition-all duration-300">
             <div className="p-3 bg-background border-b border-border flex justify-between">
               <div className="flex items-center">
-                <button 
+                <button
                   className="mr-2 p-1 text-muted-foreground hover:text-foreground transition-colors"
                   onClick={() => {
                     setLeftPanelCollapsed(true);
@@ -2166,7 +1319,7 @@ export default function ReportBuilderPage() {
               </div>
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
-                  <button 
+                  <button
                     className={`p-1 rounded ${showRowCounts ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}
                     onClick={toggleRowCounts}
                     title="Toggle Row Counts"
@@ -2188,7 +1341,7 @@ export default function ReportBuilderPage() {
                       <line x1="16" y1="3" x2="14" y2="21" />
                     </svg>
                   </button>
-                  <button 
+                  <button
                     className={`p-1 rounded ${showDetailRows ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}
                     onClick={toggleDetailRows}
                     title="Toggle Detail Rows"
@@ -2213,9 +1366,9 @@ export default function ReportBuilderPage() {
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">Update Automatically</span>
                   <div className="relative inline-flex items-center cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      className="sr-only peer" 
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
                       checked={autoUpdatePreview}
                       onChange={() => setAutoUpdatePreview(!autoUpdatePreview)}
                     />
@@ -2255,16 +1408,16 @@ export default function ReportBuilderPage() {
               // Keep the existing "No records returned" view
               <div className="flex-1 p-6 flex flex-col items-center justify-center text-center">
                 <div className="max-w-md">
-                  <svg 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    width="40" 
-                    height="40" 
-                    viewBox="0 0 24 24" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="1" 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="40"
+                    height="40"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                     className="mx-auto mb-4 text-gray-400"
                   >
                     <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
@@ -2276,7 +1429,7 @@ export default function ReportBuilderPage() {
 
                   <h3 className="text-lg font-medium mb-3 text-gray-700">No records returned in preview</h3>
                   <p className="text-gray-500 mb-4">Try running the report or editing report filters.</p>
-                  
+
                   <div className="space-y-2 text-left">
                     <div>
                       <Link href="#" className="text-blue-600 flex items-center gap-1 text-sm">
@@ -2338,14 +1491,14 @@ export default function ReportBuilderPage() {
             )}
           </div>
         </div>
-        
+
         {/* Formula Builder Panel (shown conditionally) */}
         {showFormulaBuilder && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
               <div className="p-4 border-b border-gray-200 flex justify-between items-center">
                 <h2 className="text-xl font-semibold">Edit Row-Level Formula Column</h2>
-                <button 
+                <button
                   onClick={() => setShowFormulaBuilder(false)}
                   className="text-gray-500 hover:text-gray-700"
                 >
@@ -2365,55 +1518,55 @@ export default function ReportBuilderPage() {
                   </svg>
                 </button>
               </div>
-              
+
               <div className="p-4 text-sm text-gray-600">
                 Create a custom formula to calculate values for each row in your report.
               </div>
-              
+
               <div className="flex-1 overflow-y-auto p-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {/* Left Section: Fields & Functions */}
                   <div className="md:col-span-1 border border-gray-200 rounded-md overflow-hidden">
                     <div className="border-b border-gray-200">
                       <div className="flex w-full">
-                        <button 
+                        <button
                           onClick={() => setFormulaDialogTab("fields")}
-                          className={`flex-1 px-4 py-2 text-center ${formulaDialogTab === "fields" 
-                            ? "bg-white border-b-2 border-blue-600 text-blue-600 font-medium" 
+                          className={`flex-1 px-4 py-2 text-center ${formulaDialogTab === "fields"
+                            ? "bg-white border-b-2 border-blue-600 text-blue-600 font-medium"
                             : "bg-gray-50 text-gray-600"}`}
                         >
                           Fields
                         </button>
-                        <button 
+                        <button
                           onClick={() => setFormulaDialogTab("functions")}
-                          className={`flex-1 px-4 py-2 text-center ${formulaDialogTab === "functions" 
-                            ? "bg-white border-b-2 border-blue-600 text-blue-600 font-medium" 
+                          className={`flex-1 px-4 py-2 text-center ${formulaDialogTab === "functions"
+                            ? "bg-white border-b-2 border-blue-600 text-blue-600 font-medium"
                             : "bg-gray-50 text-gray-600"}`}
                         >
                           Functions
                         </button>
                       </div>
                     </div>
-                    
+
                     <div className="p-2 border-b border-gray-200">
-                      <Input 
+                      <Input
                         placeholder={formulaDialogTab === "fields" ? "Search fields..." : "Search functions..."}
                         value={formulaDialogTab === "fields" ? searchTerm : formulaSearchTerm}
-                        onChange={(e) => formulaDialogTab === "fields" 
-                          ? setSearchTerm(e.target.value) 
+                        onChange={(e) => formulaDialogTab === "fields"
+                          ? setSearchTerm(e.target.value)
                           : setFormulaSearchTerm(e.target.value)
                         }
                         className="text-sm"
                       />
                     </div>
-                    
+
                     <div className="overflow-y-auto max-h-72">
                       {formulaDialogTab === "fields" ? (
                         // Fields Tab Content
                         <div>
                           {Object.entries(fieldsByCategory).map(([category, fields]) => (
                             <div key={category} className="border-b border-gray-200 last:border-b-0">
-                              <div 
+                              <div
                                 className="p-2 flex justify-between items-center cursor-pointer hover:bg-gray-50"
                                 onClick={() => toggleCategory(category)}
                               >
@@ -2435,16 +1588,16 @@ export default function ReportBuilderPage() {
                                   <path d="m6 9 6 6 6-6" />
                                 </svg>
                               </div>
-                              
+
                               {expandedCategories[category as keyof typeof expandedCategories] && (
                                 <div className="pl-2">
                                   {fields
-                                    .filter(field => 
-                                      !searchTerm.trim() || 
+                                    .filter(field =>
+                                      !searchTerm.trim() ||
                                       field.name.toLowerCase().includes(searchTerm.toLowerCase())
                                     )
                                     .map(field => (
-                                      <div 
+                                      <div
                                         key={field.id}
                                         className="pl-2 pr-3 py-1.5 text-sm hover:bg-blue-50 flex items-center justify-between cursor-pointer"
                                         onClick={() => insertFieldIntoFormula(field)}
@@ -2474,7 +1627,7 @@ export default function ReportBuilderPage() {
                               </div>
                               <div className="pl-2">
                                 {category.functions.map((func) => (
-                                  <div 
+                                  <div
                                     key={func.name}
                                     className="pl-2 pr-3 py-1.5 text-sm hover:bg-blue-50 flex items-center justify-between cursor-pointer"
                                     onClick={() => insertFunctionIntoFormula(func.name)}
@@ -2492,7 +1645,7 @@ export default function ReportBuilderPage() {
                       )}
                     </div>
                   </div>
-                  
+
                   {/* Right Section: Formula Builder */}
                   <div className="md:col-span-2">
                     <div className="space-y-4">
@@ -2502,8 +1655,8 @@ export default function ReportBuilderPage() {
                             * Column Name
                             <span className="text-red-500 ml-1">*</span>
                           </Label>
-                          <Input 
-                            id="formula-name" 
+                          <Input
+                            id="formula-name"
                             value={formulaName}
                             onChange={(e) => setFormulaName(e.target.value)}
                             placeholder="Enter a name for this column"
@@ -2514,8 +1667,8 @@ export default function ReportBuilderPage() {
                           <Label htmlFor="formula-description" className="text-sm font-medium">
                             Description
                           </Label>
-                          <Input 
-                            id="formula-description" 
+                          <Input
+                            id="formula-description"
                             value={formulaDescription}
                             onChange={(e) => setFormulaDescription(e.target.value)}
                             placeholder="Optional description"
@@ -2523,14 +1676,14 @@ export default function ReportBuilderPage() {
                           />
                         </div>
                       </div>
-                      
+
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <Label htmlFor="output-type" className="text-sm font-medium">
                             Formula Output Type
                           </Label>
-                          <Select 
-                            value={formulaOutputType} 
+                          <Select
+                            value={formulaOutputType}
                             onValueChange={setFormulaOutputType}
                           >
                             <SelectTrigger id="output-type" className="mt-1">
@@ -2546,14 +1699,14 @@ export default function ReportBuilderPage() {
                             </SelectContent>
                           </Select>
                         </div>
-                        
+
                         {(formulaOutputType === 'number' || formulaOutputType === 'currency' || formulaOutputType === 'percent') && (
                           <div>
                             <Label htmlFor="decimal-points" className="text-sm font-medium">
                               Decimal Points
                             </Label>
-                            <Select 
-                              value={decimalPoints} 
+                            <Select
+                              value={decimalPoints}
                               onValueChange={setDecimalPoints}
                             >
                               <SelectTrigger id="decimal-points" className="mt-1">
@@ -2571,7 +1724,7 @@ export default function ReportBuilderPage() {
                           </div>
                         )}
                       </div>
-                      
+
                       <div>
                         <div className="flex justify-between items-center mb-2">
                           <Label className="text-sm font-medium">Formula</Label>
@@ -2587,7 +1740,7 @@ export default function ReportBuilderPage() {
                             ))}
                           </div>
                         </div>
-                        
+
                         <div className="relative border border-gray-300 rounded-md">
                           <div className="absolute left-0 top-0 bottom-0 w-8 bg-gray-50 border-r border-gray-300 text-right">
                             {Array.from({ length: Math.max((formulaEditorValue.match(/\n/g) || []).length + 1, 1) }).map((_, i) => (
@@ -2601,10 +1754,10 @@ export default function ReportBuilderPage() {
                             placeholder="Enter your formula here..."
                           />
                         </div>
-                        
+
                         <div className="flex justify-end mt-2">
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             size="sm"
                             disabled={!formulaEditorValue.trim()}
                           >
@@ -2612,7 +1765,7 @@ export default function ReportBuilderPage() {
                           </Button>
                         </div>
                       </div>
-                      
+
                       <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-md border border-blue-100 text-sm text-blue-700">
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
@@ -2644,16 +1797,16 @@ export default function ReportBuilderPage() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="p-4 border-t border-gray-200 flex justify-end space-x-2">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={() => setShowFormulaBuilder(false)}
                 >
                   Cancel
                 </Button>
-                <Button 
-                  onClick={handleSubmitFormula} 
+                <Button
+                  onClick={handleSubmitFormula}
                   disabled={!formulaName.trim() || !formulaEditorValue.trim()}
                 >
                   Apply
@@ -2662,14 +1815,14 @@ export default function ReportBuilderPage() {
             </div>
           </div>
         )}
-        
+
         {/* Filter Field Selector Dialog */}
         {showFilterFieldSelector && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
               <div className="p-4 border-b border-gray-200 flex justify-between items-center">
                 <h2 className="text-xl font-semibold">Add Filter</h2>
-                <button 
+                <button
                   onClick={() => setShowFilterFieldSelector(false)}
                   className="text-gray-500 hover:text-gray-700"
                 >
@@ -2689,11 +1842,11 @@ export default function ReportBuilderPage() {
                   </svg>
                 </button>
               </div>
-              
+
               <div className="p-4 border-b border-gray-200">
                 <div className="relative">
-                  <Input 
-                    className="pl-8 text-sm" 
+                  <Input
+                    className="pl-8 text-sm"
                     placeholder="Search fields..."
                     value={filterSearchTerm}
                     onChange={(e) => setFilterSearchTerm(e.target.value)}
@@ -2715,11 +1868,11 @@ export default function ReportBuilderPage() {
                   </svg>
                 </div>
               </div>
-              
+
               <div className="overflow-y-auto flex-1 p-4">
                 {Object.entries(fieldsByCategory).map(([category, fields]) => (
                   <div key={category} className="mb-4">
-                    <div 
+                    <div
                       className="p-2 flex justify-between items-center cursor-pointer hover:bg-gray-50"
                       onClick={() => toggleCategory(category)}
                     >
@@ -2741,16 +1894,16 @@ export default function ReportBuilderPage() {
                         <path d="m6 9 6 6 6-6" />
                       </svg>
                     </div>
-                    
+
                     {expandedCategories[category as keyof typeof expandedCategories] && (
                       <div className="pl-2">
                         {fields
-                          .filter(field => 
-                            !filterSearchTerm.trim() || 
+                          .filter(field =>
+                            !filterSearchTerm.trim() ||
                             field.name.toLowerCase().includes(filterSearchTerm.toLowerCase())
                           )
                           .map(field => (
-                            <div 
+                            <div
                               key={field.id}
                               className="pl-2 pr-3 py-1.5 text-sm hover:bg-blue-50 flex items-center justify-between cursor-pointer group"
                               onClick={() => {
@@ -2768,7 +1921,7 @@ export default function ReportBuilderPage() {
                             >
                               <div className="flex items-center gap-2">
                                 <span className={`w-4 h-4 flex items-center justify-center rounded-sm text-xs ${field.type === 'number' || field.type === 'currency' ? 'bg-purple-100 text-purple-700' : 'bg-indigo-100 text-indigo-700'}`}>
-                                  {getFieldIcon(field.type)}
+                                  {getFieldIcon(field.type as FieldType)}
                                 </span>
                                 <span>{field.name}</span>
                               </div>
@@ -2799,846 +1952,5 @@ export default function ReportBuilderPage() {
         )}
       </div>
     </>
-  );
-}
-
-// Update the FilterRow component to accept the new props
-function FilterRow({ 
-  filter, 
-  onRemove, 
-  onUpdate, 
-  index
-}: { 
-  filter: Filter; 
-  onRemove: () => void;
-  onUpdate: (updates: Partial<Filter>) => void;
-  index: number;
-}) {
-  const { field, operator, value, rangeStart, rangeEnd, selectedOptions } = filter;
-  
-  // Get appropriate operators based on field type
-  const operators = getOperatorsForType(field.type);
-  
-  return (
-    <div className="bg-white border border-gray-200 rounded-md p-4 shadow-sm">
-      <div className="flex justify-between items-center mb-3">
-        <h3 className="font-medium text-sm flex items-center gap-2">
-          <span className="w-5 h-5 inline-flex items-center justify-center bg-blue-100 text-blue-800 rounded-full text-xs">
-            {index}
-          </span>
-          <span className="w-5 h-5 inline-flex items-center justify-center bg-blue-100 text-blue-800 rounded-full text-xs">
-            {getFieldIcon(field.type)}
-          </span>
-          {field.name}
-        </h3>
-        <button 
-          onClick={onRemove}
-          className="text-gray-400 hover:text-gray-600"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M18 6 6 18" />
-            <path d="m6 6 12 12" />
-          </svg>
-        </button>
-      </div>
-      
-      <div className="space-y-3">
-        {/* Operator selector */}
-        <div>
-          <Select 
-            value={operator} 
-            onValueChange={(newOperator) => onUpdate({ operator: newOperator })}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select operator" />
-            </SelectTrigger>
-            <SelectContent>
-              {operators.map(op => (
-                <SelectItem key={op.value} value={op.value}>{op.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        
-        {/* Value input based on field type and operator */}
-        {renderValueInput(field, operator, { 
-          value, 
-          setValue: (newValue) => onUpdate({ value: newValue }), 
-          rangeStart: rangeStart || '', 
-          setRangeStart: (newValue) => onUpdate({ rangeStart: newValue }), 
-          rangeEnd: rangeEnd || '', 
-          setRangeEnd: (newValue) => onUpdate({ rangeEnd: newValue }),
-          selectedOptions: selectedOptions || [],
-          setSelectedOptions: (newOptions) => onUpdate({ selectedOptions: newOptions })
-        })}
-      </div>
-    </div>
-  );
-}
-
-// Helper function to get default operator based on field type
-function getDefaultOperator(type: FieldType): string {
-  switch(type) {
-    case 'text':
-    case 'textarea':
-    case 'url':
-    case 'email':
-    case 'phone':
-      return 'contains';
-    case 'number':
-    case 'currency':
-      return 'equals';
-    case 'date':
-    case 'datetime':
-      return 'equals';
-    case 'picklist':
-    case 'multipicklist':
-      return 'equals';
-    case 'lookup':
-    case 'user':
-      return 'equals';
-    case 'checkbox':
-      return 'equals';
-    default:
-      return 'equals';
-  }
-}
-
-// Helper function to get field icon
-function getFieldIcon(type: FieldType): string {
-  switch(type) {
-    case 'text':
-    case 'textarea':
-    case 'url':
-    case 'email':
-    case 'phone':
-      return 'T';
-    case 'number':
-    case 'currency':
-      return '#';
-    case 'date':
-    case 'datetime':
-      return 'D';
-    case 'picklist':
-    case 'multipicklist':
-      return 'L';
-    case 'lookup':
-    case 'user':
-      return 'R';
-    case 'checkbox':
-      return '✓';
-    default:
-      return 'F';
-  }
-}
-
-// Helper function to get operators for field type
-function getOperatorsForType(type: FieldType): Operator[] {
-  const textOperators: Operator[] = [
-    { value: 'equals', label: 'equals' },
-    { value: 'not_equals', label: 'not equals' },
-    { value: 'contains', label: 'contains' },
-    { value: 'not_contains', label: 'does not contain' },
-    { value: 'starts_with', label: 'starts with' },
-    { value: 'ends_with', label: 'ends with' },
-    { value: 'is_empty', label: 'is empty' },
-    { value: 'is_not_empty', label: 'is not empty' }
-  ];
-  
-  const numberOperators: Operator[] = [
-    { value: 'equals', label: 'equals' },
-    { value: 'not_equals', label: 'not equals' },
-    { value: 'greater_than', label: 'greater than' },
-    { value: 'less_than', label: 'less than' },
-    { value: 'greater_or_equal', label: 'greater or equal' },
-    { value: 'less_or_equal', label: 'less or equal' },
-    { value: 'between', label: 'between' },
-    { value: 'is_empty', label: 'is empty' },
-    { value: 'is_not_empty', label: 'is not empty' }
-  ];
-  
-  const dateOperators: Operator[] = [
-    { value: 'equals', label: 'equals' },
-    { value: 'not_equals', label: 'not equals' },
-    { value: 'greater_than', label: 'after' },
-    { value: 'less_than', label: 'before' },
-    { value: 'between', label: 'date range' },
-    { value: 'last_n_days', label: 'last N days' },
-    { value: 'next_n_days', label: 'next N days' },
-    { value: 'current_fiscal_year', label: 'current fiscal year' },
-    { value: 'current_fiscal_quarter', label: 'current fiscal quarter' },
-    { value: 'last_fiscal_year', label: 'last fiscal year' },
-    { value: 'this_year', label: 'this year' },
-    { value: 'this_month', label: 'this month' },
-    { value: 'last_month', label: 'last month' },
-    { value: 'is_empty', label: 'is empty' },
-    { value: 'is_not_empty', label: 'is not empty' }
-  ];
-  
-  const picklistOperators: Operator[] = [
-    { value: 'equals', label: 'equals' },
-    { value: 'not_equals', label: 'not equals' },
-    { value: 'includes', label: 'includes' },
-    { value: 'excludes', label: 'excludes' },
-    { value: 'is_empty', label: 'is empty' },
-    { value: 'is_not_empty', label: 'is not empty' }
-  ];
-  
-  const lookupOperators: Operator[] = [
-    { value: 'equals', label: 'equals' },
-    { value: 'not_equals', label: 'not equals' },
-    { value: 'is_empty', label: 'is empty' },
-    { value: 'is_not_empty', label: 'is not empty' }
-  ];
-  
-  const checkboxOperators: Operator[] = [
-    { value: 'equals', label: 'equals' },
-    { value: 'not_equals', label: 'not equals' }
-  ];
-  
-  switch(type) {
-    case 'text':
-    case 'textarea':
-    case 'url':
-    case 'email':
-    case 'phone':
-      return textOperators;
-    case 'number':
-    case 'currency':
-      return numberOperators;
-    case 'date':
-    case 'datetime':
-      return dateOperators;
-    case 'picklist':
-    case 'multipicklist':
-      return picklistOperators;
-    case 'lookup':
-    case 'user':
-      return lookupOperators;
-    case 'checkbox':
-      return checkboxOperators;
-    default:
-      return textOperators;
-  }
-}
-
-// Helper function to render the appropriate value input based on field type and operator
-function renderValueInput(field: Field, operator: string, state: FilterState): React.ReactNode {
-  const { value, setValue, rangeStart, setRangeStart, rangeEnd, setRangeEnd, selectedOptions, setSelectedOptions } = state;
-  
-  // Handle operators that don't need value inputs
-  if (['is_empty', 'is_not_empty'].includes(operator)) {
-    return null;
-  }
-  
-  // Special handling for date/datetime fields
-  if ((field.type === 'date' || field.type === 'datetime') && !['between', 'last_n_days', 'next_n_days'].includes(operator)) {
-    return (
-      <div>
-        <Select value={value} onValueChange={setValue}>
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select date option" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="today">Today</SelectItem>
-            <SelectItem value="yesterday">Yesterday</SelectItem>
-            <SelectItem value="tomorrow">Tomorrow</SelectItem>
-            <SelectItem value="last_week">Last Week</SelectItem>
-            <SelectItem value="this_week">This Week</SelectItem>
-            <SelectItem value="next_week">Next Week</SelectItem>
-            <SelectItem value="last_month">Last Month</SelectItem>
-            <SelectItem value="this_month">This Month</SelectItem>
-            <SelectItem value="next_month">Next Month</SelectItem>
-            <SelectItem value="last_90_days">Last 90 Days</SelectItem>
-            <SelectItem value="this_quarter">This Quarter</SelectItem>
-            <SelectItem value="last_quarter">Last Quarter</SelectItem>
-            <SelectItem value="this_year">This Year</SelectItem>
-            <SelectItem value="last_year">Last Year</SelectItem>
-            <SelectItem value="custom">Custom Date...</SelectItem>
-          </SelectContent>
-        </Select>
-        
-        {value === 'custom' && (
-          <div className="mt-3">
-            <Label className="text-xs mb-1 block">Select specific date</Label>
-            <Input
-              type={field.type === 'datetime' ? "datetime-local" : "date"}
-              value={rangeStart}
-              onChange={(e) => setRangeStart(e.target.value)}
-              className="mt-1"
-            />
-          </div>
-        )}
-      </div>
-    );
-  }
-  
-  // Special handling for "between" operator for date/datetime fields
-  if ((field.type === 'date' || field.type === 'datetime') && operator === 'between') {
-    return (
-      <div className="space-y-3">
-        <div className="bg-blue-50 p-3 rounded-md border border-blue-200 mb-3">
-          <div className="text-sm font-medium text-blue-800">Date Range Filter</div>
-          <div className="text-xs text-blue-600 mt-1">Select a start and end date for your range</div>
-        </div>
-        
-        <div>
-          <Label className="text-xs mb-1 block">From</Label>
-          <Select value={rangeStart} onValueChange={setRangeStart}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Start date option" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="today">Today</SelectItem>
-              <SelectItem value="yesterday">Yesterday</SelectItem>
-              <SelectItem value="start_of_week">Start of Week</SelectItem>
-              <SelectItem value="start_of_month">Start of Month</SelectItem>
-              <SelectItem value="start_of_quarter">Start of Quarter</SelectItem>
-              <SelectItem value="start_of_year">Start of Year</SelectItem>
-              <SelectItem value="custom">Custom Date...</SelectItem>
-            </SelectContent>
-          </Select>
-          
-          {rangeStart === 'custom' && (
-            <Input
-              type={field.type === 'datetime' ? "datetime-local" : "date"}
-              value={rangeStart !== 'custom' ? '' : state.value}
-              onChange={(e) => setValue(e.target.value)}
-              className="mt-2"
-            />
-          )}
-        </div>
-        
-        <div>
-          <Label className="text-xs mb-1 block">To</Label>
-          <Select value={rangeEnd} onValueChange={setRangeEnd}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="End date option" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="today">Today</SelectItem>
-              <SelectItem value="tomorrow">Tomorrow</SelectItem>
-              <SelectItem value="end_of_week">End of Week</SelectItem>
-              <SelectItem value="end_of_month">End of Month</SelectItem>
-              <SelectItem value="end_of_quarter">End of Quarter</SelectItem>
-              <SelectItem value="end_of_year">End of Year</SelectItem>
-              <SelectItem value="custom">Custom Date...</SelectItem>
-            </SelectContent>
-          </Select>
-          
-          {rangeEnd === 'custom' && (
-            <Input
-              type={field.type === 'datetime' ? "datetime-local" : "date"}
-              value={rangeEnd !== 'custom' ? '' : state.selectedOptions[0] || ''}
-              onChange={(e) => setSelectedOptions([e.target.value])}
-              className="mt-2"
-            />
-          )}
-        </div>
-      </div>
-    );
-  }
-  
-  // Special handling for "last_n_days" and "next_n_days"
-  if (['last_n_days', 'next_n_days'].includes(operator)) {
-    return (
-      <div>
-        <div className="flex items-center gap-2">
-          <Input 
-            type="number"
-            min="1"
-            placeholder="Number of days"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            className="flex-1"
-          />
-          <div className="text-sm text-gray-500">days</div>
-        </div>
-        <div className="text-xs text-gray-500 mt-1">
-          {operator === 'last_n_days' ? 'Past' : 'Next'} N days {operator === 'last_n_days' ? 'before' : 'after'} today
-        </div>
-      </div>
-    );
-  }
-  
-  // Special handling for relative date operators
-  if (['current_fiscal_year', 'current_fiscal_quarter', 'last_fiscal_year', 'this_year', 'this_month', 'last_month'].includes(operator)) {
-    return (
-      <div className="text-xs text-gray-500 italic">
-        No additional input needed for this filter.
-      </div>
-    );
-  }
-  
-  // Special handling for "between" operator for non-date fields
-  if (operator === 'between' && field.type !== 'date' && field.type !== 'datetime') {
-    return (
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <Label className="mb-1 block text-xs">From</Label>
-          {renderSingleValueInput(field, rangeStart, setRangeStart)}
-        </div>
-        <div>
-          <Label className="mb-1 block text-xs">To</Label>
-          {renderSingleValueInput(field, rangeEnd, setRangeEnd)}
-        </div>
-      </div>
-    );
-  }
-  
-  // Special handling for picklists when using includes/excludes
-  if ((field.type === 'picklist' || field.type === 'multipicklist') && ['includes', 'excludes'].includes(operator)) {
-    // Mock picklist values for demo
-    const options = [
-      { value: 'technology', label: 'Technology' },
-      { value: 'healthcare', label: 'Healthcare' },
-      { value: 'finance', label: 'Finance' },
-      { value: 'retail', label: 'Retail' },
-      { value: 'manufacturing', label: 'Manufacturing' },
-      { value: 'education', label: 'Education' },
-      { value: 'other', label: 'Other' }
-    ];
-    
-    return (
-      <div className="space-y-2">
-        {options.map(option => (
-          <div key={option.value} className="flex items-center space-x-2">
-            <Checkbox 
-              id={`${field.id}-${option.value}`}
-              checked={selectedOptions.includes(option.value)}
-              onCheckedChange={(checked) => {
-                if (checked) {
-                  setSelectedOptions([...selectedOptions, option.value]);
-                } else {
-                  setSelectedOptions(selectedOptions.filter(v => v !== option.value));
-                }
-              }}
-            />
-            <Label 
-              htmlFor={`${field.id}-${option.value}`}
-              className="text-sm font-normal"
-            >
-              {option.label}
-            </Label>
-          </div>
-        ))}
-      </div>
-    );
-  }
-  
-  // Default case: render single value input
-  return renderSingleValueInput(field, value, setValue);
-}
-
-// Helper function to render single value input based on field type
-function renderSingleValueInput(field: Field, value: string, setValue: (value: string) => void): React.ReactNode {
-  switch(field.type) {
-    case 'text':
-    case 'textarea':
-    case 'url':
-    case 'email':
-    case 'phone':
-      return (
-        <Input 
-          type="text"
-          placeholder="Enter value"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-        />
-      );
-    
-    case 'number':
-    case 'currency':
-      return (
-        <Input 
-          type="number"
-          placeholder="Enter value"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-        />
-      );
-    
-    case 'date':
-      return (
-        <Input 
-          type="date"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-        />
-      );
-    
-    case 'datetime':
-      return (
-        <Input 
-          type="datetime-local"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-        />
-      );
-    
-    case 'picklist':
-      // Mock picklist values for demo
-      const options = [
-        { value: 'technology', label: 'Technology' },
-        { value: 'healthcare', label: 'Healthcare' },
-        { value: 'finance', label: 'Finance' },
-        { value: 'retail', label: 'Retail' },
-        { value: 'manufacturing', label: 'Manufacturing' },
-        { value: 'education', label: 'Education' },
-        { value: 'other', label: 'Other' }
-      ];
-      
-      return (
-        <Select value={value} onValueChange={setValue}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select value" />
-          </SelectTrigger>
-          <SelectContent>
-            {options.map(option => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      );
-    
-    case 'lookup':
-    case 'user':
-      return (
-        <div>
-          <Input 
-            type="text"
-            placeholder="Search..."
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-          />
-          <div className="text-xs text-gray-500 mt-1">Type to search for records</div>
-        </div>
-      );
-    
-    case 'checkbox':
-      return (
-        <Select value={value} onValueChange={setValue}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select value" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="true">True</SelectItem>
-            <SelectItem value="false">False</SelectItem>
-          </SelectContent>
-        </Select>
-      );
-    
-    default:
-      return (
-        <Input 
-          type="text"
-          placeholder="Enter value"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-        />
-      );
-  }
-}
-
-// Add DataTable component
-interface DataTableProps<TData extends Record<string, any>> {
-  data: TData[];
-  columns: ColumnDef<TData, any>[];
-  sorting: SortingState;
-  setSorting: React.Dispatch<React.SetStateAction<SortingState>>;
-  columnFilters: ColumnFiltersState;
-  setColumnFilters: React.Dispatch<React.SetStateAction<ColumnFiltersState>>;
-  columnVisibility: VisibilityState;
-  setColumnVisibility: React.Dispatch<React.SetStateAction<VisibilityState>>;
-  pagination: { pageIndex: number; pageSize: number };
-  setPagination: React.Dispatch<React.SetStateAction<{ pageIndex: number; pageSize: number }>>;
-  showRowCounts: boolean;
-  showDetailRows: boolean;
-  grouping: GroupingState;
-  onGroupingChange: OnChangeFn<GroupingState>;
-  expandedRowGroups: Record<string, boolean>;
-  setExpandedRowGroups: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
-  pageCount: number;
-  totalRows: number;
-  isLoading: boolean;
-}
-
-function DataTable<TData extends Record<string, any>>(props: DataTableProps<TData>) {
-  const {
-    data,
-    columns,
-    sorting,
-    setSorting,
-    columnFilters,
-    setColumnFilters,
-    columnVisibility,
-    setColumnVisibility,
-    pagination,
-    setPagination,
-    showRowCounts,
-    showDetailRows,
-    grouping,
-    onGroupingChange,
-    expandedRowGroups,
-    setExpandedRowGroups,
-    pageCount,
-    totalRows,
-    isLoading
-  } = props;
-
-  // Initialize the table with grouping support
-  const table = useReactTable({
-    data,
-    columns,
-    state: {
-      sorting,
-      columnFilters,
-      columnVisibility,
-      pagination,
-      grouping,
-    },
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
-    onColumnVisibilityChange: setColumnVisibility,
-    onPaginationChange: setPagination,
-    onGroupingChange,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getGroupedRowModel: getGroupedRowModel(),
-    getExpandedRowModel: getExpandedRowModel(),
-  });
-
-  return (
-    <div className="space-y-4">
-      {isLoading && (
-        <div className="absolute inset-0 bg-white/50 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
-      )}
-      <div className="rounded-md border">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-100 text-gray-600">
-            {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id} className="border-b">
-                {headerGroup.headers.map((header) => (
-                  <th key={header.id} className="px-4 py-3 text-left font-medium">
-                    {header.isPlaceholder ? null : (
-                      <div className="flex items-center gap-2">
-                        {header.column.getCanGroup() && (
-                          <button
-                            onClick={header.column.getToggleGroupingHandler()}
-                            className="cursor-pointer"
-                          >
-                            {header.column.getIsGrouped() ? '🛑' : '👊'}
-                          </button>
-                        )}
-                        {flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                        {header.column.getCanSort() && (
-                          <button
-                            className="ml-2"
-                            onClick={header.column.getToggleSortingHandler()}
-                          >
-                            {{
-                              asc: '↑',
-                              desc: '↓',
-                            }[header.column.getIsSorted() as string] ?? '⇅'}
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </th>
-                ))}
-              </tr>
-            ))}
-          </thead>
-          <tbody>
-            {table.getRowModel().rows.map(row => (
-              <tr key={row.id} className="border-t hover:bg-gray-50">
-                {row.getVisibleCells().map(cell => (
-                  <td
-                    key={cell.id}
-                    className={`px-4 py-2 ${
-                      cell.getIsGrouped()
-                        ? 'bg-green-100'
-                        : cell.getIsAggregated()
-                          ? 'bg-orange-100'
-                          : cell.getIsPlaceholder()
-                            ? 'bg-red-100'
-                            : ''
-                    }`}
-                  >
-                    {cell.getIsGrouped() ? (
-                      <button
-                        onClick={row.getToggleExpandedHandler()}
-                        className="flex items-center gap-2"
-                      >
-                        {row.getIsExpanded() ? '👇' : '👉'}{' '}
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}{' '}
-                        ({row.subRows.length})
-                      </button>
-                    ) : cell.getIsAggregated() ? (
-                      flexRender(
-                        cell.column.columnDef.aggregatedCell ??
-                          cell.column.columnDef.cell,
-                        cell.getContext()
-                      )
-                    ) : cell.getIsPlaceholder() ? null : (
-                      flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )
-                    )}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      
-      {/* Add pagination controls */}
-      <div className="flex items-center justify-between px-2">
-        <div className="flex-1 text-sm text-gray-500">
-          {totalRows > 0 ? (
-            <>
-              Showing {pagination.pageIndex * pagination.pageSize + 1} to{' '}
-              {Math.min((pagination.pageIndex + 1) * pagination.pageSize, totalRows)} of {totalRows} results
-            </>
-          ) : (
-            'No results'
-          )}
-        </div>
-        <div className="flex items-center space-x-6 lg:space-x-8">
-          <div className="flex items-center space-x-2">
-            <p className="text-sm font-medium">Rows per page</p>
-            <Select
-              value={`${pagination.pageSize}`}
-              onValueChange={(value) => {
-                setPagination({ pageIndex: 0, pageSize: Number(value) });
-              }}
-            >
-              <SelectTrigger className="h-8 w-[70px]">
-                <SelectValue placeholder={pagination.pageSize} />
-              </SelectTrigger>
-              <SelectContent side="top">
-                {[10, 20, 30, 40, 50].map((pageSize) => (
-                  <SelectItem key={pageSize} value={`${pageSize}`}>
-                    {pageSize}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              className="h-8 w-8 p-0"
-              onClick={() => setPagination(prev => ({ ...prev, pageIndex: 0 }))}
-              disabled={pagination.pageIndex === 0}
-            >
-              <span className="sr-only">Go to first page</span>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <polyline points="11 17 6 12 11 7" />
-                <polyline points="18 17 13 12 18 7" />
-              </svg>
-            </Button>
-            <Button
-              variant="outline"
-              className="h-8 w-8 p-0"
-              onClick={() => setPagination(prev => ({ ...prev, pageIndex: prev.pageIndex - 1 }))}
-              disabled={pagination.pageIndex === 0}
-            >
-              <span className="sr-only">Go to previous page</span>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <polyline points="15 18 9 12 15 6" />
-              </svg>
-            </Button>
-            <Button
-              variant="outline"
-              className="h-8 w-8 p-0"
-              onClick={() => setPagination(prev => ({ ...prev, pageIndex: prev.pageIndex + 1 }))}
-              disabled={pagination.pageIndex === pageCount - 1}
-            >
-              <span className="sr-only">Go to next page</span>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-            </Button>
-            <Button
-              variant="outline"
-              className="h-8 w-8 p-0"
-              onClick={() => setPagination(prev => ({ ...prev, pageIndex: pageCount - 1 }))}
-              disabled={pagination.pageIndex === pageCount - 1}
-            >
-              <span className="sr-only">Go to last page</span>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <polyline points="13 17 18 12 13 7" />
-                <polyline points="6 17 11 12 6 7" />
-              </svg>
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
   );
 }
