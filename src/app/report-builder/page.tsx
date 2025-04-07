@@ -19,7 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Search, ChevronDown } from "lucide-react";
+import { Search, ChevronDown, X, FileText, Clock, ListChecks } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -338,66 +338,79 @@ const reportTypes: ReportTypeTemplate[] = [
   }
 ];
 
-// Add this interface before the ReportTypeTemplate interface
+// Update the RecentReportType interface to include additional fields
 interface RecentReportType {
   name: string;
   category: string;
   lastUsed: string;
   status: "Active" | "Draft";
   description: string;
+  type: "tabular" | "summary" | "matrix" | "joined";
+  createdBy?: string;
+  objects?: Array<{
+    name: string;
+    icon: string;
+    color: string;
+    relatedObjects?: Array<{
+      name: string;
+      icon: string;
+      color: string;
+      relation: string;
+    }>;
+  }>;
+  fieldsCount?: number;
 }
 
-// Mock data for recently used report types
+// Update mock data with additional details
 const recentReportTypes: RecentReportType[] = [
+  {
+    name: "Demo With SS",
+    category: "Custom",
+    lastUsed: "2 days ago",
+    status: "Active",
+    description: "ashdasd",
+    type: "tabular",
+    createdBy: "You",
+    objects: [
+      {
+        name: "Account",
+        icon: "📊",
+        color: "#4299e1",
+        relatedObjects: []
+      },
+      {
+        name: "Contact",
+        icon: "👤",
+        color: "#805ad5",
+        relatedObjects: []
+      },
+      {
+        name: "Opportunity Contact Role",
+        icon: "🔗",
+        color: "#38a169",
+        relatedObjects: []
+      }
+    ],
+    fieldsCount: 148
+  },
+  // Keep the other report types with updated structure
   {
     name: "Sales Performance Dashboard",
     category: "Analytics",
     lastUsed: "2 days ago",
     status: "Active",
-    description: "Track sales metrics and team performance"
+    description: "Track sales metrics and team performance",
+    type: "tabular",
+    objects: [
+      {
+        name: "Opportunity",
+        icon: "💰",
+        color: "#3182ce"
+      }
+    ],
+    fieldsCount: 56
   },
-  {
-    name: "Customer Feedback Analysis",
-    category: "Customer",
-    lastUsed: "5 days ago",
-    status: "Active",
-    description: "Analyze customer satisfaction and feedback trends"
-  },
-  {
-    name: "Inventory Management Report",
-    category: "Operations",
-    lastUsed: "1 week ago",
-    status: "Draft",
-    description: "Monitor stock levels and inventory turnover"
-  },
-  {
-    name: "Marketing Campaign Results",
-    category: "Marketing",
-    lastUsed: "2 weeks ago",
-    status: "Active",
-    description: "Measure campaign performance and ROI"
-  },
-  {
-    name: "Financial Statement Summary",
-    category: "Finance",
-    lastUsed: "3 weeks ago",
-    status: "Active",
-    description: "Overview of financial performance metrics"
-  },
-  {
-    name: "Employee Performance Review",
-    category: "HR",
-    lastUsed: "1 month ago",
-    status: "Draft",
-    description: "Track employee metrics and achievements"
-  },
-  {
-    name: "Project Timeline Analysis",
-    category: "Project",
-    lastUsed: "1 month ago",
-    status: "Active",
-    description: "Monitor project progress and milestones"
-  }
+  // ... other report types
 ];
 
 function ReportTypeSelectionModal({ 
@@ -411,29 +424,37 @@ function ReportTypeSelectionModal({
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedReport, setSelectedReport] = useState<RecentReportType | null>(null);
 
   const categories = Array.from(new Set(recentReportTypes.map(report => report.category)));
 
   const filteredReports = recentReportTypes.filter(report => {
     const matchesSearch = report.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         report.description.toLowerCase().includes(searchTerm.toLowerCase());
+                        report.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = !selectedCategory || report.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
+  const handleReportSelect = (report: RecentReportType) => {
+    setSelectedReport(report);
+  };
+
+  const handleStartReport = () => {
+    if (selectedReport) {
+      const reportTemplate = reportTypes.find(rt => rt.id === selectedReport.type);
+      if (reportTemplate) {
+        onSelect(reportTemplate);
+      }
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[900px] h-[80vh]">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-semibold">Select a Report Type</DialogTitle>
-          <DialogDescription>
-            Choose from your recently used reports or search for a specific type
-          </DialogDescription>
-        </DialogHeader>
-        
-        <div className="flex h-full gap-6 pt-4">
-          {/* Left sidebar - Categories */}
-          <div className="w-48 flex-shrink-0">
+      <DialogContent className="sm:max-w-[1200px] h-[80vh] p-0 flex overflow-hidden">
+        {/* Left side - Report Type List */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Categories Sidebar */}
+          <div className="w-48 p-6 border-r border-gray-200 flex-shrink-0 overflow-y-auto">
             <h3 className="font-medium text-sm text-gray-500 mb-3">Categories</h3>
             <div className="space-y-1">
               <button
@@ -459,62 +480,149 @@ function ReportTypeSelectionModal({
               ))}
             </div>
           </div>
-
-          {/* Main content */}
-          <div className="flex-1 min-h-0">
-            {/* Search */}
-            <div className="relative mb-4">
+          
+          {/* Report List */}
+          <div className="flex-1 p-6 border-r border-gray-200 overflow-hidden flex flex-col">
+            <DialogHeader className="px-0">
+              <DialogTitle className="text-2xl font-semibold">Select a Report Type</DialogTitle>
+            </DialogHeader>
+            
+            <div className="relative my-4">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
-                placeholder="Search report types..."
+                placeholder="Search Report Types..."
                 className="pl-10"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
 
-            {/* Reports list */}
-            <ScrollArea className="h-[calc(80vh-220px)]">
-              <div className="space-y-2">
+            <h3 className="text-lg font-medium mb-4">Recently Used Report Types</h3>
+            
+            <div className="border rounded-md overflow-hidden">
+              {/* Table Header */}
+              <div className="grid grid-cols-2 bg-gray-50 p-3 border-b">
+                <div className="text-sm font-medium text-gray-600">Report Type Name</div>
+                <div className="text-sm font-medium text-gray-600">Category</div>
+              </div>
+              
+              {/* Table Rows */}
+              <div className="max-h-[calc(80vh-240px)] overflow-y-auto">
                 {filteredReports.map((report, index) => (
                   <div
                     key={index}
-                    onClick={() => {
-                      const matchingReportType = reportTypes.find(rt => rt.name === report.name);
-                      if (matchingReportType) {
-                        onSelect(matchingReportType);
-                      }
-                    }}
-                    className="group rounded-lg border border-gray-200 p-4 hover:border-primary hover:shadow-sm transition-all cursor-pointer"
+                    onClick={() => handleReportSelect(report)}
+                    className={`grid grid-cols-2 p-3 border-b cursor-pointer hover:bg-gray-50 transition-colors ${
+                      selectedReport?.name === report.name ? 'bg-gray-100' : ''
+                    }`}
                   >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h4 className="font-medium text-gray-900 group-hover:text-primary">
-                          {report.name}
-                        </h4>
-                        <p className="text-sm text-gray-500 mt-1">
-                          {report.description}
-                        </p>
-                      </div>
-                      <ChevronDown className="h-5 w-5 text-gray-400 group-hover:text-primary" />
-                    </div>
-                    <div className="flex items-center gap-3 mt-3">
-                      <Badge variant={report.status === "Active" ? "default" : "secondary"}>
-                        {report.status}
-                      </Badge>
-                      <span className="text-sm text-gray-500">
-                        {report.category}
-                      </span>
-                      <span className="text-sm text-gray-400">
-                        Last used {report.lastUsed}
-                      </span>
+                    <div>{report.name}</div>
+                    <div className="flex items-center justify-between">
+                      <span>{report.category}</span>
+                      <ChevronDown className="h-4 w-4 text-gray-400" />
                     </div>
                   </div>
                 ))}
               </div>
-            </ScrollArea>
+            </div>
           </div>
         </div>
+        
+        {/* Right side - Details Panel */}
+        {selectedReport ? (
+          <div className="w-1/3 p-6 flex flex-col">
+            <div className="flex justify-between items-start mb-6">
+              <h2 className="text-xl font-semibold">Details</h2>
+              <Button variant="ghost" size="icon" onClick={() => setSelectedReport(null)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                <FileText className="h-6 w-6 text-green-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold">{selectedReport.name}</h3>
+                <p className="text-sm text-gray-600">{selectedReport.category} Report Type</p>
+              </div>
+            </div>
+            
+            <div className="flex gap-2 mb-6">
+              <Button 
+                className="flex-1" 
+                onClick={handleStartReport}
+              >
+                Start Report
+              </Button>
+              <Button variant="outline">
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <div className="border-t pt-4 mb-6">
+              <div className="flex gap-4 mb-4">
+                <Button variant="ghost" className="flex-1 justify-start px-0">
+                  <Clock className="h-4 w-4 mr-2" />
+                  Details
+                </Button>
+                <Button variant="ghost" className="flex-1 justify-start px-0 text-gray-500">
+                  <ListChecks className="h-4 w-4 mr-2" />
+                  Fields ({selectedReport.fieldsCount || 0})
+                </Button>
+              </div>
+              
+              <div>
+                <h4 className="font-medium mb-2">Description</h4>
+                <p className="text-sm text-gray-600 mb-4">{selectedReport.description}</p>
+                
+                <h4 className="font-medium mb-2">Created By You</h4>
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                    <FileText className="h-4 w-4 text-green-600" />
+                  </div>
+                  <span className="text-sm text-blue-600">New {selectedReport.name} Report</span>
+                </div>
+                
+                <h4 className="font-medium mb-2">Created By Others</h4>
+                <p className="text-sm text-gray-600 mb-4">No Reports Yet</p>
+                
+                <h4 className="font-medium mb-2">Objects Used in Report Type</h4>
+                {selectedReport.objects?.map((obj, index) => (
+                  <div key={index} className="flex items-center gap-2 mb-2">
+                    <div 
+                      className="w-8 h-8 rounded-lg flex items-center justify-center"
+                      style={{ backgroundColor: `${obj.color}20` }}
+                    >
+                      <span className="text-sm" style={{ color: obj.color }}>{obj.icon}</span>
+                    </div>
+                    <span className="text-sm text-blue-600">{obj.name}</span>
+                    
+                    {obj.relatedObjects?.map((related, idx) => (
+                      <div key={idx} className="flex items-center">
+                        <div className="flex">
+                          <div className="w-4 h-8 border-t border-l border-gray-300 rounded-tl-md"></div>
+                        </div>
+                        <div 
+                          className="w-8 h-8 rounded-lg flex items-center justify-center"
+                          style={{ backgroundColor: `${related.color}20` }}
+                        >
+                          <span className="text-sm" style={{ color: related.color }}>{related.icon}</span>
+                        </div>
+                        <span className="text-sm text-blue-600">{related.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="w-1/3 p-6 flex flex-col items-center justify-center text-gray-500">
+            <FileText className="h-12 w-12 mb-4" />
+            <p className="text-center">Select a report type to view details</p>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
