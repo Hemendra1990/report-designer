@@ -11,6 +11,39 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+// Import our icon components
+import { 
+  ChevronDownIcon, 
+  ChevronLeftIcon, 
+  ChevronRightIcon,
+  CrossIcon,
+  DragHandleIcon,
+  ExpandIcon,
+  FileIcon,
+  InfoIcon,
+  ListIcon,
+  MenuIcon,
+  PlusIcon,
+  PrintIcon,
+  SearchIcon,
+  TableIcon,
+  TrashIcon,
+  ArrowRightIcon
+} from "@/components/icons";
+
+import {
+  AccountIcon,
+  BucketIcon,
+  ColumnIcon,
+  DataTableIcon,
+  FilterIcon,
+  FormulaIcon,
+  GroupRowsIcon,
+  NavigationIcon,
+  RunIcon,
+  SaveIcon
+} from "@/components/icons/ReportIcons";
+
 // Import TanStack Table
 import {
   ColumnDef,
@@ -525,26 +558,17 @@ export default function ReportBuilderPage() {
               <div className="text-lg font-semibold">New Accounts Report</div>
             </div>
             <div className="bg-white text-gray-700 px-3 py-1 rounded-full text-sm border border-gray-300 flex items-center gap-1">
-              <Image src="/icons/account.svg" width={14} height={14} alt="Account" />
+              <AccountIcon size={14} />
               <span>Accounts</span>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" className="flex items-center gap-1">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 18l6-6-6-6" />
-              </svg>
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M15 18l-6-6 6-6" />
-              </svg>
+              <NavigationIcon size={16} />
             </Button>
             <Button variant="outline" size="sm" className="text-gray-400 bg-gray-100">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
-                <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
-                <path d="M18 17H9" />
-              </svg>
+              <PrintIcon size={16} />
             </Button>
             <Select defaultValue="save">
               <SelectTrigger className="w-[130px] h-9 bg-sky-50 text-blue-600 border-blue-100">
@@ -603,20 +627,9 @@ export default function ReportBuilderPage() {
                 className="p-1 text-muted-foreground hover:text-foreground transition-colors"
                 title={leftPanelCollapsed ? "Expand fields panel" : "Collapse fields panel"}
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className={`transition-transform ${leftPanelCollapsed ? 'rotate-180' : ''}`}
-                >
-                  <path d="M15 18l-6-6 6-6" />
-                </svg>
+                <ChevronLeftIcon 
+                  className={`transition-transform ${leftPanelCollapsed ? 'rotate-180' : ''}`} 
+                />
               </button>
             </div>
 
@@ -630,21 +643,9 @@ export default function ReportBuilderPage() {
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
+                    <SearchIcon
                       className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"
-                    >
-                      <circle cx="11" cy="11" r="8" />
-                      <path d="m21 21-4.3-4.3" />
-                    </svg>
+                    />
                   </div>
                 </div>
 
@@ -663,20 +664,9 @@ export default function ReportBuilderPage() {
                         <div className="text-xs font-semibold text-gray-500 uppercase">
                           {category} FIELDS ({fields.length})
                         </div>
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="14"
-                          height="14"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className={`transition-transform ${expandedCategories[category as keyof typeof expandedCategories] ? 'rotate-180' : ''}`}
-                        >
-                          <path d="m6 9 6 6 6-6" />
-                        </svg>
+                        <ChevronDownIcon 
+                          className={`transition-transform ${expandedCategories[category as keyof typeof expandedCategories] ? 'rotate-180' : ''}`} 
+                        />
                       </div>
 
                       {expandedCategories[category as keyof typeof expandedCategories] && (
@@ -700,21 +690,9 @@ export default function ReportBuilderPage() {
                                   </span>
                                   <span>{field.name}</span>
                                 </div>
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  width="14"
-                                  height="14"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
+                                <PlusIcon
                                   className="text-blue-600 opacity-0 group-hover:opacity-100"
-                                >
-                                  <path d="M5 12h14" />
-                                  <path d="M12 5v14" />
-                                </svg>
+                                />
                               </div>
                             ))}
                           {fields.filter(field =>
@@ -761,20 +739,9 @@ export default function ReportBuilderPage() {
                 className="p-1 text-muted-foreground hover:text-foreground transition-colors"
                 title={centerPanelCollapsed ? "Expand builder panel" : "Collapse builder panel"}
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
+                <ChevronLeftIcon 
                   className={`transition-transform ${centerPanelCollapsed ? 'rotate-180' : ''}`}
-                >
-                  <path d="M15 18l-6-6 6-6" />
-                </svg>
+                />
               </button>
             </div>
 
@@ -812,21 +779,9 @@ export default function ReportBuilderPage() {
                         }}
                         onClick={() => setShowGroupDropdown(true)}
                       />
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
+                      <SearchIcon 
                         className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
-                      >
-                        <circle cx="11" cy="11" r="8" />
-                        <path d="m21 21-4.3-4.3" />
-                      </svg>
+                      />
 
                       {/* Group Dropdown */}
                       {showGroupDropdown && (
@@ -882,20 +837,7 @@ export default function ReportBuilderPage() {
                                 }}
                                 className="text-muted-foreground hover:text-foreground"
                               >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  width="14"
-                                  height="14"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                >
-                                  <path d="M18 6 6 18" />
-                                  <path d="m6 6 12 12" />
-                                </svg>
+                                <CrossIcon />
                               </button>
                             </div>
                           );
@@ -913,36 +855,9 @@ export default function ReportBuilderPage() {
                           className="text-sm text-blue-600 flex items-center"
                           onClick={openColumnMenu}
                         >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="14"
-                            height="14"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="mr-1"
-                          >
-                            <path d="M5 12h14" />
-                            <path d="M12 5v14" />
-                          </svg>
+                          <PlusIcon className="mr-1" />
                           Add Column
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="14"
-                            height="14"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="ml-1"
-                          >
-                            <path d="m6 9 6 6 6-6" />
-                          </svg>
+                          <ChevronDownIcon className="ml-1" />
                         </button>
 
                         {/* Column Menu Dropdown */}
@@ -961,65 +876,20 @@ export default function ReportBuilderPage() {
                                 className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left flex items-center"
                                 onClick={() => setIsMenuOpen(false)}
                               >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  width="14"
-                                  height="14"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  className="mr-2"
-                                >
-                                  <path d="M3 6h18" />
-                                  <path d="M3 12h18" />
-                                  <path d="M3 18h18" />
-                                </svg>
+                                <BucketIcon className="mr-2" />
                                 Add Bucket Column
                               </button>
                               <button
                                 className="px-4 py-2 text-sm text-gray-400 w-full text-left flex items-center cursor-not-allowed"
                               >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  width="14"
-                                  height="14"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  className="mr-2"
-                                >
-                                  <circle cx="12" cy="12" r="10" />
-                                  <line x1="8" y1="12" x2="16" y2="12" />
-                                </svg>
+                                <FormulaIcon className="mr-2" />
                                 Add Summary Formula
                               </button>
                               <button
                                 className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left flex items-center"
                                 onClick={addFormulaColumn}
                               >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  width="14"
-                                  height="14"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  className="mr-2"
-                                >
-                                  <path d="M4 19h16" />
-                                  <path d="M4 14h16" />
-                                  <path d="M4 9h16" />
-                                  <path d="M4 4h16" />
-                                </svg>
+                                <FormulaIcon className="mr-2" />
                                 Add Row-Level Formula
                               </button>
                               <div className="border-t border-gray-200 my-1"></div>
@@ -1030,24 +900,7 @@ export default function ReportBuilderPage() {
                                   setIsMenuOpen(false);
                                 }}
                               >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  width="14"
-                                  height="14"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  className="mr-2"
-                                >
-                                  <path d="M3 6h18" />
-                                  <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                                  <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                                  <line x1="10" y1="11" x2="10" y2="17" />
-                                  <line x1="14" y1="11" x2="14" y2="17" />
-                                </svg>
+                                <TrashIcon className="mr-2" />
                                 Remove All Columns
                               </button>
                             </div>
@@ -1074,21 +927,7 @@ export default function ReportBuilderPage() {
                         >
                           <div className="flex items-center gap-2">
                             <span className="text-gray-400 cursor-move">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="14"
-                                height="14"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <line x1="21" x2="3" y1="6" y2="6" />
-                                <line x1="21" x2="3" y1="12" y2="12" />
-                                <line x1="21" x2="3" y1="18" y2="18" />
-                              </svg>
+                              <DragHandleIcon />
                             </span>
                             <span className="text-sm">{column.name}</span>
                             {'formula' in column && (
@@ -1099,20 +938,7 @@ export default function ReportBuilderPage() {
                             className="text-gray-400 hover:text-gray-600"
                             onClick={() => removeColumn(column.id)}
                           >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="14"
-                              height="14"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <path d="M18 6 6 18" />
-                              <path d="m6 6 12 12" />
-                            </svg>
+                            <CrossIcon />
                           </button>
                         </div>
                       ))}
@@ -1129,20 +955,7 @@ export default function ReportBuilderPage() {
                         className="flex items-center gap-1"
                         onClick={() => setShowFilterFieldSelector(true)}
                       >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <line x1="12" x2="12" y1="5" y2="19" />
-                          <line x1="5" x2="19" y1="12" y2="12" />
-                        </svg>
+                        <FilterIcon width={16} height={16} />
                         Add Filter
                       </Button>
                     </div>
@@ -1261,23 +1074,7 @@ export default function ReportBuilderPage() {
                   title="Report columns"
                   onClick={() => setCenterPanelCollapsed(false)}
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="text-blue-600"
-                  >
-                    <path d="M4 19h16" />
-                    <path d="M4 14h16" />
-                    <path d="M4 9h16" />
-                    <path d="M4 4h16" />
-                  </svg>
+                  <TableIcon width={20} height={20} className="text-blue-600" />
                 </div>
                 <div className="text-xs font-medium text-gray-500 rotate-90 mt-2 whitespace-nowrap">
                   {selectedColumns.length} columns
@@ -1298,22 +1095,7 @@ export default function ReportBuilderPage() {
                   }}
                   title="Expand preview"
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <polyline points="15 3 21 3 21 9" />
-                    <polyline points="9 21 3 21 3 15" />
-                    <line x1="21" y1="3" x2="14" y2="10" />
-                    <line x1="3" y1="21" x2="10" y2="14" />
-                  </svg>
+                  <ExpandIcon />
                 </button>
                 <span className="text-sm font-medium">Preview</span>
               </div>
@@ -1324,43 +1106,14 @@ export default function ReportBuilderPage() {
                     onClick={toggleRowCounts}
                     title="Toggle Row Counts"
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <line x1="4" y1="9" x2="20" y2="9" />
-                      <line x1="4" y1="15" x2="20" y2="15" />
-                      <line x1="10" y1="3" x2="8" y2="21" />
-                      <line x1="16" y1="3" x2="14" y2="21" />
-                    </svg>
+                    <ListIcon />
                   </button>
                   <button
                     className={`p-1 rounded ${showDetailRows ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}
                     onClick={toggleDetailRows}
                     title="Toggle Detail Rows"
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                      <line x1="3" y1="9" x2="21" y2="9" />
-                      <line x1="9" y1="21" x2="9" y2="9" />
-                    </svg>
+                    <TableIcon />
                   </button>
                 </div>
                 <div className="flex items-center gap-2">
@@ -1408,24 +1161,10 @@ export default function ReportBuilderPage() {
               // Keep the existing "No records returned" view
               <div className="flex-1 p-6 flex flex-col items-center justify-center text-center">
                 <div className="max-w-md">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="40"
-                    height="40"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+                  <FileIcon 
                     className="mx-auto mb-4 text-gray-400"
-                  >
-                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-                    <polyline points="14 2 14 8 20 8" />
-                    <path d="M16 13H8" />
-                    <path d="M16 17H8" />
-                    <path d="M10 9H8" />
-                  </svg>
+                    size={40}
+                  />
 
                   <h3 className="text-lg font-medium mb-3 text-gray-700">No records returned in preview</h3>
                   <p className="text-gray-500 mb-4">Try running the report or editing report filters.</p>
@@ -1433,55 +1172,19 @@ export default function ReportBuilderPage() {
                   <div className="space-y-2 text-left">
                     <div>
                       <Link href="#" className="text-blue-600 flex items-center gap-1 text-sm">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="12"
-                          height="12"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <polyline points="9 18 15 12 9 6" />
-                        </svg>
+                        <ArrowRightIcon />
                         Show All accounts.
                       </Link>
                     </div>
                     <div>
                       <Link href="#" className="text-blue-600 flex items-center gap-1 text-sm">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="12"
-                          height="12"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <polyline points="9 18 15 12 9 6" />
-                        </svg>
+                        <ArrowRightIcon />
                         Set the Created Date filter to All Time.
                       </Link>
                     </div>
                     <div>
                       <Link href="#" className="text-blue-600 flex items-center gap-1 text-sm">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="12"
-                          height="12"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <polyline points="9 18 15 12 9 6" />
-                        </svg>
+                        <ArrowRightIcon />
                         Edit other filters in the filter panel.
                       </Link>
                     </div>
@@ -1502,20 +1205,7 @@ export default function ReportBuilderPage() {
                   onClick={() => setShowFormulaBuilder(false)}
                   className="text-gray-500 hover:text-gray-700"
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M18 6 6 18" />
-                    <path d="m6 6 12 12" />
-                  </svg>
+                  <CrossIcon size={20} />
                 </button>
               </div>
 
@@ -1573,20 +1263,9 @@ export default function ReportBuilderPage() {
                                 <div className="text-xs font-semibold text-gray-500 uppercase">
                                   {category} ({fields.length})
                                 </div>
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  width="14"
-                                  height="14"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
+                                <ChevronDownIcon 
                                   className={`transition-transform ${expandedCategories[category as keyof typeof expandedCategories] ? 'rotate-180' : ''}`}
-                                >
-                                  <path d="m6 9 6 6 6-6" />
-                                </svg>
+                                />
                               </div>
 
                               {expandedCategories[category as keyof typeof expandedCategories] && (
@@ -1767,22 +1446,7 @@ export default function ReportBuilderPage() {
                       </div>
 
                       <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-md border border-blue-100 text-sm text-blue-700">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="mt-0.5"
-                        >
-                          <circle cx="12" cy="12" r="10" />
-                          <path d="M12 16v-4" />
-                          <path d="M12 8h.01" />
-                        </svg>
+                        <InfoIcon className="mt-0.5" />
                         <div>
                           <strong>Tips for creating formulas:</strong>
                           <ul className="list-disc ml-5 mt-1">
@@ -1826,20 +1490,7 @@ export default function ReportBuilderPage() {
                   onClick={() => setShowFilterFieldSelector(false)}
                   className="text-gray-500 hover:text-gray-700"
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M18 6 6 18" />
-                    <path d="m6 6 12 12" />
-                  </svg>
+                  <CrossIcon size={20} />
                 </button>
               </div>
 
@@ -1851,21 +1502,9 @@ export default function ReportBuilderPage() {
                     value={filterSearchTerm}
                     onChange={(e) => setFilterSearchTerm(e.target.value)}
                   />
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+                  <SearchIcon 
                     className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"
-                  >
-                    <circle cx="11" cy="11" r="8" />
-                    <path d="m21 21-4.3-4.3" />
-                  </svg>
+                  />
                 </div>
               </div>
 
@@ -1879,20 +1518,9 @@ export default function ReportBuilderPage() {
                       <div className="text-xs font-semibold text-gray-500 uppercase">
                         {category} FIELDS ({fields.length})
                       </div>
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
+                      <ChevronDownIcon
                         className={`transition-transform ${expandedCategories[category as keyof typeof expandedCategories] ? 'rotate-180' : ''}`}
-                      >
-                        <path d="m6 9 6 6 6-6" />
-                      </svg>
+                      />
                     </div>
 
                     {expandedCategories[category as keyof typeof expandedCategories] && (
@@ -1925,21 +1553,9 @@ export default function ReportBuilderPage() {
                                 </span>
                                 <span>{field.name}</span>
                               </div>
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="14"
-                                height="14"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
+                              <PlusIcon 
                                 className="text-blue-600 opacity-0 group-hover:opacity-100"
-                              >
-                                <path d="M5 12h14" />
-                                <path d="M12 5v14" />
-                              </svg>
+                              />
                             </div>
                           ))}
                       </div>

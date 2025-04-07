@@ -122,7 +122,7 @@ const formatDate = (dateString: string) => {
 };
 
 // Type colors mapping
-const typeColors = {
+const typeColors: Record<string, string> = {
   tabular: "#1E88E5", // Blue
   summary: "#43A047", // Green
   matrix: "#E53935",  // Red
@@ -141,7 +141,7 @@ export default function ReportsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(8);
   
-  // Set isClient to true when component mounts (client-side only)
+  // Use useEffect to mark when client-side rendering is active
   useEffect(() => {
     setIsClient(true);
   }, []);
@@ -476,98 +476,107 @@ export default function ReportsPage() {
           ) : (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {currentItems.map((reportType, index) => (
-                  <motion.div
-                    key={reportType.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: index * 0.05 }}
-                  >
-                    <Card className="overflow-hidden hover:shadow-md transition-shadow duration-300 h-full">
-                      <CardContent className="p-4">
-                        <div className="grid grid-cols-[auto_1fr_auto] gap-4 items-start">
-                          {/* Icon and Type */}
-                          <div className="flex flex-col items-center gap-1">
-                            <div
-                              className="h-12 w-12 rounded-md flex items-center justify-center relative"
-                              style={{ backgroundColor: `${(typeColors as any)[reportType.type]}20` }}
-                            >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="20"
-                                height="20"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                // stroke={typeColors[reportType.type]}
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
+                {isClient ? (
+                  currentItems.map((reportType, index) => (
+                    <motion.div
+                      key={reportType.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: index * 0.05 }}
+                    >
+                      <Card className="overflow-hidden hover:shadow-md transition-shadow duration-300 h-full">
+                        <CardContent className="p-4">
+                          <div className="grid grid-cols-[auto_1fr_auto] gap-4 items-start">
+                            {/* Icon and Type */}
+                            <div className="flex flex-col items-center gap-1">
+                              <div
+                                className="h-12 w-12 rounded-md flex items-center justify-center relative"
+                                style={{ backgroundColor: `${typeColors[reportType.type]}20` }}
                               >
-                                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-                                <polyline points="14 2 14 8 20 8" />
-                                <line x1="16" y1="13" x2="8" y2="13" />
-                                <line x1="16" y1="17" x2="8" y2="17" />
-                              </svg>
-                              {reportType.starred && (
-                                <div className="absolute -top-1 -right-1 bg-amber-400 text-white rounded-full p-0.5">
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="10"
-                                    height="10"
-                                    viewBox="0 0 24 24"
-                                    fill="currentColor"
-                                  >
-                                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                                  </svg>
-                                </div>
-                              )}
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  width="20"
+                                  height="20"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  // stroke={typeColors[reportType.type]}
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                >
+                                  <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                                  <polyline points="14 2 14 8 20 8" />
+                                  <line x1="16" y1="13" x2="8" y2="13" />
+                                  <line x1="16" y1="17" x2="8" y2="17" />
+                                </svg>
+                                {reportType.starred && (
+                                  <div className="absolute -top-1 -right-1 bg-amber-400 text-white rounded-full p-0.5">
+                                    <svg
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      width="10"
+                                      height="10"
+                                      viewBox="0 0 24 24"
+                                      fill="currentColor"
+                                    >
+                                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                    </svg>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="text-xs font-medium px-2 py-0.5 rounded-full capitalize" style={{
+                                backgroundColor: `${typeColors[reportType.type]}20`,
+                                // color: typeColors[reportType.type]
+                              }}>
+                                {reportType.type}
+                              </div>
                             </div>
-                            <div className="text-xs font-medium px-2 py-0.5 rounded-full capitalize" style={{
-                              backgroundColor: `${(typeColors as any)[reportType.type]}20`,
-                              // color: typeColors[reportType.type]
-                            }}>
-                              {reportType.type}
-                            </div>
-                          </div>
 
-                          {/* Main Content */}
-                          <div className="space-y-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <h3 className="text-base font-semibold truncate">{reportType.name}</h3>
-                              <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${reportType.status === "active"
-                                  ? "bg-green-100 text-green-700"
-                                  : "bg-gray-100 text-gray-700"
-                                }`}>
-                                {reportType.status}
-                              </span>
-                              <span className="text-xs text-muted-foreground">{reportType.id}</span>
+                            {/* Main Content */}
+                            <div className="space-y-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h3 className="text-base font-semibold truncate">{reportType.name}</h3>
+                                <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${reportType.status === "active"
+                                    ? "bg-green-100 text-green-700"
+                                    : "bg-gray-100 text-gray-700"
+                                  }`}>
+                                  {reportType.status}
+                                </span>
+                                <span className="text-xs text-muted-foreground">{reportType.id}</span>
+                              </div>
+                              <p className="text-sm text-muted-foreground line-clamp-2">{reportType.description}</p>
+                              <div className="flex flex-col text-xs text-muted-foreground gap-1">
+                                <span><strong>Primary:</strong> {reportType.primaryObject}</span>
+                                <span><strong>Related:</strong> {reportType.relatedObjects.join(", ")}</span>
+                                <span><strong>Created:</strong> {formatDate(reportType.createdDate)}</span>
+                                <span><strong>Modified:</strong> {formatDate(reportType.lastModified)}</span>
+                                <span><strong>Views:</strong> {reportType.views.toLocaleString()}</span>
+                              </div>
                             </div>
-                            <p className="text-sm text-muted-foreground line-clamp-2">{reportType.description}</p>
-                            <div className="flex flex-col text-xs text-muted-foreground gap-1">
-                              <span><strong>Primary:</strong> {reportType.primaryObject}</span>
-                              <span><strong>Related:</strong> {reportType.relatedObjects.join(", ")}</span>
-                              <span><strong>Created:</strong> {formatDate(reportType.createdDate)}</span>
-                              <span><strong>Modified:</strong> {formatDate(reportType.lastModified)}</span>
-                              <span><strong>Views:</strong> {reportType.views.toLocaleString()}</span>
-                            </div>
-                          </div>
 
-                          {/* Actions */}
-                          <div className="flex flex-col gap-1">
-                            <Link href={`/report-types/summary?id=${reportType.id}`}>
-                              <Button variant="ghost" size="sm" className="justify-start">View</Button>
-                            </Link>
-                            <Link href={`/report-types/summary/edit-layout?id=${reportType.id}`}>
-                              <Button variant="ghost" size="sm" className="justify-start">Edit</Button>
-                            </Link>
-                            <Button variant="ghost" size="sm" className="justify-start">Share</Button>
-                            <Button variant="ghost" size="sm" className="justify-start text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20">Delete</Button>
+                            {/* Actions */}
+                            <div className="flex flex-col gap-1">
+                              <Link href={`/report-types/summary?id=${reportType.id}`}>
+                                <Button variant="ghost" size="sm" className="justify-start">View</Button>
+                              </Link>
+                              <Link href={`/report-types/summary/edit-layout?id=${reportType.id}`}>
+                                <Button variant="ghost" size="sm" className="justify-start">Edit</Button>
+                              </Link>
+                              <Button variant="ghost" size="sm" className="justify-start">Share</Button>
+                              <Button variant="ghost" size="sm" className="justify-start text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20">Delete</Button>
+                            </div>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  ))
+                ) : (
+                  <div className="col-span-full flex justify-center py-8">
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
+                      <p className="text-sm text-muted-foreground">Loading reports...</p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Pagination */}

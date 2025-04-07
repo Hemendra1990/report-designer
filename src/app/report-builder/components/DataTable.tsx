@@ -4,6 +4,8 @@ import { flexRender, getCoreRowModel, getExpandedRowModel, getFilteredRowModel, 
 import { DataTableProps } from "../model/DataTableProps";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
+import { NavigationIcon } from "@/components/icons/ReportIcons";
 
 export function DataTable<TData extends Record<string, any>>(props: DataTableProps<TData>) {
     const {
@@ -186,20 +188,7 @@ export function DataTable<TData extends Record<string, any>>(props: DataTablePro
                 disabled={pagination.pageIndex === 0}
               >
                 <span className="sr-only">Go to first page</span>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <polyline points="11 17 6 12 11 7" />
-                  <polyline points="18 17 13 12 18 7" />
-                </svg>
+                <NavigationIcon />
               </Button>
               <Button
                 variant="outline"
@@ -208,19 +197,7 @@ export function DataTable<TData extends Record<string, any>>(props: DataTablePro
                 disabled={pagination.pageIndex === 0}
               >
                 <span className="sr-only">Go to previous page</span>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <polyline points="15 18 9 12 15 6" />
-                </svg>
+                <ChevronLeftIcon />
               </Button>
               <Button
                 variant="outline"
@@ -229,19 +206,7 @@ export function DataTable<TData extends Record<string, any>>(props: DataTablePro
                 disabled={pagination.pageIndex === pageCount - 1}
               >
                 <span className="sr-only">Go to next page</span>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <polyline points="9 18 15 12 9 6" />
-                </svg>
+                <ChevronRightIcon />
               </Button>
               <Button
                 variant="outline"
@@ -250,20 +215,7 @@ export function DataTable<TData extends Record<string, any>>(props: DataTablePro
                 disabled={pagination.pageIndex === pageCount - 1}
               >
                 <span className="sr-only">Go to last page</span>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <polyline points="13 17 18 12 13 7" />
-                  <polyline points="6 17 11 12 6 7" />
-                </svg>
+                <NavigationIcon className="rotate-180" />
               </Button>
             </div>
           </div>
