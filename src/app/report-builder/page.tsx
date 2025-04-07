@@ -951,34 +951,41 @@ export default function ReportBuilderPage() {
                   </div>
                   
                   {/* Selected Groups */}
-                  {selectedGroup && (
-                    <div className="mt-2 bg-accent/50 border rounded-md p-2 text-sm flex justify-between items-center">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{selectedColumns.find(col => col.id === selectedGroup)?.name}</span>
-                        <span className="text-muted-foreground">Ascending</span>
-                      </div>
-                      <button 
-                        onClick={() => {
-                          setSelectedGroup(null);
-                          handleGroupBy(selectedGroup);
-                        }}
-                        className="text-muted-foreground hover:text-foreground"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="14"
-                          height="14"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <path d="M18 6 6 18" />
-                          <path d="m6 6 12 12" />
-                        </svg>
-                      </button>
+                  {grouping.length > 0 && (
+                    <div className="mt-2 space-y-2">
+                      {grouping.map((groupId, index) => {
+                        const groupColumn = selectedColumns.find(col => col.id === groupId);
+                        if (!groupColumn) return null;
+                        return (
+                          <div key={groupId} className="bg-accent/50 border rounded-md p-2 text-sm flex justify-between items-center">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{groupColumn.name}</span>
+                              <span className="text-muted-foreground">Ascending</span>
+                            </div>
+                            <button 
+                              onClick={() => {
+                                handleGroupBy(groupId);
+                              }}
+                              className="text-muted-foreground hover:text-foreground"
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="M18 6 6 18" />
+                                <path d="m6 6 12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
