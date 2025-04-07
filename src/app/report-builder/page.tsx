@@ -2775,18 +2775,22 @@ function DataTable<TData extends Record<string, any>>(props: DataTableProps<TDat
                   </tr>
                   
                   {/* Group detail rows */}
-                  {expandedRowGroups[groupKey] && showDetailRows && groupedData[groupKey].map((row, index) => (
-                    <tr key={index} className="border-t hover:bg-gray-50">
-                      {columns.map((column) => (
-                        <td key={column.id} className="px-4 py-2">
-                          {flexRender(
-                            column.cell,
-                            { row: { getValue: () => row[column.id] } }
-                          )}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
+                  {expandedRowGroups[groupKey] && showDetailRows && groupedData[groupKey].map((rowData, index) => {
+                    const rowKey = `${groupKey}-row-${index}`;
+                    return (
+                      <tr key={rowKey} className="border-t hover:bg-gray-50">
+                        {table.getAllColumns().map((column) => {
+                          const cellId = `${rowKey}-${column.id}`;
+                          const value = rowData[column.id as keyof typeof rowData];
+                          return (
+                            <td key={cellId} className="px-4 py-2">
+                              {typeof value === 'number' ? value.toLocaleString() : value}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
                 </React.Fragment>
               ))
             ) : (
