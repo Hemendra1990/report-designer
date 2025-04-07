@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useMemo } from "react";
+import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -236,6 +236,57 @@ const moreSampleData: AccountData[] = [
 // Combine all sample data
 const allSampleData: AccountData[] = [...sampleData, ...moreSampleData];
 
+// Add these interfaces near the top after other interfaces
+interface FetchDataOptions {
+  pageIndex: number;
+  pageSize: number;
+  sorting: SortingState;
+  grouping: GroupingState;
+  selectedColumns: { id: string; name: string; type: string }[];
+  filters: Filter[];
+}
+
+interface ServerResponse {
+  data: AccountData[];
+  pageCount: number;
+  totalRows: number;
+}
+
+// Add this before the ReportBuilderPage component
+async function fetchTableData(options: FetchDataOptions): Promise<ServerResponse> {
+  const { pageIndex, pageSize, sorting, grouping, selectedColumns, filters } = options;
+  
+  try {
+    const response = await fetch('/api/report-data', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        page: pageIndex + 1,
+        pageSize,
+        sorting,
+        grouping,
+        columns: selectedColumns,
+        filters,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching data:', error);
+    return {
+      data: [],
+      pageCount: 0,
+      totalRows: 0
+    };
+  }
+}
+
 export default function ReportBuilderPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [formulaSearchTerm, setFormulaSearchTerm] = useState("");
@@ -328,7 +379,11 @@ export default function ReportBuilderPage() {
   // Handle adding a column to the report
   const addColumn = (field: typeof accountFields[0]) => {
     if (!selectedColumns.some(col => col.id === field.id)) {
-      setSelectedColumns([...selectedColumns, { id: field.id, name: field.name, type: field.type }]);
+      const newColumns = [...selectedColumns, { id: field.id, name: field.name, type: field.type }];
+      setSelectedColumns(newColumns);
+      if (autoUpdatePreview) {
+        fetchData();
+      }
     }
   };
   
@@ -535,6 +590,11 @@ export default function ReportBuilderPage() {
         [fieldId]: true
       }));
     }
+
+    // Fetch new data with updated grouping
+    if (autoUpdatePreview) {
+      fetchData();
+    }
   };
   
   // Function to toggle row counts
@@ -585,6 +645,41 @@ export default function ReportBuilderPage() {
 
   // Add grouping state
   const [grouping, setGrouping] = useState<GroupingState>([]);
+
+  // Add these states
+  const [isLoading, setIsLoading] = useState(false);
+  const [pageCount, setPageCount] = useState(0);
+  const [totalRows, setTotalRows] = useState(0);
+
+  // Add a function to fetch data
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const result = await fetchTableData({
+        pageIndex: pagination.pageIndex,
+        pageSize: pagination.pageSize,
+        sorting,
+        grouping,
+        selectedColumns,
+        filters,
+      });
+
+      setRowData(result.data);
+      setPageCount(result.pageCount);
+      setTotalRows(result.totalRows);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [pagination.pageIndex, pagination.pageSize, sorting, grouping, selectedColumns, filters]);
+
+  // Add effect to fetch data when dependencies change
+  useEffect(() => {
+    if (autoUpdatePreview) {
+      fetchData();
+    }
+  }, [fetchData, autoUpdatePreview]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -1480,6 +1575,9 @@ export default function ReportBuilderPage() {
                   onGroupingChange={setGrouping}
                   expandedRowGroups={expandedRowGroups}
                   setExpandedRowGroups={setExpandedRowGroups}
+                  pageCount={pageCount}
+                  totalRows={totalRows}
+                  isLoading={isLoading}
                 />
               </div>
             </div>
@@ -2601,6 +2699,9 @@ interface DataTableProps<TData extends Record<string, any>> {
   onGroupingChange: OnChangeFn<GroupingState>;
   expandedRowGroups: Record<string, boolean>;
   setExpandedRowGroups: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+  pageCount: number;
+  totalRows: number;
+  isLoading: boolean;
 }
 
 function DataTable<TData extends Record<string, any>>(props: DataTableProps<TData>) {
@@ -2620,7 +2721,10 @@ function DataTable<TData extends Record<string, any>>(props: DataTableProps<TDat
     grouping,
     onGroupingChange,
     expandedRowGroups,
-    setExpandedRowGroups
+    setExpandedRowGroups,
+    pageCount,
+    totalRows,
+    isLoading
   } = props;
 
   // Initialize the table with grouping support
@@ -2649,6 +2753,11 @@ function DataTable<TData extends Record<string, any>>(props: DataTableProps<TDat
 
   return (
     <div className="space-y-4">
+      {isLoading && (
+        <div className="absolute inset-0 bg-white/50 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      )}
       <div className="rounded-md border">
         <table className="w-full text-sm">
           <thead className="bg-gray-100 text-gray-600">
@@ -2734,6 +2843,130 @@ function DataTable<TData extends Record<string, any>>(props: DataTableProps<TDat
             ))}
           </tbody>
         </table>
+      </div>
+      
+      {/* Add pagination controls */}
+      <div className="flex items-center justify-between px-2">
+        <div className="flex-1 text-sm text-gray-500">
+          {totalRows > 0 ? (
+            <>
+              Showing {pagination.pageIndex * pagination.pageSize + 1} to{' '}
+              {Math.min((pagination.pageIndex + 1) * pagination.pageSize, totalRows)} of {totalRows} results
+            </>
+          ) : (
+            'No results'
+          )}
+        </div>
+        <div className="flex items-center space-x-6 lg:space-x-8">
+          <div className="flex items-center space-x-2">
+            <p className="text-sm font-medium">Rows per page</p>
+            <Select
+              value={`${pagination.pageSize}`}
+              onValueChange={(value) => {
+                setPagination({ pageIndex: 0, pageSize: Number(value) });
+              }}
+            >
+              <SelectTrigger className="h-8 w-[70px]">
+                <SelectValue placeholder={pagination.pageSize} />
+              </SelectTrigger>
+              <SelectContent side="top">
+                {[10, 20, 30, 40, 50].map((pageSize) => (
+                  <SelectItem key={pageSize} value={`${pageSize}`}>
+                    {pageSize}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              className="h-8 w-8 p-0"
+              onClick={() => setPagination(prev => ({ ...prev, pageIndex: 0 }))}
+              disabled={pagination.pageIndex === 0}
+            >
+              <span className="sr-only">Go to first page</span>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="11 17 6 12 11 7" />
+                <polyline points="18 17 13 12 18 7" />
+              </svg>
+            </Button>
+            <Button
+              variant="outline"
+              className="h-8 w-8 p-0"
+              onClick={() => setPagination(prev => ({ ...prev, pageIndex: prev.pageIndex - 1 }))}
+              disabled={pagination.pageIndex === 0}
+            >
+              <span className="sr-only">Go to previous page</span>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+            </Button>
+            <Button
+              variant="outline"
+              className="h-8 w-8 p-0"
+              onClick={() => setPagination(prev => ({ ...prev, pageIndex: prev.pageIndex + 1 }))}
+              disabled={pagination.pageIndex === pageCount - 1}
+            >
+              <span className="sr-only">Go to next page</span>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </Button>
+            <Button
+              variant="outline"
+              className="h-8 w-8 p-0"
+              onClick={() => setPagination(prev => ({ ...prev, pageIndex: pageCount - 1 }))}
+              disabled={pagination.pageIndex === pageCount - 1}
+            >
+              <span className="sr-only">Go to last page</span>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="13 17 18 12 13 7" />
+                <polyline points="6 17 11 12 6 7" />
+              </svg>
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );
