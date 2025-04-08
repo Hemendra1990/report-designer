@@ -4,6 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Plus, X, Folder } from 'lucide-react';
 import CreateDashboardModal from '@/components/CreateDashboardModal';
+import { v4 as uuidv4 } from 'uuid';
+import { useRouter } from 'next/navigation';
 
 interface Dashboard {
   id: string;
@@ -14,6 +16,7 @@ interface Dashboard {
 }
 
 export default function DashboardsPage() {
+  const router = useRouter();
   const [dashboards, setDashboards] = useState<Dashboard[]>([
     {
       id: '1',
@@ -39,9 +42,35 @@ export default function DashboardsPage() {
   });
   
   const handleCreateDashboard = (data: { name: string; description: string; folder: string }) => {
-    // TODO: Implement dashboard creation logic
-    console.log('Creating dashboard:', data);
+    // Generate a new UUID for the dashboard
+    const newId = uuidv4();
+    const now = new Date().toISOString();
+    
+    // Create the new dashboard object
+    const newDashboard: Dashboard = {
+      id: newId,
+      name: data.name,
+      description: data.description,
+      folder: data.folder,
+      createdAt: now
+    };
+    
+    // Add the new dashboard to the state
+    setDashboards([...dashboards, newDashboard]);
+    
+    // Close the modal
     setIsCreateModalOpen(false);
+    
+    // Navigate to the new dashboard page
+    router.push(`/dashboards/${newId}`);
+  };
+  
+  const handleNewDashboardClick = () => {
+    // Generate a new UUID for the dashboard
+    const newId = uuidv4();
+    
+    // Navigate directly to the new dashboard page
+    router.push(`/dashboards/${newId}`);
   };
   
   const formatDate = (dateString: string) => {
@@ -52,13 +81,16 @@ export default function DashboardsPage() {
       day: 'numeric'
     });
   };
+  const createDashboard = () => {
+    router.push('/dashboards/create');
+  };
   
   return (
     <div className="container mx-auto px-4 py-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-semibold">Dashboards</h1>
         <button
-          onClick={() => setIsCreateModalOpen(true)}
+          onClick={handleNewDashboardClick}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
         >
           New Dashboard
@@ -87,11 +119,11 @@ export default function DashboardsPage() {
         ))}
       </div>
       
-      <CreateDashboardModal
+      {/* <CreateDashboardModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onSubmit={handleCreateDashboard}
-      />
+      /> */}
     </div>
   );
 } 
