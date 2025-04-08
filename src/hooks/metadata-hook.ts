@@ -27,7 +27,13 @@ export const useInvalidateAllColumnMetadataByTableName = () => {
 
 export const useAllTableMetadata = () => {
     const allTableMetaData = () => {
-        return findAllTableMetaData().then((res) => res?.data?.data);
+        return findAllTableMetaData().then((res) => {
+            let response =  res?.data?.data.map((table: TableMetadata) => {
+                table.schema = 'bip'; //TODO by Aswini (get from backend / move to env)
+                return table;
+            })
+            return response;
+        });
     };
     const columnListByTableName = useQuery<TableMetadata[]>({
         queryKey: [METADATA.ALL_TABLE_METADATA],

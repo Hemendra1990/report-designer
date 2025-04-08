@@ -30,14 +30,14 @@ export default function SelectObject() {
   // Add search and pagination state
   const [searchTerm, setSearchTerm] = useState("");
   const [isSearching, setIsSearching] = useState(false);
-  // const [availableTables, setAvailableTables] = useState<TableMetadata[]>([]);
+  const [availableTables, setAvailableTables] = useState<TableMetadata[]>([]);
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
     totalCount: 0,
     hasMore: false
   });
-  // const [isLoading, setIsLoading] = useState(true);
+
   const [categories, setCategories] = useState<Set<string>>(new Set());
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const { data: allTableMetaData, isLoading } = useAllTableMetadata();
@@ -82,32 +82,32 @@ export default function SelectObject() {
 
   useEffect(() => {
     if (allTableMetaData) {
-      console.log('All table metadata:', allTableMetaData);
+      setAvailableTables(allTableMetaData);
     }
   }, [allTableMetaData])
 
   // Handle searching with debounce
-  /* useEffect(() => {
+  useEffect(() => {
     if (isSearching) {
       const timer = setTimeout(() => {
-        // loadObjects(searchTerm, 1); // Reset to first page on new search
+        setAvailableTables((allTableMetaData || []).filter(table => table.tableName.toLowerCase().includes(searchTerm.toLowerCase())));
         setIsSearching(false);
       }, 300);
       
       return () => clearTimeout(timer);
     }
-  }, [isSearching, searchTerm, loadObjects]); */
+  }, [isSearching, searchTerm, allTableMetaData]);
 
   // Pre-fill form when an object is selected
   useEffect(() => {
     if (selectedObject) {
-      const selectedTable = (allTableMetaData || []).find(table => table.tableName === selectedObject);
+      const selectedTable = availableTables.find(table => table.tableName === selectedObject);
       if (selectedTable) {
         setSelectedSchema(selectedTable.schema);
         setFormData({
-          displayLabel: selectedTable.tableName + " Report Type",
+          displayLabel: selectedTable.displayName + " Report Type",
           apiName: selectedTable.tableName.toLowerCase() + "_report_type",
-          description: `Report type for ${selectedTable.tableName} objects`
+          description: `Report type for ${selectedTable.displayName} objects`
         });
       }
     } else {
@@ -141,8 +141,8 @@ export default function SelectObject() {
 
   // Filter objects by selected category
   const displayedObjects = selectedCategory 
-    ? (allTableMetaData || []).filter(table => table.schema === selectedCategory)
-    : allTableMetaData || [];
+    ? availableTables.filter(table => table.schema === selectedCategory)
+    : availableTables || [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -334,19 +334,19 @@ export default function SelectObject() {
                 <h2 className="text-xl font-bold mb-4">Selected Table</h2>
                 <Card className="bg-primary/5 border-primary">
                   <CardContent className="p-4">
-                    {(allTableMetaData || []).find(table => table.tableName === selectedObject) && (
+                    {availableTables.find(table => table.tableName === selectedObject) && (
                       <div className="flex items-start gap-4">
                         <div className="bg-primary/10 p-2 rounded-md text-primary mt-1">
                           <Database className="h-6 w-6" />
                         </div>
                         <div>
-                          <h3 className="font-medium text-lg">{(allTableMetaData || []).find(table => table.tableName === selectedObject)?.tableName}</h3>
+                          <h3 className="font-medium text-lg">{availableTables.find(table => table.tableName === selectedObject)?.displayName}</h3>
                           <p className="text-sm text-muted-foreground mt-1">
-                            Schema: {(allTableMetaData || []).find(table => table.tableName === selectedObject)?.schema}
+                            Schema: {availableTables.find(table => table.tableName === selectedObject)?.schema}
                           </p>
                           <div className="mt-2">
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                              {(allTableMetaData || []).find(table => table.tableName === selectedObject)?.columns.length} columns
+                              {availableTables.find(table => table.tableName === selectedObject)?.columns.length} columns
                             </span>
                           </div>
                         </div>

@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import VennDiagram from "@/components/VennDiagram";
 import ObjectTree from "@/components/ObjectTree";
 import { getMetadataTables, getRelatedTables, TableMetadata } from "@/services/databaseService";
+import { useAllTableMetadata } from "@/hooks/metadata-hook";
+import { getRelatedData } from "@/services/crm/metadata-service";
 
 // Sample list of available objects for reference
 const availableObjects = [
@@ -116,6 +118,7 @@ interface ObjectData {
   letter: string;
   color: string;
   icon: string;
+  schema: string;
 }
 
 export default function DefineRelationships() {
@@ -134,13 +137,14 @@ export default function DefineRelationships() {
   const [relatedTables, setRelatedTables] = useState<TableMetadata[]>([]);
   const [isLoadingRelated, setIsLoadingRelated] = useState(false);
   const [isLoadingAvailableObjects, setIsLoadingAvailableObjects] = useState(false);
+  const { data: allTableMetaData, isLoading } = useAllTableMetadata();
   
   // Fetch available objects and initialize primary object
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await getMetadataTables();
-        const mappedObjects = response.items.map((table: TableMetadata) => ({
+        const response = allTableMetaData || [];
+        const mappedObjects = response?.map((table: TableMetadata) => ({
           id: table.tableName,
           name: table.tableName,
           schema: table.schema,
@@ -155,7 +159,8 @@ export default function DefineRelationships() {
         
         // Find the primary object
         const foundObject = mappedObjects.find((obj: AvailableObject) => 
-          obj.id === primaryObjectId && obj.schema === primaryObjectSchema
+          // obj.id === primaryObjectId && obj.schema === primaryObjectSchema
+          obj.id === primaryObjectId
         );
         
         if (foundObject) {
@@ -175,7 +180,7 @@ export default function DefineRelationships() {
       if (primaryObject) {
         setIsLoadingRelated(true);
         try {
-          const tables = await getRelatedTables(primaryObject.schema, primaryObject.name);
+          const tables = (await getRelatedData(primaryObject.name)).data.data;
           setRelatedTables(tables);
         } catch (error) {
           console.error("Error fetching related tables:", error);
@@ -199,7 +204,7 @@ export default function DefineRelationships() {
       
       if (parentId) {
         // First try to find in available objects
-        parentObject = availableObjects.find(obj => obj.id === parentId);
+        parentObject = availableObjects.find(obj => obj.id === parentId) || null;
         
         // If not found, try to find in related objects and then get its details
         if (!parentObject) {
@@ -213,7 +218,7 @@ export default function DefineRelationships() {
       }
       
       if (parentObject && parentObject.schema && parentObject.name) {
-        const tables = await getRelatedTables(parentObject.schema, parentObject.name);
+        const tables = (await getRelatedData(parentObject.name)).data.data;
         const mappedTables = tables.map((table: TableMetadata) => ({
           id: table.tableName,
           name: table.tableName,
@@ -228,7 +233,7 @@ export default function DefineRelationships() {
         // Keep existing objects and add new ones
         setAvailableObjects(prevObjects => {
           const existingIds = new Set(prevObjects.map(obj => obj.id));
-          const newObjects = mappedTables.filter(obj => !existingIds.has(obj.id));
+          const newObjects = mappedTables.filter((obj: any) => !existingIds.has(obj.id));
           return [...prevObjects, ...newObjects];
         });
       }
@@ -245,7 +250,8 @@ export default function DefineRelationships() {
     name: table.tableName,
     letter: table.tableName.charAt(0).toUpperCase(),
     color: "#1E88E5",
-    icon: "/icons/database.svg"
+    icon: "/icons/database.svg",
+    schema: table.schema
   });
 
   // Handle adding related object

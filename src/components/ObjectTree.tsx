@@ -6,6 +6,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { relatedObjectsService } from '@/services/relatedObjectsService';
+import { getRelatedData } from '@/services/crm/metadata-service';
 
 interface TableColumn {
   name: string;
@@ -90,13 +91,14 @@ const ObjectTree: React.FC<ObjectTreeProps> = ({
           
         if (!parentObject) return;
         
-        const apiObjects = await relatedObjectsService.getRelatedObjects(
+        /* const apiObjects = await relatedObjectsService.getRelatedObjects(
           parentObject.schema,
           parentObject.name
-        );
-        
+        ); */
+
+        const apiObjects = (await getRelatedData(parentObject.name)).data.data;
         // Map API objects to ObjectData format
-        const mappedObjects: ObjectData[] = apiObjects.map((obj, index) => ({
+        const mappedObjects: ObjectData[] = apiObjects.map((obj: any, index: number) => ({
           id: obj.tableName,
           name: obj.tableName,
           letter: obj.tableName.charAt(0).toUpperCase(),
@@ -105,9 +107,9 @@ const ObjectTree: React.FC<ObjectTreeProps> = ({
           icon: "/icons/database.svg",
           schema: obj.schema,
           relatedTo: obj.columns
-            .filter(col => col.foreignKey)
-            .map(col => col.referencedTable || '')
-            .filter(table => table !== null)
+            // .filter(col => col.foreignKey)
+            // .map(col => col.referencedTable || '')
+            // .filter(table => table !== null)
         }));
         
         // Filter out already used objects

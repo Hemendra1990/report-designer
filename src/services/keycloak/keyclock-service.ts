@@ -29,3 +29,17 @@ export const fetchKeycloakToken = (): Promise<AxiosResponse<any, any>> => {
 
   return httpClient.post<TokenResponse>(KEYCLOAK_TOKEN_URL, data, config);
 };
+
+export const refreshKeycloakToken = (refreshToken: string): Promise<AxiosResponse<TokenResponse>> => {
+  const data = new URLSearchParams({
+      grant_type: "refresh_token",
+      client_id: "bip",
+      refresh_token: refreshToken,
+  }).toString();
+
+  return httpClient.post<TokenResponse>(KEYCLOAK_TOKEN_URL, data, {
+      headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+      },
+  });
+};
