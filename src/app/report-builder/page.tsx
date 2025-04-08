@@ -712,7 +712,9 @@ export default function ReportBuilderPage() {
             ) : (
               // Collapsed view - shows only icons and minimal information
               <div className="flex flex-col items-center pt-4 space-y-4 overflow-y-auto">
-                <div className="text-xs font-medium text-muted-foreground">Field</div>
+                <div className="text-base font-medium text-gray-700 rotate-90 whitespace-nowrap tracking-wide mb-8">
+                  Fields
+                </div>
                 {Object.entries(fieldsByCategory).map(([category]) => (
                   <div
                     key={category}
@@ -723,7 +725,7 @@ export default function ReportBuilderPage() {
                       setTimeout(() => toggleCategory(category), 300);
                     }}
                   >
-                    <div className="size-6 bg-primary/10 text-primary rounded-md flex items-center justify-center text-xs font-medium">
+                    <div className="size-8 bg-gray-100 text-gray-600 rounded-md flex items-center justify-center text-sm font-medium">
                       {category.charAt(0).toUpperCase()}
                     </div>
                   </div>
@@ -1070,16 +1072,18 @@ export default function ReportBuilderPage() {
             ) : (
               // Collapsed view for center panel
               <div className="flex flex-col items-center pt-4 space-y-4 overflow-hidden">
-                {/* Simple icon indicators for collapsed center panel */}
                 <div
                   className="p-2 cursor-pointer hover:bg-gray-50 rounded"
                   title="Report columns"
                   onClick={() => setCenterPanelCollapsed(false)}
                 >
-                  <TableIcon width={20} height={20} className="text-blue-600" />
+                  <TableIcon width={22} height={22} className="text-blue-600" />
                 </div>
-                <div className="text-xs font-medium text-gray-500 rotate-90 mt-2 whitespace-nowrap">
-                  {selectedColumns.length} columns
+                <div className="text-base font-medium text-gray-700 rotate-90 whitespace-nowrap tracking-wide mt-8">
+                  Outline
+                </div>
+                <div className="text-base font-medium text-gray-700 rotate-90 whitespace-nowrap tracking-wide mt-8">
+                  Filters ({filters.length})
                 </div>
               </div>
             )}
