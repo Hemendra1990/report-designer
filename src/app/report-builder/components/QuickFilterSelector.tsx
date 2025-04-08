@@ -21,7 +21,8 @@ const QuickFilterSelector: React.FC<QuickFilterSelectorProps> = ({
   addFilter,
   onOpenFullSelector
 }) => {
-  return (
+  return <></>
+  /* return (
     <div className="mt-8 border border-dashed border-gray-300 rounded-md p-4 bg-gray-50">
       <h4 className="text-sm font-medium mb-3">Add Another Filter</h4>
       <div className="grid grid-cols-2 gap-3">
@@ -60,7 +61,7 @@ const QuickFilterSelector: React.FC<QuickFilterSelectorProps> = ({
         </div>
       </div>
     </div>
-  );
+  ); */
 };
 
 export default QuickFilterSelector; 

@@ -216,17 +216,18 @@ const ReportBuilderPanel: React.FC<ReportBuilderPanelProps> = ({
                 {/* Show message when no filters exist */}
                 {filters.length === 0 && (
                   <div className="bg-gray-50 p-4 rounded-md border border-dashed border-gray-300 text-center">
-                    <p className="text-gray-500">No filters added yet. Click "Add Filter" to create one.</p>
+                    <p className="text-gray-500 text-sm font-medium">No filters currently configured</p>
+                    <p className="text-gray-400 text-xs mt-1">Add filters to refine your report data</p>
                   </div>
                 )}
               </div>
 
               {/* Filter Field Selection UI */}
-              <QuickFilterSelector 
+              {/* <QuickFilterSelector 
                 accountFields={accountFields}
                 addFilter={addFilter}
                 onOpenFullSelector={() => setShowFilterFieldSelector(true)}
-              />
+              /> */}
             </div>
           </TabsContent>
         </Tabs>

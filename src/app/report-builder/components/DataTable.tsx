@@ -4,7 +4,7 @@ import { flexRender, getCoreRowModel, getExpandedRowModel, getFilteredRowModel, 
 import { DataTableProps } from "../model/DataTableProps";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
+import { ChevronLeftIcon, ChevronRightIcon, TableIcon } from "@/components/icons";
 import { NavigationIcon } from "@/components/icons/ReportIcons";
 
 export function DataTable<TData extends Record<string, any>>(props: DataTableProps<TData>) {
@@ -55,49 +55,60 @@ export function DataTable<TData extends Record<string, any>>(props: DataTablePro
     });
   
     return (
-      <div className="space-y-4 h-full flex flex-col">
+      <div className="h-full flex flex-col">
         {isLoading && (
-          <div className="absolute inset-0 bg-white/50 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-10 backdrop-blur-sm">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
           </div>
         )}
-        <div className="rounded-md border overflow-hidden flex-1 flex flex-col">
-          <div className="overflow-x-auto">
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="overflow-auto flex-1">
             <div className="inline-block min-w-full align-middle">
-              <table className="min-w-full table-fixed divide-y divide-gray-200">
-                <thead className="bg-gray-100 text-gray-600">
+              <table className="min-w-full table-fixed divide-y divide-border">
+                <thead className="bg-muted/50 text-muted-foreground sticky top-0 z-10">
                   {table.getHeaderGroups().map((headerGroup) => (
-                    <tr key={headerGroup.id} className="border-b">
+                    <tr key={headerGroup.id} className="border-b border-border">
                       {headerGroup.headers.map((header) => (
                         <th 
                           key={header.id} 
-                          className="px-4 py-3 text-left font-medium whitespace-nowrap"
+                          className="px-4 py-3 text-left text-sm font-medium whitespace-nowrap"
                           style={{ width: header.getSize() }}
                         >
                           {header.isPlaceholder ? null : (
                             <div className="flex items-center gap-2">
                               {header.column.getCanGroup() && (
-                                <button
+                                <Button
                                   onClick={header.column.getToggleGroupingHandler()}
-                                  className="cursor-pointer"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 rounded-full"
                                 >
-                                  {header.column.getIsGrouped() ? '🛑' : '👊'}
-                                </button>
+                                  {header.column.getIsGrouped() ? 
+                                    <TableIcon className="h-4 w-4 text-primary" /> : 
+                                    <TableIcon className="h-4 w-4 text-muted-foreground/40" />
+                                  }
+                                </Button>
                               )}
-                              {flexRender(
-                                header.column.columnDef.header,
-                                header.getContext()
-                              )}
+                              <span>
+                                {flexRender(
+                                  header.column.columnDef.header,
+                                  header.getContext()
+                                )}
+                              </span>
                               {header.column.getCanSort() && (
-                                <button
-                                  className="ml-2"
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
                                   onClick={header.column.getToggleSortingHandler()}
+                                  className="ml-1 p-0 h-5 hover:bg-transparent"
                                 >
-                                  {{
-                                    asc: '↑',
-                                    desc: '↓',
-                                  }[header.column.getIsSorted() as string] ?? '⇅'}
-                                </button>
+                                  <span className="text-muted-foreground">
+                                    {{
+                                      asc: '▲',
+                                      desc: '▼',
+                                    }[header.column.getIsSorted() as string] ?? '⇅'}
+                                  </span>
+                                </Button>
                               )}
                             </div>
                           )}
@@ -106,71 +117,94 @@ export function DataTable<TData extends Record<string, any>>(props: DataTablePro
                     </tr>
                   ))}
                 </thead>
-                <tbody className="divide-y divide-gray-200 bg-white">
-                  {table.getRowModel().rows.map(row => (
-                    <tr key={row.id} className="border-t hover:bg-gray-50">
-                      {row.getVisibleCells().map(cell => (
-                        <td
-                          key={cell.id}
-                          className={`px-4 py-2 ${cell.getIsGrouped()
-                              ? 'bg-green-100'
+                <tbody className="divide-y divide-border bg-card text-card-foreground">
+                  {table.getRowModel().rows.length === 0 ? (
+                    <tr>
+                      <td 
+                        colSpan={columns.length} 
+                        className="py-6 text-center text-muted-foreground"
+                      >
+                        No results found
+                      </td>
+                    </tr>
+                  ) : (
+                    table.getRowModel().rows.map(row => (
+                      <tr key={row.id} className="border-t border-border hover:bg-muted/30 transition-colors">
+                        {row.getVisibleCells().map(cell => (
+                          <td
+                            key={cell.id}
+                            className={`px-4 py-3 text-sm ${cell.getIsGrouped()
+                              ? 'bg-primary/5 font-medium'
                               : cell.getIsAggregated()
-                                ? 'bg-orange-100'
+                                ? 'bg-muted/20 font-medium'
                                 : cell.getIsPlaceholder()
-                                  ? 'bg-red-100'
+                                  ? 'bg-muted/10'
                                   : ''
-                            }`}
-                          style={{ width: cell.column.getSize() }}
-                        >
-                          {cell.getIsGrouped() ? (
-                            <button
-                              onClick={row.getToggleExpandedHandler()}
-                              className="flex items-center gap-2"
-                            >
-                              {row.getIsExpanded() ? '👇' : '👉'}{' '}
-                              {flexRender(
+                              }`}
+                            style={{ width: cell.column.getSize() }}
+                          >
+                            {cell.getIsGrouped() ? (
+                              <Button
+                                onClick={row.getToggleExpandedHandler()}
+                                variant="ghost"
+                                size="sm"
+                                className="flex items-center gap-2 -ml-2 px-2 h-7 hover:bg-primary/10 font-medium"
+                              >
+                                <ChevronRightIcon 
+                                  className={`h-4 w-4 transition-transform ${row.getIsExpanded() ? 'rotate-90' : ''}`} 
+                                />
+                                {flexRender(
+                                  cell.column.columnDef.cell,
+                                  cell.getContext()
+                                )}
+                                {showRowCounts && (
+                                  <span className="ml-1 text-xs text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded-full">
+                                    {row.subRows.length}
+                                  </span>
+                                )}
+                              </Button>
+                            ) : cell.getIsAggregated() ? (
+                              flexRender(
+                                cell.column.columnDef.aggregatedCell ??
                                 cell.column.columnDef.cell,
                                 cell.getContext()
-                              )}{' '}
-                              ({row.subRows.length})
-                            </button>
-                          ) : cell.getIsAggregated() ? (
-                            flexRender(
-                              cell.column.columnDef.aggregatedCell ??
-                              cell.column.columnDef.cell,
-                              cell.getContext()
-                            )
-                          ) : cell.getIsPlaceholder() ? null : (
-                            flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext()
-                            )
-                          )}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
+                              )
+                            ) : cell.getIsPlaceholder() ? null : (
+                              flexRender(
+                                cell.column.columnDef.cell,
+                                cell.getContext()
+                              )
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
         </div>
         
-        {/* Add pagination controls */}
-        <div className="flex items-center justify-between px-2 mt-auto py-2">
-          <div className="flex-1 text-sm text-gray-500">
+        {/* Add pagination controls - ensure it's not part of the scrollable area */}
+        <div className="flex items-center justify-between px-2 py-3 border-t border-border mt-auto">
+          <div className="flex-1 text-sm text-muted-foreground">
             {totalRows > 0 ? (
               <>
-                Showing {pagination.pageIndex * pagination.pageSize + 1} to{' '}
-                {Math.min((pagination.pageIndex + 1) * pagination.pageSize, totalRows)} of {totalRows} results
+                <span className="font-medium text-foreground">
+                  {pagination.pageIndex * pagination.pageSize + 1}-{Math.min((pagination.pageIndex + 1) * pagination.pageSize, totalRows)}
+                </span>{' '}
+                of{' '}
+                <span className="font-medium text-foreground">{totalRows}</span>{' '}
+                results
               </>
             ) : (
               'No results'
             )}
           </div>
-          <div className="flex items-center space-x-6 lg:space-x-8">
+          <div className="flex items-center space-x-6">
             <div className="flex items-center space-x-2">
-              <p className="text-sm font-medium">Rows per page</p>
+              <p className="text-sm text-muted-foreground">Rows per page</p>
               <Select
                 value={`${pagination.pageSize}`}
                 onValueChange={(value) => {
@@ -189,10 +223,11 @@ export function DataTable<TData extends Record<string, any>>(props: DataTablePro
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1">
               <Button
-                variant="outline"
-                className="h-8 w-8 p-0"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
                 onClick={() => setPagination(prev => ({ ...prev, pageIndex: 0 }))}
                 disabled={pagination.pageIndex === 0}
               >
@@ -200,28 +235,34 @@ export function DataTable<TData extends Record<string, any>>(props: DataTablePro
                 <NavigationIcon />
               </Button>
               <Button
-                variant="outline"
-                className="h-8 w-8 p-0"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
                 onClick={() => setPagination(prev => ({ ...prev, pageIndex: prev.pageIndex - 1 }))}
                 disabled={pagination.pageIndex === 0}
               >
                 <span className="sr-only">Go to previous page</span>
-                <ChevronLeftIcon />
+                <ChevronLeftIcon className="h-4 w-4" />
               </Button>
+              <div className="text-sm mx-2">
+                <span className="font-medium">{pagination.pageIndex + 1}</span> / <span>{pageCount || 1}</span>
+              </div>
               <Button
-                variant="outline"
-                className="h-8 w-8 p-0"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
                 onClick={() => setPagination(prev => ({ ...prev, pageIndex: prev.pageIndex + 1 }))}
-                disabled={pagination.pageIndex === pageCount - 1}
+                disabled={pagination.pageIndex === pageCount - 1 || pageCount === 0}
               >
                 <span className="sr-only">Go to next page</span>
-                <ChevronRightIcon />
+                <ChevronRightIcon className="h-4 w-4" />
               </Button>
               <Button
-                variant="outline"
-                className="h-8 w-8 p-0"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
                 onClick={() => setPagination(prev => ({ ...prev, pageIndex: pageCount - 1 }))}
-                disabled={pagination.pageIndex === pageCount - 1}
+                disabled={pagination.pageIndex === pageCount - 1 || pageCount === 0}
               >
                 <span className="sr-only">Go to last page</span>
                 <NavigationIcon className="rotate-180" />
