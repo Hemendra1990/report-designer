@@ -52,6 +52,33 @@ functions: [
         { name: "ISNUMBER", description: "Returns TRUE if the value is a number" },
         { name: "ISTEXT", description: "Returns TRUE if the value is text" },
       ]
+    },
+    {
+      category: "String Functions",
+      functions: [
+        { name: "CHARAT", description: "Returns the character at the specified index." },
+        { name: "CHARCODEAT", description: "Returns the Unicode of the character at the specified index." },
+        { name: "CONCAT", description: "Joins two or more strings." },
+        { name: "INCLUDES", description: "Checks if a string contains a specified value." },
+        { name: "INDEXOF", description: "Returns the index of the first occurrence of a specified value." },
+        { name: "LASTINDEXOF", description: "Returns the index of the last occurrence of a specified value." },
+        { name: "MATCH", description: "Searches a string for a match against a regular expression and returns the matches." },
+        { name: "PADEND", description: "Pads the current string with a specified string at the end." },
+        { name: "PADSTART", description: "Pads the current string with a specified string at the start." },
+        { name: "REPEAT", description: "Returns a new string with a specified number of copies of the original string." },
+        { name: "REPLACE", description: "Searches a string for a specified value or regular expression and returns a new string with the replacements." },
+        { name: "REPLACEALL", description: "Replaces all occurrences of a specified value or regular expression." },
+        { name: "SEARCH", description: "Searches a string for a specified value or regular expression and returns the position of the match." },
+        { name: "SLICE", description: "Extracts a section of a string and returns it as a new string." },
+        { name: "SPLIT", description: "Splits a string into an array of substrings." },
+        { name: "STARTSWITH", description: "Checks if a string starts with a specified value." },
+        { name: "SUBSTRING", description: "Extracts characters from a string between two specified indices." },
+        { name: "TOLOWERCASE", description: "Converts a string to lowercase letters." },
+        { name: "TOUPPERCASE", description: "Converts a string to uppercase letters." },
+        { name: "TRIM", description: "Removes whitespace from both ends of a string." },
+        { name: "TRIMSTART", description: "Removes whitespace from the beginning of a string." },
+        { name: "TRIMEND", description: "Removes whitespace from the end of a string." }
+      ]
     }
 ];
 

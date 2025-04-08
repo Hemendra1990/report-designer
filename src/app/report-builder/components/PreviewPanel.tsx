@@ -71,7 +71,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
   onExpandView
 }) => {
   return (
-    <div className="flex-1 bg-accent/10 flex flex-col transition-all duration-300 overflow-hidden min-w-0">
+    <div className="flex-1 bg-accent/10 flex flex-col min-w-0" style={{ height: 'calc(100vh - 130px)' }}>
       <div className="p-3 bg-background border-b border-border flex justify-between shrink-0">
         <div className="flex items-center">
           <button
@@ -142,34 +142,36 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
           </div>
         </div>
       ) : (
-        <div className="flex-1 p-6 flex flex-col items-center justify-center text-center">
-          <div className="max-w-md">
-            <FileIcon 
-              className="mx-auto mb-4 text-gray-400"
-              size={40}
-            />
+        <div className="flex-1 overflow-auto">
+          <div className="h-[500px] w-full flex items-center justify-center">
+            <div className="max-w-md text-center">
+              <FileIcon 
+                className="mx-auto mb-4 text-gray-400"
+                size={40}
+              />
 
-            <h3 className="text-lg font-medium mb-3 text-gray-700">No records returned in preview</h3>
-            <p className="text-gray-500 mb-4">Try running the report or editing report filters.</p>
+              <h3 className="text-lg font-medium mb-3 text-gray-700">No records returned in preview</h3>
+              <p className="text-gray-500 mb-4">Try running the report or editing report filters.</p>
 
-            <div className="space-y-2 text-left">
-              <div>
-                <Link href="#" className="text-blue-600 flex items-center gap-1 text-sm">
-                  <ArrowRightIcon />
-                  Show All accounts.
-                </Link>
-              </div>
-              <div>
-                <Link href="#" className="text-blue-600 flex items-center gap-1 text-sm">
-                  <ArrowRightIcon />
-                  Set the Created Date filter to All Time.
-                </Link>
-              </div>
-              <div>
-                <Link href="#" className="text-blue-600 flex items-center gap-1 text-sm">
-                  <ArrowRightIcon />
-                  Edit other filters in the filter panel.
-                </Link>
+              <div className="space-y-2 text-left">
+                <div>
+                  <Link href="#" className="text-blue-600 flex items-center gap-1 text-sm">
+                    <ArrowRightIcon />
+                    Show All accounts.
+                  </Link>
+                </div>
+                <div>
+                  <Link href="#" className="text-blue-600 flex items-center gap-1 text-sm">
+                    <ArrowRightIcon />
+                    Set the Created Date filter to All Time.
+                  </Link>
+                </div>
+                <div>
+                  <Link href="#" className="text-blue-600 flex items-center gap-1 text-sm">
+                    <ArrowRightIcon />
+                    Edit other filters in the filter panel.
+                  </Link>
+                </div>
               </div>
             </div>
           </div>
