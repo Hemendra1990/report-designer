@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -11,9 +10,9 @@ import { InputWithIcon } from "@/components/ui/input-with-icon";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { getMetadataTables, TableMetadata } from "@/services/databaseService";
+import { TableMetadata } from "@/services/databaseService";
 import { Database } from "lucide-react";
-import { useAllTableMetadata } from "@/hooks/metadata-hook";
+import { useAllColumnMetadataByTableName, useAllTableMetadata } from "@/hooks/metadata-hook";
 
 export default function SelectObject() {
   const searchParams = useSearchParams();
@@ -41,6 +40,7 @@ export default function SelectObject() {
   const [categories, setCategories] = useState<Set<string>>(new Set());
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const { data: allTableMetaData, isLoading } = useAllTableMetadata();
+  const {data:allColumnMetaData} = useAllColumnMetadataByTableName(availableTables.find(table => table.tableName === selectedObject)?.tableName as string);
 
   // Load objects on initial render and when search/pagination changes
   /* const loadObjects = useCallback(async (term: string = searchTerm, page: number = pagination.currentPage) => {
@@ -346,7 +346,7 @@ export default function SelectObject() {
                           </p>
                           <div className="mt-2">
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                              {availableTables.find(table => table.tableName === selectedObject)?.columns.length} columns
+                              {allColumnMetaData?.columns?.length} columns
                             </span>
                           </div>
                         </div>

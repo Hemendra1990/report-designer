@@ -2,13 +2,12 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import VennDiagram from "@/components/VennDiagram";
 import ObjectTree from "@/components/ObjectTree";
-import { getMetadataTables, getRelatedTables, TableMetadata } from "@/services/databaseService";
+import { TableMetadata } from "@/services/databaseService";
 import { useAllTableMetadata } from "@/hooks/metadata-hook";
 import { getRelatedData } from "@/services/crm/metadata-service";
 
@@ -146,7 +145,7 @@ export default function DefineRelationships() {
         const response = allTableMetaData || [];
         const mappedObjects = response?.map((table: TableMetadata) => ({
           id: table.tableName,
-          name: table.tableName,
+          name: table.displayName,
           schema: table.schema,
           letter: "A", // Will be assigned dynamically
           description: `Table in schema ${table.schema}`,
@@ -344,30 +343,6 @@ export default function DefineRelationships() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Navigation Bar */}
-      {/* <nav className="bg-primary text-primary-foreground py-4 px-6 shadow-md">
-        <div className="container mx-auto flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <Image 
-              src="/next.svg" 
-              alt="Report Designer Logo" 
-              width={80} 
-              height={20}
-              className="dark:invert" 
-            />
-            <span className="font-bold text-lg">Report Designer</span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link href="/">
-              <Button variant="ghost">Home</Button>
-            </Link>
-            <Link href="/reports">
-              <Button variant="ghost">Reports</Button>
-            </Link>
-          </div>
-        </div>
-      </nav> */}
-
       {/* Main Content */}
       <main className="container mx-auto py-8 px-4">
         {/* Page Header */}
@@ -426,12 +401,12 @@ export default function DefineRelationships() {
 
         <div className="grid gap-8 md:grid-cols-[1fr_1fr]">
           {/* Left Side - Objects and Relationships */}
-          <div className="space-y-6">
+          <div className="space-y-2">
             <Card>
               <CardHeader>
                 <CardTitle>Select Objects</CardTitle>
               </CardHeader>
-              <CardContent className="p-4">
+              <CardContent>
                 {primaryObject && (
                   <ObjectTree 
                     availableObjects={availableObjects}
@@ -471,31 +446,6 @@ export default function DefineRelationships() {
                 </div>
               </CardContent>
             </Card>
-
-            {/* Object Tree */}
-            {/* <div className="border rounded-lg p-4">
-              <h3 className="text-lg font-semibold mb-4">Object Tree</h3>
-              {isLoadingRelated ? (
-                <div className="flex justify-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                </div>
-              ) : relatedTables.length > 0 ? (
-                <ObjectTree
-                  primaryObject={primaryObject}
-                  availableObjects={relatedTables.map(mapTableToObjectData)}
-                  relatedObjects={relatedObjects}
-                  onAddRelatedObject={handleAddRelatedObject}
-                  onRemoveRelatedObject={handleRemoveRelatedObject}
-                  onChangeRelationshipType={handleChangeRelationshipType}
-                  onOpenObjectSelector={handleOpenObjectSelector}
-                  isLoadingAvailableObjects={isLoadingAvailableObjects}
-                />
-              ) : (
-                <div className="text-center text-muted-foreground">
-                  {primaryObject ? "No related tables found" : "Select a primary object to see related tables"}
-                </div>
-              )}
-            </div> */}
           </div>
           
           {/* Right Side - Relationship Visualization */}

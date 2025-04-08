@@ -33,6 +33,7 @@ interface ObjectData {
   icon: string;
   schema: string;
   relatedTo?: string[]; // IDs of objects this object can relate to
+  displayName?:string;
 }
 
 interface AvailableObject extends ObjectData {
@@ -106,7 +107,8 @@ const ObjectTree: React.FC<ObjectTreeProps> = ({
           color: getColorForIndex(index), // Helper function to generate colors
           icon: "/icons/database.svg",
           schema: obj.schema,
-          relatedTo: obj.columns
+          relatedTo: obj.columns,
+          displayName:obj.displayName
             // .filter(col => col.foreignKey)
             // .map(col => col.referencedTable || '')
             // .filter(table => table !== null)
@@ -585,7 +587,7 @@ const ObjectTree: React.FC<ObjectTreeProps> = ({
                         <span className="text-lg font-bold">{obj.letter}</span>
                       </div>
                       <div className="flex-1">
-                        <h3 className="font-medium text-sm">{obj.name}</h3>
+                        <h3 className="font-medium text-sm">{obj?.displayName}</h3>
                         {obj.description && (
                           <p className="text-xs text-muted-foreground">{obj.description}</p>
                         )}
