@@ -500,6 +500,8 @@ export default function ReportBuilderPage() {
         }
         return value;
       },
+      minSize: 180, // Ensure minimum column width
+      size: 200,    // Default column width
     })),
     [selectedColumns]
   );
@@ -619,7 +621,7 @@ export default function ReportBuilderPage() {
         {/* Main Content Area */}
         <div className="flex flex-1 overflow-hidden">
           {/* Left Panel - Fields */}
-          <div className={`${leftPanelCollapsed ? 'w-12' : 'w-64'} bg-card border-r border-border flex flex-col overflow-hidden transition-all duration-300`}>
+          <div className={`${leftPanelCollapsed ? 'w-12' : 'w-64'} bg-card border-r border-border flex flex-col overflow-hidden transition-all duration-300 shrink-0`}>
             {/* Collapse Control */}
             <div className="flex justify-end p-1">
               <button
@@ -731,7 +733,7 @@ export default function ReportBuilderPage() {
           </div>
 
           {/* Center Panel - Report Builder */}
-          <div className={`${centerPanelCollapsed ? 'w-12' : 'w-64'} flex flex-col bg-card border-r border-border transition-all duration-300`}>
+          <div className={`${centerPanelCollapsed ? 'w-12' : 'w-64'} flex flex-col bg-card border-r border-border transition-all duration-300 shrink-0`}>
             {/* Collapse Control */}
             <div className="flex justify-end p-1">
               <button
@@ -1084,8 +1086,8 @@ export default function ReportBuilderPage() {
           </div>
 
           {/* Right Panel - Preview */}
-          <div className="flex-1 bg-accent/10 flex flex-col transition-all duration-300">
-            <div className="p-3 bg-background border-b border-border flex justify-between">
+          <div className="flex-1 bg-accent/10 flex flex-col transition-all duration-300 overflow-hidden min-w-0">
+            <div className="p-3 bg-background border-b border-border flex justify-between shrink-0">
               <div className="flex items-center">
                 <button
                   className="mr-2 p-1 text-muted-foreground hover:text-foreground transition-colors"
@@ -1132,8 +1134,8 @@ export default function ReportBuilderPage() {
             </div>
 
             {rowData.length > 0 ? (
-              <div className="flex-1 p-4">
-                <div className="w-full h-full rounded-md overflow-hidden border border-border">
+              <div className="flex-1 p-4 overflow-hidden flex flex-col">
+                <div className="w-full h-full rounded-md overflow-hidden border border-border flex flex-col">
                   <DataTable<AccountData>
                     data={rowData}
                     columns={columns}

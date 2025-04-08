@@ -55,100 +55,109 @@ export function DataTable<TData extends Record<string, any>>(props: DataTablePro
     });
   
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 h-full flex flex-col">
         {isLoading && (
           <div className="absolute inset-0 bg-white/50 flex items-center justify-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
         )}
-        <div className="rounded-md border">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-100 text-gray-600">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <tr key={headerGroup.id} className="border-b">
-                  {headerGroup.headers.map((header) => (
-                    <th key={header.id} className="px-4 py-3 text-left font-medium">
-                      {header.isPlaceholder ? null : (
-                        <div className="flex items-center gap-2">
-                          {header.column.getCanGroup() && (
-                            <button
-                              onClick={header.column.getToggleGroupingHandler()}
-                              className="cursor-pointer"
-                            >
-                              {header.column.getIsGrouped() ? '🛑' : '👊'}
-                            </button>
-                          )}
-                          {flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                          {header.column.getCanSort() && (
-                            <button
-                              className="ml-2"
-                              onClick={header.column.getToggleSortingHandler()}
-                            >
-                              {{
-                                asc: '↑',
-                                desc: '↓',
-                              }[header.column.getIsSorted() as string] ?? '⇅'}
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </th>
-                  ))}
-                </tr>
-              ))}
-            </thead>
-            <tbody>
-              {table.getRowModel().rows.map(row => (
-                <tr key={row.id} className="border-t hover:bg-gray-50">
-                  {row.getVisibleCells().map(cell => (
-                    <td
-                      key={cell.id}
-                      className={`px-4 py-2 ${cell.getIsGrouped()
-                          ? 'bg-green-100'
-                          : cell.getIsAggregated()
-                            ? 'bg-orange-100'
-                            : cell.getIsPlaceholder()
-                              ? 'bg-red-100'
-                              : ''
-                        }`}
-                    >
-                      {cell.getIsGrouped() ? (
-                        <button
-                          onClick={row.getToggleExpandedHandler()}
-                          className="flex items-center gap-2"
+        <div className="rounded-md border overflow-hidden flex-1 flex flex-col">
+          <div className="overflow-x-auto">
+            <div className="inline-block min-w-full align-middle">
+              <table className="min-w-full table-fixed divide-y divide-gray-200">
+                <thead className="bg-gray-100 text-gray-600">
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <tr key={headerGroup.id} className="border-b">
+                      {headerGroup.headers.map((header) => (
+                        <th 
+                          key={header.id} 
+                          className="px-4 py-3 text-left font-medium whitespace-nowrap"
+                          style={{ width: header.getSize() }}
                         >
-                          {row.getIsExpanded() ? '👇' : '👉'}{' '}
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext()
-                          )}{' '}
-                          ({row.subRows.length})
-                        </button>
-                      ) : cell.getIsAggregated() ? (
-                        flexRender(
-                          cell.column.columnDef.aggregatedCell ??
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )
-                      ) : cell.getIsPlaceholder() ? null : (
-                        flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )
-                      )}
-                    </td>
+                          {header.isPlaceholder ? null : (
+                            <div className="flex items-center gap-2">
+                              {header.column.getCanGroup() && (
+                                <button
+                                  onClick={header.column.getToggleGroupingHandler()}
+                                  className="cursor-pointer"
+                                >
+                                  {header.column.getIsGrouped() ? '🛑' : '👊'}
+                                </button>
+                              )}
+                              {flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
+                              {header.column.getCanSort() && (
+                                <button
+                                  className="ml-2"
+                                  onClick={header.column.getToggleSortingHandler()}
+                                >
+                                  {{
+                                    asc: '↑',
+                                    desc: '↓',
+                                  }[header.column.getIsSorted() as string] ?? '⇅'}
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </th>
+                      ))}
+                    </tr>
                   ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                </thead>
+                <tbody className="divide-y divide-gray-200 bg-white">
+                  {table.getRowModel().rows.map(row => (
+                    <tr key={row.id} className="border-t hover:bg-gray-50">
+                      {row.getVisibleCells().map(cell => (
+                        <td
+                          key={cell.id}
+                          className={`px-4 py-2 ${cell.getIsGrouped()
+                              ? 'bg-green-100'
+                              : cell.getIsAggregated()
+                                ? 'bg-orange-100'
+                                : cell.getIsPlaceholder()
+                                  ? 'bg-red-100'
+                                  : ''
+                            }`}
+                          style={{ width: cell.column.getSize() }}
+                        >
+                          {cell.getIsGrouped() ? (
+                            <button
+                              onClick={row.getToggleExpandedHandler()}
+                              className="flex items-center gap-2"
+                            >
+                              {row.getIsExpanded() ? '👇' : '👉'}{' '}
+                              {flexRender(
+                                cell.column.columnDef.cell,
+                                cell.getContext()
+                              )}{' '}
+                              ({row.subRows.length})
+                            </button>
+                          ) : cell.getIsAggregated() ? (
+                            flexRender(
+                              cell.column.columnDef.aggregatedCell ??
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            )
+                          ) : cell.getIsPlaceholder() ? null : (
+                            flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            )
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
-  
+        
         {/* Add pagination controls */}
-        <div className="flex items-center justify-between px-2">
+        <div className="flex items-center justify-between px-2 mt-auto py-2">
           <div className="flex-1 text-sm text-gray-500">
             {totalRows > 0 ? (
               <>
