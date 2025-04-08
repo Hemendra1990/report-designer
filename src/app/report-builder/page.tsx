@@ -2,34 +2,26 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
-import { useRouter } from "next/navigation";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { 
-  QueryClient, 
-  QueryClientProvider, 
+import {
+  QueryClient,
+  QueryClientProvider,
   useQuery,
   useQueryClient
 } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 // Import our icon components
-import { 
-  ChevronDownIcon, 
+import {
+  ChevronDownIcon,
   ChevronLeftIcon,
-  CrossIcon,
-  DragHandleIcon,
   PlusIcon,
-  SearchIcon,
-  TrashIcon
+  SearchIcon
 } from "@/components/icons";
 
 import {
-  BucketIcon,
-  FilterIcon,
-  FormulaIcon
+  FilterIcon
 } from "@/components/icons/ReportIcons";
 
 // Import TanStack Table
@@ -41,23 +33,28 @@ import {
   SortingState,
   VisibilityState
 } from "@tanstack/react-table";
+import AppliedFiltersBar from "./components/AppliedFiltersBar";
+import ColumnsSection from "./components/ColumnsSection";
+import FilterFieldSelector from "./components/FilterFieldSelector";
+import FilterLogicSelector from "./components/FilterLogicSelector";
 import { FilterRow } from "./components/FilterRow";
+import FormulaBuilder from "./components/FormulaBuilder";
+import GroupsSection from "./components/GroupsSection";
+import InfoBanner from "./components/InfoBanner";
+import PreviewPanel from "./components/PreviewPanel";
+import QuickFilterSelector from "./components/QuickFilterSelector";
 import { ReportTypeSelectionModal } from "./components/ReportTypeSelectionModal";
 import TopHeaderBar from "./components/TopHeaderBar";
-import InfoBanner from "./components/InfoBanner";
-import AppliedFiltersBar from "./components/AppliedFiltersBar";
-import FormulaBuilder from "./components/FormulaBuilder";
-import FilterFieldSelector from "./components/FilterFieldSelector";
-import PreviewPanel from "./components/PreviewPanel";
 import { getDefaultOperator } from "./helper/ReportBuilderHelper";
 import { AccountData } from "./model/AccountData";
 import { accountFields, moreSampleData, sampleData } from "./model/fake-data";
-import { Field, FieldType } from "./model/Field";
+import { Field } from "./model/Field";
 import { Filter } from "./model/Filter";
 import { ReportTypeTemplate } from "./model/ReportType";
 import { FetchDataOptions, ServerResponse } from "./model/ServerReqRes";
 import { formulaFunctions } from "./util/ReportBuilderUtil";
-import SimpleFilterSelector from "./components/SimpleFilterSelector";
+import FieldsPanel from "./components/FieldsPanel";
+import ReportBuilderPanel from "./components/ReportBuilderPanel";
 
 // Group fields by category
 const fieldsByCategory = accountFields.reduce((acc, field) => {
@@ -589,462 +586,62 @@ function ReportBuilderPage() {
         {/* Main Content Area */}
         <div className="flex flex-1 overflow-hidden">
           {/* Left Panel - Fields */}
-          <div className={`${leftPanelCollapsed ? 'w-12' : 'w-64'} bg-card border-r border-border flex flex-col overflow-hidden transition-all duration-300 shrink-0`}>
-            {/* Collapse Control */}
-            <div className="flex justify-end p-1">
-              <button
-                onClick={() => setLeftPanelCollapsed(!leftPanelCollapsed)}
-                className="p-1 text-muted-foreground hover:text-foreground transition-colors"
-                title={leftPanelCollapsed ? "Expand fields panel" : "Collapse fields panel"}
-              >
-                <ChevronLeftIcon 
-                  className={`transition-transform ${leftPanelCollapsed ? 'rotate-180' : ''}`} 
-                />
-              </button>
-            </div>
-
-            {!leftPanelCollapsed ? (
-              <>
-                <div className="p-3 border-b border-gray-200">
-                  <div className="relative">
-                    <Input
-                      className="pl-8 text-sm"
-                      placeholder="Search all fields..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                    <SearchIcon
-                      className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"
-                    />
-                  </div>
-                </div>
-
-                <div className="overflow-y-auto flex-1">
-                  <div className="p-2 border-b border-gray-200 flex justify-between items-center">
-                    <div className="text-xs font-semibold text-gray-500">SUMMARY FORMULAS (0)</div>
-                    <button className="text-blue-600 text-xs">Add</button>
-                  </div>
-
-                  {Object.entries(fieldsByCategory).map(([category, fields]) => (
-                    <div key={category} className="border-b border-gray-200">
-                      <div
-                        className="p-2 flex justify-between items-center cursor-pointer hover:bg-gray-50"
-                        onClick={() => toggleCategory(category)}
-                      >
-                        <div className="text-xs font-semibold text-gray-500 uppercase">
-                          {category} FIELDS ({fields.length})
-                        </div>
-                        <ChevronDownIcon 
-                          className={`transition-transform ${expandedCategories[category as keyof typeof expandedCategories] ? 'rotate-180' : ''}`} 
-                        />
-                      </div>
-
-                      {expandedCategories[category as keyof typeof expandedCategories] && (
-                        <div className="pl-2">
-                          {fields
-                            .filter(field =>
-                              !searchTerm.trim() ||
-                              field.name.toLowerCase().includes(searchTerm.toLowerCase())
-                            )
-                            .map(field => (
-                              <div
-                                key={field.id}
-                                className="pl-2 pr-3 py-1.5 text-sm hover:bg-blue-50 flex items-center justify-between cursor-pointer group"
-                                onClick={() => addColumn(field)}
-                                draggable
-                                onDragStart={() => {/* Handle field drag if needed */ }}
-                              >
-                                <div className="flex items-center gap-2">
-                                  <span className={`w-4 h-4 flex items-center justify-center rounded-sm text-xs ${field.type === 'number' || field.type === 'currency' ? 'bg-purple-100 text-purple-700' : 'bg-indigo-100 text-indigo-700'}`}>
-                                    {field.icon}
-                                  </span>
-                                  <span>{field.name}</span>
-                                </div>
-                                <PlusIcon
-                                  className="text-blue-600 opacity-0 group-hover:opacity-100"
-                                />
-                              </div>
-                            ))}
-                          {fields.filter(field =>
-                            !searchTerm.trim() ||
-                            field.name.toLowerCase().includes(searchTerm.toLowerCase())
-                          ).length === 0 && searchTerm.trim() !== "" && (
-                              <div className="p-2 text-sm text-gray-500">No matching fields found</div>
-                            )}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </>
-            ) : (
-              // Collapsed view - shows only icons without category shortcuts
-              <div className="flex flex-col items-center pt-4 space-y-4 overflow-y-auto">
-                <div className="text-base font-medium text-gray-700 rotate-90 whitespace-nowrap tracking-wide mb-8">
-                  Fields
-                </div>
-                {/* <div
-                  className="p-2 cursor-pointer hover:bg-accent rounded-md"
-                  title="All fields"
-                  onClick={() => setLeftPanelCollapsed(false)}
-                >
-                  <TableIcon width={22} height={22} className="text-gray-600" />
-                </div> */}
-                
-                {/* Conditionally render category shortcuts based on state */}
-                {showShortcuts && (
-                  <>
-                    {Object.entries(fieldsByCategory).map(([category]) => (
-                      <div
-                        key={category}
-                        className="p-2 cursor-pointer hover:bg-accent rounded-md"
-                        title={`${category.toUpperCase()} fields`}
-                        onClick={() => {
-                          setLeftPanelCollapsed(false);
-                          setTimeout(() => toggleCategory(category), 300);
-                        }}
-                      >
-                        <div className="size-8 bg-gray-100 text-gray-600 rounded-md flex items-center justify-center text-sm font-medium">
-                          {category.charAt(0).toUpperCase()}
-                        </div>
-                      </div>
-                    ))}
-                  </>
-                )}
-              </div>
-            )}
-          </div>
+          <FieldsPanel
+            leftPanelCollapsed={leftPanelCollapsed}
+            setLeftPanelCollapsed={setLeftPanelCollapsed}
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            fieldsByCategory={fieldsByCategory}
+            expandedCategories={expandedCategories}
+            toggleCategory={toggleCategory}
+            addColumn={addColumn}
+            showShortcuts={showShortcuts}
+          />
 
           {/* Center Panel - Report Builder */}
-          <div className={`${centerPanelCollapsed ? 'w-12' : 'w-64'} flex flex-col bg-card border-r border-border transition-all duration-300 shrink-0`}>
-            {/* Collapse Control */}
-            <div className="flex justify-end p-1">
-              <button
-                onClick={() => setCenterPanelCollapsed(!centerPanelCollapsed)}
-                className="p-1 text-muted-foreground hover:text-foreground transition-colors"
-                title={centerPanelCollapsed ? "Expand builder panel" : "Collapse builder panel"}
-              >
-                <ChevronLeftIcon 
-                  className={`transition-transform ${centerPanelCollapsed ? 'rotate-180' : ''}`}
-                />
-              </button>
-            </div>
-
-            {!centerPanelCollapsed ? (
-              <Tabs defaultValue="outline" className="flex flex-col flex-1">
-                <div className="border-b border-gray-200">
-                  <TabsList className="p-0 bg-transparent border-b-0">
-                    <TabsTrigger
-                      value="outline"
-                      className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 data-[state=active]:shadow-none"
-                    >
-                      Outline
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="filters"
-                      className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 data-[state=active]:shadow-none"
-                    >
-                      Filters (2)
-                    </TabsTrigger>
-                  </TabsList>
-                </div>
-
-                <TabsContent value="outline" className="flex-1 flex flex-col m-0 data-[state=active]:p-0">
-                  {/* Groups Section */}
-                  <div className="border-b border-gray-200 p-4">
-                    <div className="text-xs font-semibold text-muted-foreground mb-2">GROUP ROWS</div>
-                    <div className="relative" ref={groupSearchRef}>
-                      <Input
-                        className="pl-8 text-sm bg-background"
-                        placeholder="Add group..."
-                        value={groupSearchTerm}
-                        onChange={(e) => {
-                          setGroupSearchTerm(e.target.value);
-                          if (!showGroupDropdown) setShowGroupDropdown(true);
-                        }}
-                        onClick={() => setShowGroupDropdown(true)}
-                      />
-                      <SearchIcon 
-                        className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
-                      />
-
-                      {/* Group Dropdown */}
-                      {showGroupDropdown && (
-                        <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-md py-1 max-h-[300px] overflow-y-auto">
-                          {selectedColumns.filter(col =>
-                            !groupSearchTerm.trim() || col.name.toLowerCase().includes(groupSearchTerm.toLowerCase())
-                          ).length > 0 ? (
-                            selectedColumns
-                              .filter(col =>
-                                !groupSearchTerm.trim() || col.name.toLowerCase().includes(groupSearchTerm.toLowerCase())
-                              )
-                              .map(column => (
-                                <div
-                                  key={column.id}
-                                  className="px-3 py-2 hover:bg-accent cursor-pointer flex items-center gap-2 text-sm"
-                                  onClick={() => {
-                                    setSelectedGroup(column.id);
-                                    setGroupSearchTerm(column.name);
-                                    setShowGroupDropdown(false);
-                                    handleGroupBy(column.id);
-                                  }}
-                                >
-                                  <span className={`size-4 flex items-center justify-center rounded-sm text-xs ${column.type === 'number' || column.type === 'currency' ? 'bg-primary/10 text-primary' : 'bg-accent/80 text-accent-foreground'}`}>
-                                    {column.name.charAt(0).toUpperCase()}
-                                  </span>
-                                  {column.name}
-                                </div>
-                              ))
-                          ) : (
-                            <div className="px-3 py-2 text-sm text-muted-foreground">
-                              No columns match your search
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Selected Groups */}
-                    {grouping.length > 0 && (
-                      <div className="mt-2 space-y-2">
-                        {grouping.map((groupId, index) => {
-                          const groupColumn = selectedColumns.find(col => col.id === groupId);
-                          if (!groupColumn) return null;
-                          return (
-                            <div key={groupId} className="bg-accent/50 border rounded-md p-2 text-sm flex justify-between items-center">
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium">{groupColumn.name}</span>
-                                <span className="text-muted-foreground">Ascending</span>
-                              </div>
-                              <button
-                                onClick={() => {
-                                  handleGroupBy(groupId);
-                                }}
-                                className="text-muted-foreground hover:text-foreground"
-                              >
-                                <CrossIcon />
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Columns Section */}
-                  <div className="p-4 flex-1">
-                    <div className="flex justify-between items-center mb-3">
-                      <div className="text-xs font-semibold text-gray-500">COLUMNS</div>
-                      <div className="relative">
-                        <button
-                          className="text-sm text-blue-600 flex items-center"
-                          onClick={openColumnMenu}
-                        >
-                          <PlusIcon className="mr-1" />
-                          Add Column
-                          <ChevronDownIcon className="ml-1" />
-                        </button>
-
-                        {/* Column Menu Dropdown */}
-                        {isMenuOpen && (
-                          <div
-                            ref={menuRef}
-                            className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-10 w-48"
-                            style={{
-                              top: menuPosition.top - 250,
-                              left: menuPosition.left - 100,
-                              position: 'fixed'
-                            }}
-                          >
-                            <div className="py-1">
-                              <button
-                                className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left flex items-center"
-                                onClick={() => setIsMenuOpen(false)}
-                              >
-                                <BucketIcon className="mr-2" />
-                                Add Bucket Column
-                              </button>
-                              <button
-                                className="px-4 py-2 text-sm text-gray-400 w-full text-left flex items-center cursor-not-allowed"
-                              >
-                                <FormulaIcon className="mr-2" />
-                                Add Summary Formula
-                              </button>
-                              <button
-                                className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left flex items-center"
-                                onClick={addFormulaColumn}
-                              >
-                                <FormulaIcon className="mr-2" />
-                                Add Row-Level Formula
-                              </button>
-                              <div className="border-t border-gray-200 my-1"></div>
-                              <button
-                                className="px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full text-left flex items-center"
-                                onClick={() => {
-                                  setSelectedColumns([]);
-                                  setIsMenuOpen(false);
-                                }}
-                              >
-                                <TrashIcon className="mr-2" />
-                                Remove All Columns
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      {selectedColumns.map((column, index) => (
-                        <div
-                          key={column.id}
-                          ref={(el) => {
-                            // Fix the ref assignment
-                            if (columnRefs.current) {
-                              columnRefs.current[index] = el;
-                            }
-                          }}
-                          className={`bg-white border border-gray-200 rounded p-2 flex items-center justify-between group hover:border-gray-300 shadow-sm ${draggedItem === index ? 'opacity-50 border-dashed' : ''}`}
-                          draggable
-                          onDragStart={() => handleDragStart(index)}
-                          onDragOver={(e) => handleDragOver(e, index)}
-                          onDragEnd={() => setDraggedItem(null)}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="text-gray-400 cursor-move">
-                              <DragHandleIcon />
-                            </span>
-                            <span className="text-sm">{column.name}</span>
-                            {'formula' in column && (
-                              <span className="ml-1 px-1.5 py-0.5 text-xs bg-blue-100 text-blue-800 rounded">Formula</span>
-                            )}
-                          </div>
-                          <button
-                            className="text-gray-400 hover:text-gray-600"
-                            onClick={() => removeColumn(column.id)}
-                          >
-                            <CrossIcon />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="filters" className="m-0 data-[state=active]:p-4">
-                  <div className="space-y-6">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-lg font-medium">Filters</h3>
-                      <Button
-                        size="sm"
-                        className="flex items-center gap-1"
-                        onClick={() => setShowFilterFieldSelector(true)}
-                      >
-                        <FilterIcon width={16} height={16} />
-                        Add Filter
-                      </Button>
-                    </div>
-
-                    <div className="space-y-4">
-                      {/* Filter Logic Selector */}
-                      <div className="bg-gray-50 p-3 rounded-md border border-gray-200">
-                        <div className="flex flex-col space-y-3">
-                          <div className="text-sm">
-                            <span className="font-medium">Filter Logic:</span>
-                          </div>
-                          <div>
-                            <Select
-                              value={filterLogic}
-                              onValueChange={(value: 'and' | 'or' | 'custom') => setFilterLogic(value)}
-                            >
-                              <SelectTrigger className="w-[200px] h-8 text-xs">
-                                <SelectValue placeholder="Logic" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="and">AND (1 AND 2 AND 3)</SelectItem>
-                                <SelectItem value="or">OR (1 OR 2 OR 3)</SelectItem>
-                                <SelectItem value="custom">Custom Formula</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {filterLogic === 'and' ? 'All conditions must be true' :
-                              filterLogic === 'or' ? 'Any condition can be true' :
-                                'Define a custom formula'}
-                          </div>
-                        </div>
-
-                        {filterLogic === 'custom' && (
-                          <div className="mt-3">
-                            <Textarea
-                              placeholder="Enter custom formula (e.g., 1 AND (2 OR 3))"
-                              value={customFormula}
-                              onChange={(e) => setCustomFormula(e.target.value)}
-                              className="text-xs"
-                            />
-                            <div className="text-xs text-gray-500 mt-1">
-                              Use numbers to reference filters (e.g., 1, 2, 3) and combine with AND, OR, NOT
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Display existing filters */}
-                      {filters.map((filter, index) => (
-                        <FilterRow
-                          key={filter.id}
-                          filter={filter}
-                          onRemove={() => removeFilter(filter.id)}
-                          onUpdate={(updates) => updateFilter(filter.id, updates)}
-                          index={index + 1}
-                        />
-                      ))}
-
-                      {/* Show message when no filters exist */}
-                      {filters.length === 0 && (
-                        <div className="bg-gray-50 p-4 rounded-md border border-dashed border-gray-300 text-center">
-                          <p className="text-gray-500">No filters added yet. Click "Add Filter" to create one.</p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Filter Field Selection UI */}
-                    <SimpleFilterSelector 
-                      accountFields={accountFields}
-                      addFilter={addFilter}
-                      onOpenFullSelector={() => setShowFilterFieldSelector(true)}
-                    />
-                  </div>
-                </TabsContent>
-              </Tabs>
-            ) : (
-              // Collapsed view for center panel
-              <div className="flex flex-col items-center pt-4 overflow-hidden">
-                <div className="text-base font-medium text-gray-700 rotate-90 whitespace-nowrap tracking-wide mb-8">
-                  Outline
-                </div>
-                {/* <div
-                  className="p-2 cursor-pointer hover:bg-gray-50 rounded"
-                  title="Report columns"
-                  onClick={() => setCenterPanelCollapsed(false)}
-                >
-                  <TableIcon width={22} height={22} className="text-blue-600" />
-                </div> */}
-                
-                {/* Conditionally render shortcuts based on state */}
-                {showShortcuts && (
-                  <>
-                    <div className="text-base font-medium text-gray-700 rotate-90 whitespace-nowrap tracking-wide mt-8">
-                      Outline
-                    </div>
-                    <div className="text-base font-medium text-gray-700 rotate-90 whitespace-nowrap tracking-wide mt-8">
-                      Filters ({filters.length})
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
+          <ReportBuilderPanel
+            centerPanelCollapsed={centerPanelCollapsed}
+            setCenterPanelCollapsed={setCenterPanelCollapsed}
+            showShortcuts={showShortcuts}
+            filters={filters}
+            
+            // Groups section props
+            selectedColumns={selectedColumns}
+            groupSearchTerm={groupSearchTerm}
+            setGroupSearchTerm={setGroupSearchTerm}
+            showGroupDropdown={showGroupDropdown}
+            setShowGroupDropdown={setShowGroupDropdown}
+            setSelectedGroup={setSelectedGroup}
+            handleGroupBy={handleGroupBy}
+            grouping={grouping}
+            groupSearchRef={groupSearchRef}
+            
+            // Columns section props
+            isMenuOpen={isMenuOpen}
+            menuRef={menuRef}
+            menuPosition={menuPosition}
+            columnRefs={columnRefs}
+            draggedItem={draggedItem}
+            openColumnMenu={openColumnMenu}
+            addFormulaColumn={addFormulaColumn}
+            handleDragStart={handleDragStart}
+            handleDragOver={handleDragOver}
+            removeColumn={removeColumn}
+            setIsMenuOpen={setIsMenuOpen}
+            setSelectedColumns={setSelectedColumns}
+            setDraggedItem={setDraggedItem}
+            
+            // Filters section props
+            filterLogic={filterLogic}
+            setFilterLogic={setFilterLogic}
+            customFormula={customFormula}
+            setCustomFormula={setCustomFormula}
+            accountFields={accountFields}
+            addFilter={addFilter}
+            removeFilter={removeFilter}
+            updateFilter={updateFilter}
+            setShowFilterFieldSelector={setShowFilterFieldSelector}
+          />
 
           {/* Right Panel - Preview */}
           <PreviewPanel 

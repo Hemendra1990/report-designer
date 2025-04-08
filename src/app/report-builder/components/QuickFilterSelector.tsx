@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Field, FieldType } from "../model/Field";
 
-interface SimpleFilterSelectorProps {
+interface QuickFilterSelectorProps {
   accountFields: Array<{
     id: string;
     name: string;
@@ -16,7 +16,7 @@ interface SimpleFilterSelectorProps {
   onOpenFullSelector: () => void;
 }
 
-const SimpleFilterSelector: React.FC<SimpleFilterSelectorProps> = ({
+const QuickFilterSelector: React.FC<QuickFilterSelectorProps> = ({
   accountFields,
   addFilter,
   onOpenFullSelector
@@ -63,4 +63,4 @@ const SimpleFilterSelector: React.FC<SimpleFilterSelectorProps> = ({
   );
 };
 
-export default SimpleFilterSelector; 
+export default QuickFilterSelector; 
