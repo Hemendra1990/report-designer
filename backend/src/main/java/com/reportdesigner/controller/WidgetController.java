@@ -1,10 +1,7 @@
 package com.reportdesigner.controller;
 
-import com.reportdesigner.model.Dashboard;
-import com.reportdesigner.model.Report;
 import com.reportdesigner.model.Widget;
 import com.reportdesigner.service.DashboardService;
-import com.reportdesigner.service.ReportService;
 import com.reportdesigner.service.WidgetService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -21,13 +18,11 @@ public class WidgetController {
 
     private final WidgetService widgetService;
     private final DashboardService dashboardService;
-    private final ReportService reportService;
 
     @Autowired
-    public WidgetController(WidgetService widgetService, DashboardService dashboardService, ReportService reportService) {
+    public WidgetController(WidgetService widgetService, DashboardService dashboardService) {
         this.widgetService = widgetService;
         this.dashboardService = dashboardService;
-        this.reportService = reportService;
     }
 
     @GetMapping
@@ -46,20 +41,6 @@ public class WidgetController {
     public ResponseEntity<List<Widget>> getActiveWidgetsByDashboard(@PathVariable UUID dashboardId) {
         return dashboardService.findById(dashboardId)
                 .map(dashboard -> ResponseEntity.ok(widgetService.findByDashboardAndActive(dashboard, true)))
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    @GetMapping("/report/{reportId}")
-    public ResponseEntity<List<Widget>> getWidgetsByReport(@PathVariable UUID reportId) {
-        return reportService.findById(reportId)
-                .map(report -> ResponseEntity.ok(widgetService.findByReport(report)))
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    @GetMapping("/report/{reportId}/active")
-    public ResponseEntity<List<Widget>> getActiveWidgetsByReport(@PathVariable UUID reportId) {
-        return reportService.findById(reportId)
-                .map(report -> ResponseEntity.ok(widgetService.findByReportAndActive(report, true)))
                 .orElse(ResponseEntity.notFound().build());
     }
 

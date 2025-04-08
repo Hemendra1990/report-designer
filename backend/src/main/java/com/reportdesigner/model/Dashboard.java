@@ -1,5 +1,6 @@
 package com.reportdesigner.model;
 
+import io.hypersistence.utils.hibernate.id.Tsid;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -21,6 +22,11 @@ import java.util.UUID;
 @EqualsAndHashCode(callSuper = true)
 public class Dashboard extends BaseEntity {
 
+    @Id
+    @Tsid
+    @Column(length = 50)
+    private String id;
+
     @NotBlank
     @Size(max = 100)
     @Column(nullable = false)
@@ -29,11 +35,6 @@ public class Dashboard extends BaseEntity {
     @Column
     @Size(max = 500)
     private String description;
-
-    @NotNull
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "report_id", nullable = false)
-    private Report report;
 
     @Column(nullable = false)
     private String layout;
@@ -61,6 +62,8 @@ public class Dashboard extends BaseEntity {
 
     @Column(nullable = false, unique = true)
     private String publishUrl;
+
+    private Boolean active;
 
     @PrePersist
     protected void onCreate() {

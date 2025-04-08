@@ -3,12 +3,9 @@ package com.reportdesigner.model;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-import java.time.LocalDateTime;
-import java.util.UUID;
+import java.time.OffsetDateTime;
 
 @Getter
 @Setter
@@ -16,18 +13,33 @@ import java.util.UUID;
 @EntityListeners(AuditingEntityListener.class)
 public abstract class BaseEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    @Column(name = "created_by", updatable = false)
+    private String createdBy;
 
-    @CreatedDate
-    @Column(nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    @Column(name = "updated_by")
+    private String updatedBy;
 
-    @LastModifiedDate
-    @Column(nullable = false)
-    private LocalDateTime updatedAt;
+    @Column(name = "created_on", updatable = false)
+    private OffsetDateTime createdOn;
 
-    @Column(nullable = false)
-    private boolean active = true;
+    @Column(name = "updated_on")
+    private OffsetDateTime updatedOn;
+
+    @Column(name = "is_active")
+    private Boolean isActive;
+
+    @Column(name = "is_deleted")
+    private Boolean isDeleted;
+
+    @PrePersist
+    public void prePersist() {
+        this.setCreatedOn(OffsetDateTime.now());
+        this.setIsActive(true);
+        this.setIsDeleted(false);
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        this.setUpdatedOn(OffsetDateTime.now());
+    }
 } 
