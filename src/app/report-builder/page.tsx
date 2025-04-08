@@ -285,6 +285,9 @@ export default function ReportBuilderPage() {
   // Panel collapse state
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
   const [centerPanelCollapsed, setCenterPanelCollapsed] = useState(false);
+  
+  // State for controlling shortcut visibility in collapsed panels
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   // Formula editor state
   const [showFormulaBuilder, setShowFormulaBuilder] = useState(false);
@@ -566,6 +569,20 @@ export default function ReportBuilderPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Add shortcut toggle control */}
+            <div className="flex items-center gap-2 mr-4">
+              <span className="text-xs text-gray-500">Panel Shortcuts</span>
+              <div className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={showShortcuts}
+                  onChange={() => setShowShortcuts(!showShortcuts)}
+                />
+                <div className="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+              </div>
+            </div>
+            
             <Button variant="outline" size="sm" className="flex items-center gap-1">
               <NavigationIcon size={16} />
             </Button>
@@ -710,26 +727,39 @@ export default function ReportBuilderPage() {
                 </div>
               </>
             ) : (
-              // Collapsed view - shows only icons and minimal information
+              // Collapsed view - shows only icons without category shortcuts
               <div className="flex flex-col items-center pt-4 space-y-4 overflow-y-auto">
                 <div className="text-base font-medium text-gray-700 rotate-90 whitespace-nowrap tracking-wide mb-8">
                   Fields
                 </div>
-                {Object.entries(fieldsByCategory).map(([category]) => (
-                  <div
-                    key={category}
-                    className="p-2 cursor-pointer hover:bg-accent rounded-md"
-                    title={`${category.toUpperCase()} fields`}
-                    onClick={() => {
-                      setLeftPanelCollapsed(false);
-                      setTimeout(() => toggleCategory(category), 300);
-                    }}
-                  >
-                    <div className="size-8 bg-gray-100 text-gray-600 rounded-md flex items-center justify-center text-sm font-medium">
-                      {category.charAt(0).toUpperCase()}
-                    </div>
-                  </div>
-                ))}
+                {/* <div
+                  className="p-2 cursor-pointer hover:bg-accent rounded-md"
+                  title="All fields"
+                  onClick={() => setLeftPanelCollapsed(false)}
+                >
+                  <TableIcon width={22} height={22} className="text-gray-600" />
+                </div> */}
+                
+                {/* Conditionally render category shortcuts based on state */}
+                {showShortcuts && (
+                  <>
+                    {Object.entries(fieldsByCategory).map(([category]) => (
+                      <div
+                        key={category}
+                        className="p-2 cursor-pointer hover:bg-accent rounded-md"
+                        title={`${category.toUpperCase()} fields`}
+                        onClick={() => {
+                          setLeftPanelCollapsed(false);
+                          setTimeout(() => toggleCategory(category), 300);
+                        }}
+                      >
+                        <div className="size-8 bg-gray-100 text-gray-600 rounded-md flex items-center justify-center text-sm font-medium">
+                          {category.charAt(0).toUpperCase()}
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -1071,20 +1101,29 @@ export default function ReportBuilderPage() {
               </Tabs>
             ) : (
               // Collapsed view for center panel
-              <div className="flex flex-col items-center pt-4 space-y-4 overflow-hidden">
-                <div
+              <div className="flex flex-col items-center pt-4 overflow-hidden">
+                <div className="text-base font-medium text-gray-700 rotate-90 whitespace-nowrap tracking-wide mb-8">
+                  Outline
+                </div>
+                {/* <div
                   className="p-2 cursor-pointer hover:bg-gray-50 rounded"
                   title="Report columns"
                   onClick={() => setCenterPanelCollapsed(false)}
                 >
                   <TableIcon width={22} height={22} className="text-blue-600" />
-                </div>
-                <div className="text-base font-medium text-gray-700 rotate-90 whitespace-nowrap tracking-wide mt-8">
-                  Outline
-                </div>
-                <div className="text-base font-medium text-gray-700 rotate-90 whitespace-nowrap tracking-wide mt-8">
-                  Filters ({filters.length})
-                </div>
+                </div> */}
+                
+                {/* Conditionally render shortcuts based on state */}
+                {showShortcuts && (
+                  <>
+                    <div className="text-base font-medium text-gray-700 rotate-90 whitespace-nowrap tracking-wide mt-8">
+                      Outline
+                    </div>
+                    <div className="text-base font-medium text-gray-700 rotate-90 whitespace-nowrap tracking-wide mt-8">
+                      Filters ({filters.length})
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -1384,7 +1423,6 @@ export default function ReportBuilderPage() {
                             </SelectContent>
                           </Select>
                         </div>
-
                         {(formulaOutputType === 'number' || formulaOutputType === 'currency' || formulaOutputType === 'percent') && (
                           <div>
                             <Label htmlFor="decimal-points" className="text-sm font-medium">
@@ -1576,3 +1614,4 @@ export default function ReportBuilderPage() {
     </>
   );
 }
+
