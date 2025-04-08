@@ -6,8 +6,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { 
@@ -20,34 +18,18 @@ import {
 // Import our icon components
 import { 
   ChevronDownIcon, 
-  ChevronLeftIcon, 
-  ChevronRightIcon,
+  ChevronLeftIcon,
   CrossIcon,
   DragHandleIcon,
-  ExpandIcon,
-  FileIcon,
-  InfoIcon,
-  ListIcon,
-  MenuIcon,
   PlusIcon,
-  PrintIcon,
   SearchIcon,
-  TableIcon,
-  TrashIcon,
-  ArrowRightIcon
+  TrashIcon
 } from "@/components/icons";
 
 import {
-  AccountIcon,
   BucketIcon,
-  ColumnIcon,
-  DataTableIcon,
   FilterIcon,
-  FormulaIcon,
-  GroupRowsIcon,
-  NavigationIcon,
-  RunIcon,
-  SaveIcon
+  FormulaIcon
 } from "@/components/icons/ReportIcons";
 
 // Import TanStack Table
@@ -59,7 +41,6 @@ import {
   SortingState,
   VisibilityState
 } from "@tanstack/react-table";
-import { DataTable } from "./components/DataTable";
 import { FilterRow } from "./components/FilterRow";
 import { ReportTypeSelectionModal } from "./components/ReportTypeSelectionModal";
 import TopHeaderBar from "./components/TopHeaderBar";
@@ -67,7 +48,8 @@ import InfoBanner from "./components/InfoBanner";
 import AppliedFiltersBar from "./components/AppliedFiltersBar";
 import FormulaBuilder from "./components/FormulaBuilder";
 import FilterFieldSelector from "./components/FilterFieldSelector";
-import { getDefaultOperator, getFieldIcon } from "./helper/ReportBuilderHelper";
+import PreviewPanel from "./components/PreviewPanel";
+import { getDefaultOperator } from "./helper/ReportBuilderHelper";
 import { AccountData } from "./model/AccountData";
 import { accountFields, moreSampleData, sampleData } from "./model/fake-data";
 import { Field, FieldType } from "./model/Field";
@@ -75,6 +57,7 @@ import { Filter } from "./model/Filter";
 import { ReportTypeTemplate } from "./model/ReportType";
 import { FetchDataOptions, ServerResponse } from "./model/ServerReqRes";
 import { formulaFunctions } from "./util/ReportBuilderUtil";
+import SimpleFilterSelector from "./components/SimpleFilterSelector";
 
 // Group fields by category
 const fieldsByCategory = accountFields.reduce((acc, field) => {
@@ -1026,44 +1009,11 @@ function ReportBuilderPage() {
                     </div>
 
                     {/* Filter Field Selection UI */}
-                    <div className="mt-8 border border-dashed border-gray-300 rounded-md p-4 bg-gray-50">
-                      <h4 className="text-sm font-medium mb-3">Add Another Filter</h4>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <Label htmlFor="filter-field" className="text-xs mb-1 block">Field</Label>
-                          <Select onValueChange={(value) => {
-                            const field = accountFields.find(f => f.id === value);
-                            if (field) {
-                              // Convert the field to the correct type
-                              const typedField: Field = {
-                                id: field.id,
-                                name: field.name,
-                                type: field.type as FieldType,
-                                category: field.category,
-                                icon: field.icon
-                              };
-                              addFilter(typedField);
-                            }
-                          }}>
-                            <SelectTrigger id="filter-field" className="w-full">
-                              <SelectValue placeholder="Select field" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {accountFields.map(field => (
-                                <SelectItem key={field.id} value={field.id}>
-                                  {field.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="flex items-end">
-                          <Button className="w-full" onClick={() => setShowFilterFieldSelector(true)}>
-                            Add Filter
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
+                    <SimpleFilterSelector 
+                      accountFields={accountFields}
+                      addFilter={addFilter}
+                      onOpenFullSelector={() => setShowFilterFieldSelector(true)}
+                    />
                   </div>
                 </TabsContent>
               </Tabs>
@@ -1097,115 +1047,35 @@ function ReportBuilderPage() {
           </div>
 
           {/* Right Panel - Preview */}
-          <div className="flex-1 bg-accent/10 flex flex-col transition-all duration-300 overflow-hidden min-w-0">
-            <div className="p-3 bg-background border-b border-border flex justify-between shrink-0">
-              <div className="flex items-center">
-                <button
-                  className="mr-2 p-1 text-muted-foreground hover:text-foreground transition-colors"
-                  onClick={() => {
-                    setLeftPanelCollapsed(true);
-                    setCenterPanelCollapsed(true);
-                  }}
-                  title="Expand preview"
-                >
-                  <ExpandIcon />
-                </button>
-                <span className="text-sm font-medium">Preview</span>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <button
-                    className={`p-1 rounded ${showRowCounts ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}
-                    onClick={toggleRowCounts}
-                    title="Toggle Row Counts"
-                  >
-                    <ListIcon />
-                  </button>
-                  <button
-                    className={`p-1 rounded ${showDetailRows ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}
-                    onClick={toggleDetailRows}
-                    title="Toggle Detail Rows"
-                  >
-                    <TableIcon />
-                  </button>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Update Automatically</span>
-                  <div className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="sr-only peer"
-                      checked={autoUpdatePreview}
-                      onChange={() => setAutoUpdatePreview(!autoUpdatePreview)}
-                    />
-                    <div className="w-9 h-5 bg-muted rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-background after:border-muted-foreground after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {rowData.length > 0 ? (
-              <div className="flex-1 p-4 overflow-hidden flex flex-col">
-                <div className="w-full h-full rounded-md overflow-hidden border border-border flex flex-col">
-                  <DataTable<AccountData>
-                    data={rowData}
-                    columns={columns}
-                    sorting={sorting}
-                    setSorting={setSorting}
-                    columnFilters={columnFilters}
-                    setColumnFilters={setColumnFilters}
-                    columnVisibility={columnVisibility}
-                    setColumnVisibility={setColumnVisibility}
-                    pagination={pagination}
-                    setPagination={setPagination}
-                    showRowCounts={showRowCounts}
-                    showDetailRows={showDetailRows}
-                    grouping={grouping}
-                    onGroupingChange={setGrouping}
-                    expandedRowGroups={expandedRowGroups}
-                    setExpandedRowGroups={setExpandedRowGroups}
-                    pageCount={pageCount}
-                    totalRows={totalRows}
-                    isLoading={isLoading}
-                  />
-                </div>
-              </div>
-            ) : (
-              // Keep the existing "No records returned" view
-              <div className="flex-1 p-6 flex flex-col items-center justify-center text-center">
-                <div className="max-w-md">
-                  <FileIcon 
-                    className="mx-auto mb-4 text-gray-400"
-                    size={40}
-                  />
-
-                  <h3 className="text-lg font-medium mb-3 text-gray-700">No records returned in preview</h3>
-                  <p className="text-gray-500 mb-4">Try running the report or editing report filters.</p>
-
-                  <div className="space-y-2 text-left">
-                    <div>
-                      <Link href="#" className="text-blue-600 flex items-center gap-1 text-sm">
-                        <ArrowRightIcon />
-                        Show All accounts.
-                      </Link>
-                    </div>
-                    <div>
-                      <Link href="#" className="text-blue-600 flex items-center gap-1 text-sm">
-                        <ArrowRightIcon />
-                        Set the Created Date filter to All Time.
-                      </Link>
-                    </div>
-                    <div>
-                      <Link href="#" className="text-blue-600 flex items-center gap-1 text-sm">
-                        <ArrowRightIcon />
-                        Edit other filters in the filter panel.
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          <PreviewPanel 
+            rowData={rowData}
+            columns={columns}
+            sorting={sorting}
+            setSorting={setSorting}
+            columnFilters={columnFilters}
+            setColumnFilters={setColumnFilters}
+            columnVisibility={columnVisibility}
+            setColumnVisibility={setColumnVisibility}
+            pagination={pagination}
+            setPagination={setPagination}
+            showRowCounts={showRowCounts}
+            toggleRowCounts={toggleRowCounts}
+            showDetailRows={showDetailRows}
+            toggleDetailRows={toggleDetailRows}
+            grouping={grouping}
+            onGroupingChange={setGrouping}
+            expandedRowGroups={expandedRowGroups}
+            setExpandedRowGroups={setExpandedRowGroups}
+            pageCount={pageCount}
+            totalRows={totalRows}
+            isLoading={isLoading}
+            autoUpdatePreview={autoUpdatePreview}
+            setAutoUpdatePreview={setAutoUpdatePreview}
+            onExpandView={() => {
+              setLeftPanelCollapsed(true);
+              setCenterPanelCollapsed(true);
+            }}
+          />
         </div>
 
         {/* Formula Builder */}

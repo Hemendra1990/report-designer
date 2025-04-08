@@ -1,8 +1,20 @@
 import { NextResponse } from 'next/server';
 import type { SortingState, GroupingState } from '@tanstack/react-table';
 
+interface SampleDataItem {
+  id: number;
+  account_name: string;
+  account_owner: string;
+  billing_state: string;
+  type: string;
+  rating: string;
+  last_activity: string;
+  annual_revenue: number;
+  phone: string;
+}
+
 // Import your sample data
-const sampleData = [
+const sampleData: SampleDataItem[] = [
   {
     id: 1,
     account_name: "Acme Corporation",
@@ -85,10 +97,10 @@ interface Filter {
   selectedOptions?: string[];
 }
 
-function applyFilters(data: any[], filters: Filter[]) {
+function applyFilters(data: SampleDataItem[], filters: Filter[]): SampleDataItem[] {
   return data.filter(item => {
     return filters.every(filter => {
-      const value = item[filter.field.id];
+      const value = item[filter.field.id as keyof SampleDataItem];
       switch (filter.operator) {
         case 'equals':
           return value === filter.value;
@@ -107,14 +119,14 @@ function applyFilters(data: any[], filters: Filter[]) {
   });
 }
 
-function applySorting(data: any[], sorting: SortingState) {
+function applySorting(data: SampleDataItem[], sorting: SortingState): SampleDataItem[] {
   if (!sorting.length) return data;
 
   return [...data].sort((a, b) => {
     for (const sort of sorting) {
       const desc = sort.desc ? -1 : 1;
-      const aVal = a[sort.id];
-      const bVal = b[sort.id];
+      const aVal = a[sort.id as keyof SampleDataItem];
+      const bVal = b[sort.id as keyof SampleDataItem];
 
       if (aVal < bVal) return -1 * desc;
       if (aVal > bVal) return 1 * desc;
@@ -123,37 +135,52 @@ function applySorting(data: any[], sorting: SortingState) {
   });
 }
 
-function applyGrouping(data: any[], grouping: GroupingState) {
+function applyGrouping(data: SampleDataItem[], grouping: GroupingState): SampleDataItem[] {
   if (!grouping.length) return data;
 
-  const groups = new Map();
+  const groups = new Map<unknown, Map<unknown, unknown>>();
   data.forEach(item => {
-    let currentGroup = groups;
+    let currentGroup: Map<unknown, unknown> = groups;
     grouping.forEach(groupField => {
-      const groupValue = item[groupField];
+      const groupValue = item[groupField as keyof SampleDataItem];
       if (!currentGroup.has(groupValue)) {
         currentGroup.set(groupValue, new Map());
       }
-      currentGroup = currentGroup.get(groupValue);
+      currentGroup = currentGroup.get(groupValue) as Map<unknown, unknown>;
     });
     if (!currentGroup.has('items')) {
       currentGroup.set('items', []);
     }
-    currentGroup.get('items').push(item);
+    (currentGroup.get('items') as SampleDataItem[]).push(item);
   });
 
   return data; // For now, return ungrouped data as grouping is handled client-side
 }
 
-export async function POST(request: Request) {
+interface RequestBody {
+  page: number;
+  pageSize: number;
+  sorting: SortingState;
+  grouping: GroupingState;
+  columns: string[];
+  filters: Filter[];
+}
+
+interface ApiResponse {
+  data: SampleDataItem[];
+  pageCount: number;
+  totalRows: number;
+}
+
+export async function POST(request: Request): Promise<NextResponse<ApiResponse | { error: string }>> {
   try {
-    const body = await request.json();
-    const { page, pageSize, sorting, grouping, columns, filters } = body;
+    const body = await request.json() as RequestBody;
+    const { page, pageSize, sorting, grouping, filters } = body;
 
     // Apply filters, sorting, and grouping
-    let filteredData = applyFilters(sampleData, filters);
-    let sortedData = applySorting(filteredData, sorting);
-    let groupedData = applyGrouping(sortedData, grouping);
+    const filteredData = applyFilters(sampleData, filters);
+    const sortedData = applySorting(filteredData, sorting);
+    const groupedData = applyGrouping(sortedData, grouping);
 
     // Calculate pagination
     const totalRows = groupedData.length;
