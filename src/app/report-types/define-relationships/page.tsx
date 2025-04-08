@@ -145,7 +145,7 @@ export default function DefineRelationships() {
         const response = allTableMetaData || [];
         const mappedObjects = response?.map((table: TableMetadata) => ({
           id: table.tableName,
-          name: table.displayName,
+          name: table.tableName,
           schema: table.schema,
           letter: "A", // Will be assigned dynamically
           description: `Table in schema ${table.schema}`,
