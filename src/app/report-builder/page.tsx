@@ -10,6 +10,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { 
+  QueryClient, 
+  QueryClientProvider, 
+  useQuery,
+  useQueryClient
+} from "@tanstack/react-query";
 
 // Import our icon components
 import { 
@@ -56,6 +62,9 @@ import {
 import { DataTable } from "./components/DataTable";
 import { FilterRow } from "./components/FilterRow";
 import { ReportTypeSelectionModal } from "./components/ReportTypeSelectionModal";
+import TopHeaderBar from "./components/TopHeaderBar";
+import InfoBanner from "./components/InfoBanner";
+import AppliedFiltersBar from "./components/AppliedFiltersBar";
 import { getDefaultOperator, getFieldIcon } from "./helper/ReportBuilderHelper";
 import { AccountData } from "./model/AccountData";
 import { accountFields, moreSampleData, sampleData } from "./model/fake-data";
@@ -64,8 +73,6 @@ import { Filter } from "./model/Filter";
 import { ReportTypeTemplate } from "./model/ReportType";
 import { FetchDataOptions, ServerResponse } from "./model/ServerReqRes";
 import { formulaFunctions } from "./util/ReportBuilderUtil";
-
-
 
 // Group fields by category
 const fieldsByCategory = accountFields.reduce((acc, field) => {
@@ -96,8 +103,26 @@ const reorder = (list: any[], startIndex: number, endIndex: number) => {
 // Combine all sample data
 const allSampleData: AccountData[] = [...sampleData, ...moreSampleData];
 
+// Create a query client instance outside of the component
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
-// Add this before the ReportBuilderPage component
+// Wrapper component to provide the QueryClient
+export default function ReportBuilderWithQueryClient() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ReportBuilderPage />
+    </QueryClientProvider>
+  );
+}
+
+// Convert fetchTableData to a function that returns a promise
 async function fetchTableData(options: FetchDataOptions): Promise<ServerResponse> {
   const { pageIndex, pageSize, sorting, grouping, selectedColumns, filters } = options;
 
@@ -132,7 +157,8 @@ async function fetchTableData(options: FetchDataOptions): Promise<ServerResponse
   }
 }
 
-export default function ReportBuilderPage() {
+// Main component
+function ReportBuilderPage() {
   const router = useRouter();
   const [showReportTypeModal, setShowReportTypeModal] = useState(true);
   const [selectedReportType, setSelectedReportType] = useState<ReportTypeTemplate | null>(null);
@@ -183,6 +209,14 @@ export default function ReportBuilderPage() {
   const [showRowCounts, setShowRowCounts] = useState(true);
   const [showDetailRows, setShowDetailRows] = useState(true);
   const [autoUpdatePreview, setAutoUpdatePreview] = useState(true);
+
+  // Add grouping state
+  const [grouping, setGrouping] = useState<GroupingState>([]);
+  
+  // Add these states
+  const [isLoading, setIsLoading] = useState(false);
+  const [pageCount, setPageCount] = useState(0);
+  const [totalRows, setTotalRows] = useState(0);
 
   // Reference for click outside menu
   const menuRef = useRef<HTMLDivElement>(null);
@@ -385,6 +419,78 @@ export default function ReportBuilderPage() {
     ));
   };
 
+  // Use the query client
+  const queryClient = useQueryClient();
+
+  // Create a query key based on all relevant parameters
+  const createQueryKey = useCallback(() => {
+    return [
+      'reportData',
+      pagination.pageIndex,
+      pagination.pageSize,
+      sorting,
+      grouping,
+      selectedColumns,
+      filters,
+    ];
+  }, [pagination.pageIndex, pagination.pageSize, sorting, grouping, selectedColumns, filters]);
+
+  // Use React Query instead of manually fetching
+  const {
+    data: queryResult,
+    isLoading: queryLoading,
+    isFetching,
+    error
+  } = useQuery({
+    queryKey: createQueryKey(),
+    queryFn: () => fetchTableData({
+      pageIndex: pagination.pageIndex,
+      pageSize: pagination.pageSize,
+      sorting,
+      grouping,
+      selectedColumns,
+      filters,
+    }),
+    enabled: autoUpdatePreview && selectedColumns.length > 0,
+  });
+
+  // Update state when data changes
+  useEffect(() => {
+    if (queryResult) {
+      setRowData(queryResult.data || []);
+      setPageCount(queryResult.pageCount || 0);
+      setTotalRows(queryResult.totalRows || 0);
+    }
+  }, [queryResult]);
+
+  // Function to manually trigger a refresh of the data
+  const fetchData = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: createQueryKey() });
+  }, [queryClient, createQueryKey]);
+
+  // Combine loading states
+  const isDataLoading = queryLoading || isFetching;
+
+  // Update isLoading state for the UI
+  useEffect(() => {
+    setIsLoading(isDataLoading);
+  }, [isDataLoading]);
+
+  // Always update when autoUpdatePreview changes
+  useEffect(() => {
+    if (autoUpdatePreview && selectedColumns.length > 0) {
+      fetchData();
+    }
+  }, [autoUpdatePreview, fetchData, selectedColumns.length]);
+
+  // Show error message if query fails
+  useEffect(() => {
+    if (error) {
+      console.error('Error fetching report data:', error);
+      // Could add a toast notification here
+    }
+  }, [error]);
+
   // Update column definitions when selected columns change
   useEffect(() => {
     if (selectedColumns.length > 0 && autoUpdatePreview) {
@@ -421,7 +527,8 @@ export default function ReportBuilderPage() {
         });
       }
 
-      setRowData(filteredData);
+      // We don't need to manually set row data here anymore as React Query handles this
+      // setRowData(filteredData);
     }
   }, [filters, autoUpdatePreview, selectedColumns, allSampleData, groupByFields]);
 
@@ -509,44 +616,6 @@ export default function ReportBuilderPage() {
     [selectedColumns]
   );
 
-  // Add grouping state
-  const [grouping, setGrouping] = useState<GroupingState>([]);
-
-  // Add these states
-  const [isLoading, setIsLoading] = useState(false);
-  const [pageCount, setPageCount] = useState(0);
-  const [totalRows, setTotalRows] = useState(0);
-
-  // Add a function to fetch data
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const result = await fetchTableData({
-        pageIndex: pagination.pageIndex,
-        pageSize: pagination.pageSize,
-        sorting,
-        grouping,
-        selectedColumns,
-        filters,
-      });
-
-      setRowData(result.data);
-      setPageCount(result.pageCount);
-      setTotalRows(result.totalRows);
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [pagination.pageIndex, pagination.pageSize, sorting, grouping, selectedColumns, filters]);
-
-  // Add effect to fetch data when dependencies change
-  useEffect(() => {
-    if (autoUpdatePreview) {
-      fetchData();
-    }
-  }, [fetchData, autoUpdatePreview]);
-
   return (
     <>
       <ReportTypeSelectionModal
@@ -555,85 +624,21 @@ export default function ReportBuilderPage() {
         onSelect={handleReportTypeSelect}
       />
       <div className="min-h-screen bg-gray-50 flex flex-col">
-        {/* Top Header Bar */}
-        <header className="bg-white border-b border-gray-200 py-3 px-4 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <div className="flex flex-col">
-              <div className="text-xs text-gray-500 uppercase font-semibold">REPORT</div>
-              <div className="text-lg font-semibold">New Accounts Report</div>
-            </div>
-            <div className="bg-white text-gray-700 px-3 py-1 rounded-full text-sm border border-gray-300 flex items-center gap-1">
-              <AccountIcon size={14} />
-              <span>Accounts</span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {/* Add shortcut toggle control */}
-            <div className="flex items-center gap-2 mr-4">
-              <span className="text-xs text-gray-500">Panel Shortcuts</span>
-              <div className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="sr-only peer"
-                  checked={showShortcuts}
-                  onChange={() => setShowShortcuts(!showShortcuts)}
-                />
-                <div className="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
-              </div>
-            </div>
-            
-            <Button variant="outline" size="sm" className="flex items-center gap-1">
-              <NavigationIcon size={16} />
-            </Button>
-            <Button variant="outline" size="sm" className="text-gray-400 bg-gray-100">
-              <PrintIcon size={16} />
-            </Button>
-            <Select defaultValue="save">
-              <SelectTrigger className="w-[130px] h-9 bg-sky-50 text-blue-600 border-blue-100">
-                <SelectValue placeholder="Save" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="save">Save</SelectItem>
-                <SelectItem value="save_as">Save As</SelectItem>
-                <SelectItem value="save_copy">Save Copy</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button variant="outline" size="sm">Close</Button>
-            <Button size="sm" className="bg-blue-600">Run</Button>
-          </div>
-        </header>
-
-        {/* Info Banner */}
-        <div className="bg-blue-50 text-blue-700 px-4 py-2 text-sm border-b border-blue-100">
-          Previewing a limited number of records. Run the report to see everything.
-        </div>
-
-        {/* Selected Filters Bar */}
-        <div className="bg-white border-b border-gray-200 py-2 px-4 flex gap-3 text-xs flex-wrap">
-          {filters.map((filter) => (
-            <div key={filter.id} className="bg-blue-50 border border-blue-200 rounded-md px-2 py-1 flex items-center gap-1">
-              <span className="font-medium">{filter.field.name}</span>
-              <span className="text-gray-500">{filter.operator}</span>
-              {filter.value && <span className="text-gray-500">• {filter.value}</span>}
-              {filter.rangeStart && filter.rangeEnd && (
-                <span className="text-gray-500">• {filter.rangeStart} to {filter.rangeEnd}</span>
-              )}
-              {filter.selectedOptions && filter.selectedOptions.length > 0 && (
-                <span className="text-gray-500">• {filter.selectedOptions.join(', ')}</span>
-              )}
-              <button
-                onClick={() => removeFilter(filter.id)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                ×
-              </button>
-            </div>
-          ))}
-          {filters.length === 0 && (
-            <div className="text-gray-500">No filters applied</div>
-          )}
-        </div>
+        <TopHeaderBar 
+          reportName={selectedReportType?.name || "New Accounts Report"}
+          reportType="Accounts"
+          showShortcuts={showShortcuts}
+          onToggleShortcuts={() => setShowShortcuts(!showShortcuts)}
+          onRun={() => fetchData()}
+          onClose={() => router.push('/reports')}
+        />
+        
+        <InfoBanner message="Previewing a limited number of records. Run the report to see everything." />
+        
+        <AppliedFiltersBar 
+          filters={filters}
+          onRemoveFilter={removeFilter}
+        />
 
         {/* Main Content Area */}
         <div className="flex flex-1 overflow-hidden">
