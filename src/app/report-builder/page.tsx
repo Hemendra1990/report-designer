@@ -47,7 +47,7 @@ const fieldsByCategory = accountFields.reduce((acc, field) => {
 }, {} as Record<string, typeof accountFields>);
 
 // Sample selected columns for the report
-const initialSelectedColumns = [
+const initialSelectedColumns: Field[] = [
   { id: "last_activity", name: "Last Activity", type: "datetime" },
   { id: "account_owner", name: "Account Owner", type: "user" },
   { id: "account_name", name: "Account Name", type: "text" },
@@ -183,6 +183,15 @@ function ReportBuilderPage() {
   const [pageCount, setPageCount] = useState(0);
   const [totalRows, setTotalRows] = useState(0);
 
+  // Add state for SQL generation and saving
+  const [generatedSql, setGeneratedSql] = useState<string>('');
+  const [showSqlPreview, setShowSqlPreview] = useState<boolean>(false);
+  
+  // Add filter state
+  const [filters, setFilters] = useState<Filter[]>([]);
+  const [filterLogic, setFilterLogic] = useState<'and' | 'or' | 'custom'>('and');
+  const [customFormula, setCustomFormula] = useState('');
+
   // Reference for click outside menu
   const menuRef = useRef<HTMLDivElement>(null);
   const groupSearchRef = useRef<HTMLDivElement>(null);
@@ -309,11 +318,6 @@ function ReportBuilderPage() {
     setShowFormulaBuilder(false);
   };
 
-  // Add state for filters
-  const [filters, setFilters] = useState<Filter[]>([]);
-  const [filterLogic, setFilterLogic] = useState<'and' | 'or' | 'custom'>('and');
-  const [customFormula, setCustomFormula] = useState('');
-
   // Add state for filter field selector
   const [showFilterFieldSelector, setShowFilterFieldSelector] = useState(false);
   const [filterSearchTerm, setFilterSearchTerm] = useState('');
@@ -426,21 +430,14 @@ function ReportBuilderPage() {
       // Apply filters based on the filter state
       if (filters.length > 0) {
         filteredData = filteredData.filter(item => {
-          // For demo purposes, we'll just check if the item has the field and value
-          // In a real app, you'd implement proper filter logic based on operators
-          return filters.every(filter => {
-            const fieldValue = item[filter.field.id];
-            if (!fieldValue) return false;
-
-            // Simple filter implementation for demo
-            if (filter.operator === 'equals') {
-              return fieldValue === filter.value;
-            } else if (filter.operator === 'contains') {
-              return String(fieldValue).toLowerCase().includes(filter.value.toLowerCase());
-            }
-
-            return true;
-          });
+          // For demo purposes, we'll check if the item matches all filters based on the filterLogic
+          if (filterLogic === 'and') {
+            return filters.every(filter => matchesFilter(item, filter));
+          } else if (filterLogic === 'or') {
+            return filters.some(filter => matchesFilter(item, filter));
+          }
+          // For custom logic, we'd need more complex processing
+          return true;
         });
       }
 
@@ -456,7 +453,67 @@ function ReportBuilderPage() {
       // We don't need to manually set row data here anymore as React Query handles this
       // setRowData(filteredData);
     }
-  }, [filters, autoUpdatePreview, selectedColumns, allSampleData, groupByFields]);
+  }, [filters, autoUpdatePreview, selectedColumns, allSampleData, groupByFields, filterLogic]);
+
+  // Helper function to check if an item matches a filter
+  const matchesFilter = (item: AccountData, filter: Filter): boolean => {
+    const fieldId = filter.field.id;
+    const fieldValue = item[fieldId];
+    
+    // If the field doesn't exist on the item, it can't match
+    if (fieldValue === undefined) return false;
+    
+    const stringValue = String(fieldValue).toLowerCase();
+    const filterValue = (filter.value || '').toLowerCase();
+    
+    switch (filter.operator) {
+      case 'equals':
+        return stringValue === filterValue;
+        
+      case 'not_equals':
+        return stringValue !== filterValue;
+        
+      case 'contains':
+        return stringValue.includes(filterValue);
+        
+      case 'not_contains':
+        return !stringValue.includes(filterValue);
+        
+      case 'starts_with':
+        return stringValue.startsWith(filterValue);
+        
+      case 'ends_with':
+        return stringValue.endsWith(filterValue);
+        
+      case 'is_empty':
+        return !fieldValue || stringValue === '';
+        
+      case 'is_not_empty':
+        return !!fieldValue && stringValue !== '';
+        
+      case 'in_list':
+        return filter.selectedOptions?.some(option => 
+          stringValue === option.toLowerCase()
+        ) || false;
+        
+      case 'not_in_list':
+        return !filter.selectedOptions?.some(option => 
+          stringValue === option.toLowerCase()
+        ) || false;
+        
+      // For numeric comparisons
+      case 'less_than':
+      case 'greater_than':
+      case 'less_or_equal':
+      case 'greater_or_equal':
+      case 'between':
+        // These would need proper numeric parsing and comparison
+        return true; // Simplified for this example
+        
+      default:
+        return false;
+    }
+  };
 
   // Function to handle grouping by a field
   const handleGroupBy = (fieldId: string) => {
@@ -475,9 +532,14 @@ function ReportBuilderPage() {
           setSelectedGroups([]);
           setGroupSearchTerm('');
         }
+        // Also update groupByFields
+        setGroupByFields(newGroups);
         return newGroups;
       }
-      return [...prev, fieldId];
+      // Also update groupByFields
+      const newGroups = [...prev, fieldId];
+      setGroupByFields(newGroups);
+      return newGroups;
     });
 
     // Update expanded groups for the new grouping
@@ -542,6 +604,19 @@ function ReportBuilderPage() {
     [selectedColumns]
   );
 
+  // Handle saving the report with generated SQL
+  const handleSaveReport = (sql: string, reportName: string) => {
+    console.log(`Saving report '${reportName}' with SQL:`, sql);
+    // Here you would typically persist this data to your backend
+    // For example, using an API call
+    
+    // Provide feedback to the user
+    alert(`Report "${reportName}" has been saved successfully!`);
+    
+    // Optionally navigate to reports list page
+    // router.push('/reports');
+  };
+
   return (
     <>
       <ReportTypeSelectionModal
@@ -552,11 +627,18 @@ function ReportBuilderPage() {
       <div className="min-h-screen bg-gray-50 flex flex-col">
         <TopHeaderBar 
           reportName={selectedReportType?.name || "New Accounts Report"}
-          reportType="Accounts"
+          reportType={selectedReportType?.type || "Accounts"}
           showShortcuts={showShortcuts}
           onToggleShortcuts={() => setShowShortcuts(!showShortcuts)}
           onRun={() => fetchData()}
           onClose={() => router.push('/reports')}
+          // Pass SQL generation props
+          selectedColumns={selectedColumns}
+          groupByFields={groupByFields}
+          filters={filters}
+          filterLogic={filterLogic}
+          customFilterFormula={customFormula}
+          onSaveReport={handleSaveReport}
         />
         
         <InfoBanner message="Previewing a limited number of records. Run the report to see everything." />
