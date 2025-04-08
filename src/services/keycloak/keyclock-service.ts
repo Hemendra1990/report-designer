@@ -1,7 +1,7 @@
 import { AxiosResponse } from "axios";
 import { httpClient } from "../http-service";
 
-const KEYCLOAK_TOKEN_URL = "http://localhost:8081/realms/bip/protocol/openid-connect/token?client_id=bip";
+const KEYCLOAK_TOKEN_URL = process.env.NEXT_PUBLIC_KEY_CLOAK_AUTH_URL || '';
 
 interface TokenResponse {
   access_token: string;
@@ -15,9 +15,9 @@ interface TokenResponse {
 export const fetchKeycloakToken = (): Promise<AxiosResponse<any, any>> => {
     const data = new URLSearchParams({
         grant_type: "password",
-        client_id: "bip",
-        username: "admin@bip.com",
-        password: "admin",
+        client_id: process.env.NEXT_PUBLIC_CRM_CLIENT_ID || '',
+        username: process.env.NEXT_PUBLIC_CRM_USERNAME || '',
+        password: process.env.NEXT_PUBLIC_CRM_PASSWORD || '',
       }).toString();
       
 
@@ -26,14 +26,13 @@ export const fetchKeycloakToken = (): Promise<AxiosResponse<any, any>> => {
       // "Content-Type": "application/x-www-form-urlencoded",
       },
   };
-
   return httpClient.post<TokenResponse>(KEYCLOAK_TOKEN_URL, data, config);
 };
 
 export const refreshKeycloakToken = (refreshToken: string): Promise<AxiosResponse<TokenResponse>> => {
   const data = new URLSearchParams({
       grant_type: "refresh_token",
-      client_id: "bip",
+      client_id: process.env.NEXT_PUBLIC_CRM_CLIENT_ID || '',
       refresh_token: refreshToken,
   }).toString();
 

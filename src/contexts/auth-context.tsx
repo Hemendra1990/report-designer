@@ -38,7 +38,6 @@ export const AuthContextProvider =  ({children}: { children: React.ReactNode }) 
     
                         localStorage.setItem('token', newToken.access_token);
                         localStorage.setItem('refresh_token', newToken.refresh_token);
-                        console.log("New token came----", newToken.access_token);
                         // optionally update the context state here if you introduce useState
                         // setCrmToken(newToken.access_token)
                     } catch (error) {
