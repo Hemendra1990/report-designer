@@ -2,46 +2,26 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
-import Image from "next/image";
-import Link from "next/link";
+import {
+  QueryClient,
+  QueryClientProvider,
+  useQuery,
+  useQueryClient
+} from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 // Import our icon components
-import { 
-  ChevronDownIcon, 
-  ChevronLeftIcon, 
-  ChevronRightIcon,
-  CrossIcon,
-  DragHandleIcon,
-  ExpandIcon,
-  FileIcon,
-  InfoIcon,
-  ListIcon,
-  MenuIcon,
+import {
+  ChevronDownIcon,
+  ChevronLeftIcon,
   PlusIcon,
-  PrintIcon,
-  SearchIcon,
-  TableIcon,
-  TrashIcon,
-  ArrowRightIcon
+  SearchIcon
 } from "@/components/icons";
 
 import {
-  AccountIcon,
-  BucketIcon,
-  ColumnIcon,
-  DataTableIcon,
-  FilterIcon,
-  FormulaIcon,
-  GroupRowsIcon,
-  NavigationIcon,
-  RunIcon,
-  SaveIcon
+  FilterIcon
 } from "@/components/icons/ReportIcons";
 
 // Import TanStack Table
@@ -53,19 +33,28 @@ import {
   SortingState,
   VisibilityState
 } from "@tanstack/react-table";
-import { DataTable } from "./components/DataTable";
+import AppliedFiltersBar from "./components/AppliedFiltersBar";
+import ColumnsSection from "./components/ColumnsSection";
+import FilterFieldSelector from "./components/FilterFieldSelector";
+import FilterLogicSelector from "./components/FilterLogicSelector";
 import { FilterRow } from "./components/FilterRow";
+import FormulaBuilder from "./components/FormulaBuilder";
+import GroupsSection from "./components/GroupsSection";
+import InfoBanner from "./components/InfoBanner";
+import PreviewPanel from "./components/PreviewPanel";
+import QuickFilterSelector from "./components/QuickFilterSelector";
 import { ReportTypeSelectionModal } from "./components/ReportTypeSelectionModal";
-import { getDefaultOperator, getFieldIcon } from "./helper/ReportBuilderHelper";
+import TopHeaderBar from "./components/TopHeaderBar";
+import { getDefaultOperator } from "./helper/ReportBuilderHelper";
 import { AccountData } from "./model/AccountData";
 import { accountFields, moreSampleData, sampleData } from "./model/fake-data";
-import { Field, FieldType } from "./model/Field";
+import { Field } from "./model/Field";
 import { Filter } from "./model/Filter";
 import { ReportTypeTemplate } from "./model/ReportType";
 import { FetchDataOptions, ServerResponse } from "./model/ServerReqRes";
 import { formulaFunctions } from "./util/ReportBuilderUtil";
-
-
+import FieldsPanel from "./components/FieldsPanel";
+import ReportBuilderPanel from "./components/ReportBuilderPanel";
 
 // Group fields by category
 const fieldsByCategory = accountFields.reduce((acc, field) => {
@@ -96,8 +85,26 @@ const reorder = (list: any[], startIndex: number, endIndex: number) => {
 // Combine all sample data
 const allSampleData: AccountData[] = [...sampleData, ...moreSampleData];
 
+// Create a query client instance outside of the component
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
-// Add this before the ReportBuilderPage component
+// Wrapper component to provide the QueryClient
+export default function ReportBuilderWithQueryClient() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ReportBuilderPage />
+    </QueryClientProvider>
+  );
+}
+
+// Convert fetchTableData to a function that returns a promise
 async function fetchTableData(options: FetchDataOptions): Promise<ServerResponse> {
   const { pageIndex, pageSize, sorting, grouping, selectedColumns, filters } = options;
 
@@ -132,7 +139,8 @@ async function fetchTableData(options: FetchDataOptions): Promise<ServerResponse
   }
 }
 
-export default function ReportBuilderPage() {
+// Main component
+function ReportBuilderPage() {
   const router = useRouter();
   const [showReportTypeModal, setShowReportTypeModal] = useState(true);
   const [selectedReportType, setSelectedReportType] = useState<ReportTypeTemplate | null>(null);
@@ -183,6 +191,14 @@ export default function ReportBuilderPage() {
   const [showRowCounts, setShowRowCounts] = useState(true);
   const [showDetailRows, setShowDetailRows] = useState(true);
   const [autoUpdatePreview, setAutoUpdatePreview] = useState(true);
+
+  // Add grouping state
+  const [grouping, setGrouping] = useState<GroupingState>([]);
+  
+  // Add these states
+  const [isLoading, setIsLoading] = useState(false);
+  const [pageCount, setPageCount] = useState(0);
+  const [totalRows, setTotalRows] = useState(0);
 
   // Reference for click outside menu
   const menuRef = useRef<HTMLDivElement>(null);
@@ -285,26 +301,12 @@ export default function ReportBuilderPage() {
   // Panel collapse state
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
   const [centerPanelCollapsed, setCenterPanelCollapsed] = useState(false);
+  
+  // State for controlling shortcut visibility in collapsed panels
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
-  // Formula editor state
+  // Formula related state
   const [showFormulaBuilder, setShowFormulaBuilder] = useState(false);
-  const [formulaName, setFormulaName] = useState("");
-  const [formulaDescription, setFormulaDescription] = useState("");
-  const [formulaEditorValue, setFormulaEditorValue] = useState("");
-  const [formulaOutputType, setFormulaOutputType] = useState("number");
-  const [decimalPoints, setDecimalPoints] = useState("2");
-  const [formulaDialogTab, setFormulaDialogTab] = useState("fields");
-
-  // Filter formula functions based on search term
-  const filteredFunctions = formulaSearchTerm.trim() === ""
-    ? formulaFunctions
-    : formulaFunctions.map(category => ({
-      category: category.category,
-      functions: category.functions.filter(func =>
-        func.name.toLowerCase().includes(formulaSearchTerm.toLowerCase()) ||
-        func.description.toLowerCase().includes(formulaSearchTerm.toLowerCase())
-      )
-    })).filter(category => category.functions.length > 0);
 
   // Handle adding a formula column
   const addFormulaColumn = () => {
@@ -313,37 +315,15 @@ export default function ReportBuilderPage() {
   };
 
   // Handle formula dialog submission
-  const handleSubmitFormula = () => {
-    if (!formulaName.trim()) return;
-
-    // Create a new formula column
-    const newFormulaColumn = {
-      id: `formula_${Date.now()}`,
-      name: formulaName,
-      type: formulaOutputType,
-      formula: formulaEditorValue,
-      description: formulaDescription,
-    };
-
+  const handleSubmitFormula = (newFormulaColumn: {
+    id: string;
+    name: string;
+    type: string;
+    formula: string;
+    description: string;
+  }) => {
     setSelectedColumns([...selectedColumns, newFormulaColumn]);
     setShowFormulaBuilder(false);
-
-    // Reset form
-    setFormulaName("");
-    setFormulaDescription("");
-    setFormulaEditorValue("");
-    setFormulaOutputType("number");
-    setDecimalPoints("2");
-  };
-
-  // Insert a field into the formula editor
-  const insertFieldIntoFormula = (field: typeof accountFields[0]) => {
-    setFormulaEditorValue(prev => `${prev}[${field.name}]`);
-  };
-
-  // Insert a function into the formula editor
-  const insertFunctionIntoFormula = (funcName: string) => {
-    setFormulaEditorValue(prev => `${prev}${funcName}()`);
   };
 
   // Add state for filters
@@ -382,6 +362,78 @@ export default function ReportBuilderPage() {
     ));
   };
 
+  // Use the query client
+  const queryClient = useQueryClient();
+
+  // Create a query key based on all relevant parameters
+  const createQueryKey = useCallback(() => {
+    return [
+      'reportData',
+      pagination.pageIndex,
+      pagination.pageSize,
+      sorting,
+      grouping,
+      selectedColumns,
+      filters,
+    ];
+  }, [pagination.pageIndex, pagination.pageSize, sorting, grouping, selectedColumns, filters]);
+
+  // Use React Query instead of manually fetching
+  const {
+    data: queryResult,
+    isLoading: queryLoading,
+    isFetching,
+    error
+  } = useQuery({
+    queryKey: createQueryKey(),
+    queryFn: () => fetchTableData({
+      pageIndex: pagination.pageIndex,
+      pageSize: pagination.pageSize,
+      sorting,
+      grouping,
+      selectedColumns,
+      filters,
+    }),
+    enabled: autoUpdatePreview && selectedColumns.length > 0,
+  });
+
+  // Update state when data changes
+  useEffect(() => {
+    if (queryResult) {
+      setRowData(queryResult.data || []);
+      setPageCount(queryResult.pageCount || 0);
+      setTotalRows(queryResult.totalRows || 0);
+    }
+  }, [queryResult]);
+
+  // Function to manually trigger a refresh of the data
+  const fetchData = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: createQueryKey() });
+  }, [queryClient, createQueryKey]);
+
+  // Combine loading states
+  const isDataLoading = queryLoading || isFetching;
+
+  // Update isLoading state for the UI
+  useEffect(() => {
+    setIsLoading(isDataLoading);
+  }, [isDataLoading]);
+
+  // Always update when autoUpdatePreview changes
+  useEffect(() => {
+    if (autoUpdatePreview && selectedColumns.length > 0) {
+      fetchData();
+    }
+  }, [autoUpdatePreview, fetchData, selectedColumns.length]);
+
+  // Show error message if query fails
+  useEffect(() => {
+    if (error) {
+      console.error('Error fetching report data:', error);
+      // Could add a toast notification here
+    }
+  }, [error]);
+
   // Update column definitions when selected columns change
   useEffect(() => {
     if (selectedColumns.length > 0 && autoUpdatePreview) {
@@ -418,7 +470,8 @@ export default function ReportBuilderPage() {
         });
       }
 
-      setRowData(filteredData);
+      // We don't need to manually set row data here anymore as React Query handles this
+      // setRowData(filteredData);
     }
   }, [filters, autoUpdatePreview, selectedColumns, allSampleData, groupByFields]);
 
@@ -506,44 +559,6 @@ export default function ReportBuilderPage() {
     [selectedColumns]
   );
 
-  // Add grouping state
-  const [grouping, setGrouping] = useState<GroupingState>([]);
-
-  // Add these states
-  const [isLoading, setIsLoading] = useState(false);
-  const [pageCount, setPageCount] = useState(0);
-  const [totalRows, setTotalRows] = useState(0);
-
-  // Add a function to fetch data
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const result = await fetchTableData({
-        pageIndex: pagination.pageIndex,
-        pageSize: pagination.pageSize,
-        sorting,
-        grouping,
-        selectedColumns,
-        filters,
-      });
-
-      setRowData(result.data);
-      setPageCount(result.pageCount);
-      setTotalRows(result.totalRows);
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [pagination.pageIndex, pagination.pageSize, sorting, grouping, selectedColumns, filters]);
-
-  // Add effect to fetch data when dependencies change
-  useEffect(() => {
-    if (autoUpdatePreview) {
-      fetchData();
-    }
-  }, [fetchData, autoUpdatePreview]);
-
   return (
     <>
       <ReportTypeSelectionModal
@@ -552,1027 +567,142 @@ export default function ReportBuilderPage() {
         onSelect={handleReportTypeSelect}
       />
       <div className="min-h-screen bg-gray-50 flex flex-col">
-        {/* Top Header Bar */}
-        <header className="bg-white border-b border-gray-200 py-3 px-4 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <div className="flex flex-col">
-              <div className="text-xs text-gray-500 uppercase font-semibold">REPORT</div>
-              <div className="text-lg font-semibold">New Accounts Report</div>
-            </div>
-            <div className="bg-white text-gray-700 px-3 py-1 rounded-full text-sm border border-gray-300 flex items-center gap-1">
-              <AccountIcon size={14} />
-              <span>Accounts</span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="flex items-center gap-1">
-              <NavigationIcon size={16} />
-            </Button>
-            <Button variant="outline" size="sm" className="text-gray-400 bg-gray-100">
-              <PrintIcon size={16} />
-            </Button>
-            <Select defaultValue="save">
-              <SelectTrigger className="w-[130px] h-9 bg-sky-50 text-blue-600 border-blue-100">
-                <SelectValue placeholder="Save" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="save">Save</SelectItem>
-                <SelectItem value="save_as">Save As</SelectItem>
-                <SelectItem value="save_copy">Save Copy</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button variant="outline" size="sm">Close</Button>
-            <Button size="sm" className="bg-blue-600">Run</Button>
-          </div>
-        </header>
-
-        {/* Info Banner */}
-        <div className="bg-blue-50 text-blue-700 px-4 py-2 text-sm border-b border-blue-100">
-          Previewing a limited number of records. Run the report to see everything.
-        </div>
-
-        {/* Selected Filters Bar */}
-        <div className="bg-white border-b border-gray-200 py-2 px-4 flex gap-3 text-xs flex-wrap">
-          {filters.map((filter) => (
-            <div key={filter.id} className="bg-blue-50 border border-blue-200 rounded-md px-2 py-1 flex items-center gap-1">
-              <span className="font-medium">{filter.field.name}</span>
-              <span className="text-gray-500">{filter.operator}</span>
-              {filter.value && <span className="text-gray-500">• {filter.value}</span>}
-              {filter.rangeStart && filter.rangeEnd && (
-                <span className="text-gray-500">• {filter.rangeStart} to {filter.rangeEnd}</span>
-              )}
-              {filter.selectedOptions && filter.selectedOptions.length > 0 && (
-                <span className="text-gray-500">• {filter.selectedOptions.join(', ')}</span>
-              )}
-              <button
-                onClick={() => removeFilter(filter.id)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                ×
-              </button>
-            </div>
-          ))}
-          {filters.length === 0 && (
-            <div className="text-gray-500">No filters applied</div>
-          )}
-        </div>
+        <TopHeaderBar 
+          reportName={selectedReportType?.name || "New Accounts Report"}
+          reportType="Accounts"
+          showShortcuts={showShortcuts}
+          onToggleShortcuts={() => setShowShortcuts(!showShortcuts)}
+          onRun={() => fetchData()}
+          onClose={() => router.push('/reports')}
+        />
+        
+        <InfoBanner message="Previewing a limited number of records. Run the report to see everything." />
+        
+        <AppliedFiltersBar 
+          filters={filters}
+          onRemoveFilter={removeFilter}
+        />
 
         {/* Main Content Area */}
         <div className="flex flex-1 overflow-hidden">
           {/* Left Panel - Fields */}
-          <div className={`${leftPanelCollapsed ? 'w-12' : 'w-64'} bg-card border-r border-border flex flex-col overflow-hidden transition-all duration-300 shrink-0`}>
-            {/* Collapse Control */}
-            <div className="flex justify-end p-1">
-              <button
-                onClick={() => setLeftPanelCollapsed(!leftPanelCollapsed)}
-                className="p-1 text-muted-foreground hover:text-foreground transition-colors"
-                title={leftPanelCollapsed ? "Expand fields panel" : "Collapse fields panel"}
-              >
-                <ChevronLeftIcon 
-                  className={`transition-transform ${leftPanelCollapsed ? 'rotate-180' : ''}`} 
-                />
-              </button>
-            </div>
-
-            {!leftPanelCollapsed ? (
-              <>
-                <div className="p-3 border-b border-gray-200">
-                  <div className="relative">
-                    <Input
-                      className="pl-8 text-sm"
-                      placeholder="Search all fields..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                    <SearchIcon
-                      className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"
-                    />
-                  </div>
-                </div>
-
-                <div className="overflow-y-auto flex-1">
-                  <div className="p-2 border-b border-gray-200 flex justify-between items-center">
-                    <div className="text-xs font-semibold text-gray-500">SUMMARY FORMULAS (0)</div>
-                    <button className="text-blue-600 text-xs">Add</button>
-                  </div>
-
-                  {Object.entries(fieldsByCategory).map(([category, fields]) => (
-                    <div key={category} className="border-b border-gray-200">
-                      <div
-                        className="p-2 flex justify-between items-center cursor-pointer hover:bg-gray-50"
-                        onClick={() => toggleCategory(category)}
-                      >
-                        <div className="text-xs font-semibold text-gray-500 uppercase">
-                          {category} FIELDS ({fields.length})
-                        </div>
-                        <ChevronDownIcon 
-                          className={`transition-transform ${expandedCategories[category as keyof typeof expandedCategories] ? 'rotate-180' : ''}`} 
-                        />
-                      </div>
-
-                      {expandedCategories[category as keyof typeof expandedCategories] && (
-                        <div className="pl-2">
-                          {fields
-                            .filter(field =>
-                              !searchTerm.trim() ||
-                              field.name.toLowerCase().includes(searchTerm.toLowerCase())
-                            )
-                            .map(field => (
-                              <div
-                                key={field.id}
-                                className="pl-2 pr-3 py-1.5 text-sm hover:bg-blue-50 flex items-center justify-between cursor-pointer group"
-                                onClick={() => addColumn(field)}
-                                draggable
-                                onDragStart={() => {/* Handle field drag if needed */ }}
-                              >
-                                <div className="flex items-center gap-2">
-                                  <span className={`w-4 h-4 flex items-center justify-center rounded-sm text-xs ${field.type === 'number' || field.type === 'currency' ? 'bg-purple-100 text-purple-700' : 'bg-indigo-100 text-indigo-700'}`}>
-                                    {field.icon}
-                                  </span>
-                                  <span>{field.name}</span>
-                                </div>
-                                <PlusIcon
-                                  className="text-blue-600 opacity-0 group-hover:opacity-100"
-                                />
-                              </div>
-                            ))}
-                          {fields.filter(field =>
-                            !searchTerm.trim() ||
-                            field.name.toLowerCase().includes(searchTerm.toLowerCase())
-                          ).length === 0 && searchTerm.trim() !== "" && (
-                              <div className="p-2 text-sm text-gray-500">No matching fields found</div>
-                            )}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </>
-            ) : (
-              // Collapsed view - shows only icons and minimal information
-              <div className="flex flex-col items-center pt-4 space-y-4 overflow-y-auto">
-                <div className="text-base font-medium text-gray-700 rotate-90 whitespace-nowrap tracking-wide mb-8">
-                  Fields
-                </div>
-                {Object.entries(fieldsByCategory).map(([category]) => (
-                  <div
-                    key={category}
-                    className="p-2 cursor-pointer hover:bg-accent rounded-md"
-                    title={`${category.toUpperCase()} fields`}
-                    onClick={() => {
-                      setLeftPanelCollapsed(false);
-                      setTimeout(() => toggleCategory(category), 300);
-                    }}
-                  >
-                    <div className="size-8 bg-gray-100 text-gray-600 rounded-md flex items-center justify-center text-sm font-medium">
-                      {category.charAt(0).toUpperCase()}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <FieldsPanel
+            leftPanelCollapsed={leftPanelCollapsed}
+            setLeftPanelCollapsed={setLeftPanelCollapsed}
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            fieldsByCategory={fieldsByCategory}
+            expandedCategories={expandedCategories}
+            toggleCategory={toggleCategory}
+            addColumn={addColumn}
+            showShortcuts={showShortcuts}
+          />
 
           {/* Center Panel - Report Builder */}
-          <div className={`${centerPanelCollapsed ? 'w-12' : 'w-64'} flex flex-col bg-card border-r border-border transition-all duration-300 shrink-0`}>
-            {/* Collapse Control */}
-            <div className="flex justify-end p-1">
-              <button
-                onClick={() => setCenterPanelCollapsed(!centerPanelCollapsed)}
-                className="p-1 text-muted-foreground hover:text-foreground transition-colors"
-                title={centerPanelCollapsed ? "Expand builder panel" : "Collapse builder panel"}
-              >
-                <ChevronLeftIcon 
-                  className={`transition-transform ${centerPanelCollapsed ? 'rotate-180' : ''}`}
-                />
-              </button>
-            </div>
-
-            {!centerPanelCollapsed ? (
-              <Tabs defaultValue="outline" className="flex flex-col flex-1">
-                <div className="border-b border-gray-200">
-                  <TabsList className="p-0 bg-transparent border-b-0">
-                    <TabsTrigger
-                      value="outline"
-                      className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 data-[state=active]:shadow-none"
-                    >
-                      Outline
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="filters"
-                      className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 data-[state=active]:shadow-none"
-                    >
-                      Filters (2)
-                    </TabsTrigger>
-                  </TabsList>
-                </div>
-
-                <TabsContent value="outline" className="flex-1 flex flex-col m-0 data-[state=active]:p-0">
-                  {/* Groups Section */}
-                  <div className="border-b border-gray-200 p-4">
-                    <div className="text-xs font-semibold text-muted-foreground mb-2">GROUP ROWS</div>
-                    <div className="relative" ref={groupSearchRef}>
-                      <Input
-                        className="pl-8 text-sm bg-background"
-                        placeholder="Add group..."
-                        value={groupSearchTerm}
-                        onChange={(e) => {
-                          setGroupSearchTerm(e.target.value);
-                          if (!showGroupDropdown) setShowGroupDropdown(true);
-                        }}
-                        onClick={() => setShowGroupDropdown(true)}
-                      />
-                      <SearchIcon 
-                        className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
-                      />
-
-                      {/* Group Dropdown */}
-                      {showGroupDropdown && (
-                        <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-md py-1 max-h-[300px] overflow-y-auto">
-                          {selectedColumns.filter(col =>
-                            !groupSearchTerm.trim() || col.name.toLowerCase().includes(groupSearchTerm.toLowerCase())
-                          ).length > 0 ? (
-                            selectedColumns
-                              .filter(col =>
-                                !groupSearchTerm.trim() || col.name.toLowerCase().includes(groupSearchTerm.toLowerCase())
-                              )
-                              .map(column => (
-                                <div
-                                  key={column.id}
-                                  className="px-3 py-2 hover:bg-accent cursor-pointer flex items-center gap-2 text-sm"
-                                  onClick={() => {
-                                    setSelectedGroup(column.id);
-                                    setGroupSearchTerm(column.name);
-                                    setShowGroupDropdown(false);
-                                    handleGroupBy(column.id);
-                                  }}
-                                >
-                                  <span className={`size-4 flex items-center justify-center rounded-sm text-xs ${column.type === 'number' || column.type === 'currency' ? 'bg-primary/10 text-primary' : 'bg-accent/80 text-accent-foreground'}`}>
-                                    {column.name.charAt(0).toUpperCase()}
-                                  </span>
-                                  {column.name}
-                                </div>
-                              ))
-                          ) : (
-                            <div className="px-3 py-2 text-sm text-muted-foreground">
-                              No columns match your search
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Selected Groups */}
-                    {grouping.length > 0 && (
-                      <div className="mt-2 space-y-2">
-                        {grouping.map((groupId, index) => {
-                          const groupColumn = selectedColumns.find(col => col.id === groupId);
-                          if (!groupColumn) return null;
-                          return (
-                            <div key={groupId} className="bg-accent/50 border rounded-md p-2 text-sm flex justify-between items-center">
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium">{groupColumn.name}</span>
-                                <span className="text-muted-foreground">Ascending</span>
-                              </div>
-                              <button
-                                onClick={() => {
-                                  handleGroupBy(groupId);
-                                }}
-                                className="text-muted-foreground hover:text-foreground"
-                              >
-                                <CrossIcon />
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Columns Section */}
-                  <div className="p-4 flex-1">
-                    <div className="flex justify-between items-center mb-3">
-                      <div className="text-xs font-semibold text-gray-500">COLUMNS</div>
-                      <div className="relative">
-                        <button
-                          className="text-sm text-blue-600 flex items-center"
-                          onClick={openColumnMenu}
-                        >
-                          <PlusIcon className="mr-1" />
-                          Add Column
-                          <ChevronDownIcon className="ml-1" />
-                        </button>
-
-                        {/* Column Menu Dropdown */}
-                        {isMenuOpen && (
-                          <div
-                            ref={menuRef}
-                            className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-10 w-48"
-                            style={{
-                              top: menuPosition.top - 250,
-                              left: menuPosition.left - 100,
-                              position: 'fixed'
-                            }}
-                          >
-                            <div className="py-1">
-                              <button
-                                className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left flex items-center"
-                                onClick={() => setIsMenuOpen(false)}
-                              >
-                                <BucketIcon className="mr-2" />
-                                Add Bucket Column
-                              </button>
-                              <button
-                                className="px-4 py-2 text-sm text-gray-400 w-full text-left flex items-center cursor-not-allowed"
-                              >
-                                <FormulaIcon className="mr-2" />
-                                Add Summary Formula
-                              </button>
-                              <button
-                                className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left flex items-center"
-                                onClick={addFormulaColumn}
-                              >
-                                <FormulaIcon className="mr-2" />
-                                Add Row-Level Formula
-                              </button>
-                              <div className="border-t border-gray-200 my-1"></div>
-                              <button
-                                className="px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full text-left flex items-center"
-                                onClick={() => {
-                                  setSelectedColumns([]);
-                                  setIsMenuOpen(false);
-                                }}
-                              >
-                                <TrashIcon className="mr-2" />
-                                Remove All Columns
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      {selectedColumns.map((column, index) => (
-                        <div
-                          key={column.id}
-                          ref={(el) => {
-                            // Fix the ref assignment
-                            if (columnRefs.current) {
-                              columnRefs.current[index] = el;
-                            }
-                          }}
-                          className={`bg-white border border-gray-200 rounded p-2 flex items-center justify-between group hover:border-gray-300 shadow-sm ${draggedItem === index ? 'opacity-50 border-dashed' : ''}`}
-                          draggable
-                          onDragStart={() => handleDragStart(index)}
-                          onDragOver={(e) => handleDragOver(e, index)}
-                          onDragEnd={() => setDraggedItem(null)}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="text-gray-400 cursor-move">
-                              <DragHandleIcon />
-                            </span>
-                            <span className="text-sm">{column.name}</span>
-                            {'formula' in column && (
-                              <span className="ml-1 px-1.5 py-0.5 text-xs bg-blue-100 text-blue-800 rounded">Formula</span>
-                            )}
-                          </div>
-                          <button
-                            className="text-gray-400 hover:text-gray-600"
-                            onClick={() => removeColumn(column.id)}
-                          >
-                            <CrossIcon />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="filters" className="m-0 data-[state=active]:p-4">
-                  <div className="space-y-6">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-lg font-medium">Filters</h3>
-                      <Button
-                        size="sm"
-                        className="flex items-center gap-1"
-                        onClick={() => setShowFilterFieldSelector(true)}
-                      >
-                        <FilterIcon width={16} height={16} />
-                        Add Filter
-                      </Button>
-                    </div>
-
-                    <div className="space-y-4">
-                      {/* Filter Logic Selector */}
-                      <div className="bg-gray-50 p-3 rounded-md border border-gray-200">
-                        <div className="flex flex-col space-y-3">
-                          <div className="text-sm">
-                            <span className="font-medium">Filter Logic:</span>
-                          </div>
-                          <div>
-                            <Select
-                              value={filterLogic}
-                              onValueChange={(value: 'and' | 'or' | 'custom') => setFilterLogic(value)}
-                            >
-                              <SelectTrigger className="w-[200px] h-8 text-xs">
-                                <SelectValue placeholder="Logic" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="and">AND (1 AND 2 AND 3)</SelectItem>
-                                <SelectItem value="or">OR (1 OR 2 OR 3)</SelectItem>
-                                <SelectItem value="custom">Custom Formula</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {filterLogic === 'and' ? 'All conditions must be true' :
-                              filterLogic === 'or' ? 'Any condition can be true' :
-                                'Define a custom formula'}
-                          </div>
-                        </div>
-
-                        {filterLogic === 'custom' && (
-                          <div className="mt-3">
-                            <Textarea
-                              placeholder="Enter custom formula (e.g., 1 AND (2 OR 3))"
-                              value={customFormula}
-                              onChange={(e) => setCustomFormula(e.target.value)}
-                              className="text-xs"
-                            />
-                            <div className="text-xs text-gray-500 mt-1">
-                              Use numbers to reference filters (e.g., 1, 2, 3) and combine with AND, OR, NOT
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Display existing filters */}
-                      {filters.map((filter, index) => (
-                        <FilterRow
-                          key={filter.id}
-                          filter={filter}
-                          onRemove={() => removeFilter(filter.id)}
-                          onUpdate={(updates) => updateFilter(filter.id, updates)}
-                          index={index + 1}
-                        />
-                      ))}
-
-                      {/* Show message when no filters exist */}
-                      {filters.length === 0 && (
-                        <div className="bg-gray-50 p-4 rounded-md border border-dashed border-gray-300 text-center">
-                          <p className="text-gray-500">No filters added yet. Click "Add Filter" to create one.</p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Filter Field Selection UI */}
-                    <div className="mt-8 border border-dashed border-gray-300 rounded-md p-4 bg-gray-50">
-                      <h4 className="text-sm font-medium mb-3">Add Another Filter</h4>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <Label htmlFor="filter-field" className="text-xs mb-1 block">Field</Label>
-                          <Select onValueChange={(value) => {
-                            const field = accountFields.find(f => f.id === value);
-                            if (field) {
-                              // Convert the field to the correct type
-                              const typedField: Field = {
-                                id: field.id,
-                                name: field.name,
-                                type: field.type as FieldType,
-                                category: field.category,
-                                icon: field.icon
-                              };
-                              addFilter(typedField);
-                            }
-                          }}>
-                            <SelectTrigger id="filter-field" className="w-full">
-                              <SelectValue placeholder="Select field" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {accountFields.map(field => (
-                                <SelectItem key={field.id} value={field.id}>
-                                  {field.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="flex items-end">
-                          <Button className="w-full" onClick={() => setShowFilterFieldSelector(true)}>
-                            Add Filter
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </TabsContent>
-              </Tabs>
-            ) : (
-              // Collapsed view for center panel
-              <div className="flex flex-col items-center pt-4 space-y-4 overflow-hidden">
-                <div
-                  className="p-2 cursor-pointer hover:bg-gray-50 rounded"
-                  title="Report columns"
-                  onClick={() => setCenterPanelCollapsed(false)}
-                >
-                  <TableIcon width={22} height={22} className="text-blue-600" />
-                </div>
-                <div className="text-base font-medium text-gray-700 rotate-90 whitespace-nowrap tracking-wide mt-8">
-                  Outline
-                </div>
-                <div className="text-base font-medium text-gray-700 rotate-90 whitespace-nowrap tracking-wide mt-8">
-                  Filters ({filters.length})
-                </div>
-              </div>
-            )}
-          </div>
+          <ReportBuilderPanel
+            centerPanelCollapsed={centerPanelCollapsed}
+            setCenterPanelCollapsed={setCenterPanelCollapsed}
+            showShortcuts={showShortcuts}
+            filters={filters}
+            
+            // Groups section props
+            selectedColumns={selectedColumns}
+            groupSearchTerm={groupSearchTerm}
+            setGroupSearchTerm={setGroupSearchTerm}
+            showGroupDropdown={showGroupDropdown}
+            setShowGroupDropdown={setShowGroupDropdown}
+            setSelectedGroup={setSelectedGroup}
+            handleGroupBy={handleGroupBy}
+            grouping={grouping}
+            groupSearchRef={groupSearchRef}
+            
+            // Columns section props
+            isMenuOpen={isMenuOpen}
+            menuRef={menuRef}
+            menuPosition={menuPosition}
+            columnRefs={columnRefs}
+            draggedItem={draggedItem}
+            openColumnMenu={openColumnMenu}
+            addFormulaColumn={addFormulaColumn}
+            handleDragStart={handleDragStart}
+            handleDragOver={handleDragOver}
+            removeColumn={removeColumn}
+            setIsMenuOpen={setIsMenuOpen}
+            setSelectedColumns={setSelectedColumns}
+            setDraggedItem={setDraggedItem}
+            
+            // Filters section props
+            filterLogic={filterLogic}
+            setFilterLogic={setFilterLogic}
+            customFormula={customFormula}
+            setCustomFormula={setCustomFormula}
+            accountFields={accountFields}
+            addFilter={addFilter}
+            removeFilter={removeFilter}
+            updateFilter={updateFilter}
+            setShowFilterFieldSelector={setShowFilterFieldSelector}
+          />
 
           {/* Right Panel - Preview */}
-          <div className="flex-1 bg-accent/10 flex flex-col transition-all duration-300 overflow-hidden min-w-0">
-            <div className="p-3 bg-background border-b border-border flex justify-between shrink-0">
-              <div className="flex items-center">
-                <button
-                  className="mr-2 p-1 text-muted-foreground hover:text-foreground transition-colors"
-                  onClick={() => {
-                    setLeftPanelCollapsed(true);
-                    setCenterPanelCollapsed(true);
-                  }}
-                  title="Expand preview"
-                >
-                  <ExpandIcon />
-                </button>
-                <span className="text-sm font-medium">Preview</span>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <button
-                    className={`p-1 rounded ${showRowCounts ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}
-                    onClick={toggleRowCounts}
-                    title="Toggle Row Counts"
-                  >
-                    <ListIcon />
-                  </button>
-                  <button
-                    className={`p-1 rounded ${showDetailRows ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}
-                    onClick={toggleDetailRows}
-                    title="Toggle Detail Rows"
-                  >
-                    <TableIcon />
-                  </button>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Update Automatically</span>
-                  <div className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="sr-only peer"
-                      checked={autoUpdatePreview}
-                      onChange={() => setAutoUpdatePreview(!autoUpdatePreview)}
-                    />
-                    <div className="w-9 h-5 bg-muted rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-background after:border-muted-foreground after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {rowData.length > 0 ? (
-              <div className="flex-1 p-4 overflow-hidden flex flex-col">
-                <div className="w-full h-full rounded-md overflow-hidden border border-border flex flex-col">
-                  <DataTable<AccountData>
-                    data={rowData}
-                    columns={columns}
-                    sorting={sorting}
-                    setSorting={setSorting}
-                    columnFilters={columnFilters}
-                    setColumnFilters={setColumnFilters}
-                    columnVisibility={columnVisibility}
-                    setColumnVisibility={setColumnVisibility}
-                    pagination={pagination}
-                    setPagination={setPagination}
-                    showRowCounts={showRowCounts}
-                    showDetailRows={showDetailRows}
-                    grouping={grouping}
-                    onGroupingChange={setGrouping}
-                    expandedRowGroups={expandedRowGroups}
-                    setExpandedRowGroups={setExpandedRowGroups}
-                    pageCount={pageCount}
-                    totalRows={totalRows}
-                    isLoading={isLoading}
-                  />
-                </div>
-              </div>
-            ) : (
-              // Keep the existing "No records returned" view
-              <div className="flex-1 p-6 flex flex-col items-center justify-center text-center">
-                <div className="max-w-md">
-                  <FileIcon 
-                    className="mx-auto mb-4 text-gray-400"
-                    size={40}
-                  />
-
-                  <h3 className="text-lg font-medium mb-3 text-gray-700">No records returned in preview</h3>
-                  <p className="text-gray-500 mb-4">Try running the report or editing report filters.</p>
-
-                  <div className="space-y-2 text-left">
-                    <div>
-                      <Link href="#" className="text-blue-600 flex items-center gap-1 text-sm">
-                        <ArrowRightIcon />
-                        Show All accounts.
-                      </Link>
-                    </div>
-                    <div>
-                      <Link href="#" className="text-blue-600 flex items-center gap-1 text-sm">
-                        <ArrowRightIcon />
-                        Set the Created Date filter to All Time.
-                      </Link>
-                    </div>
-                    <div>
-                      <Link href="#" className="text-blue-600 flex items-center gap-1 text-sm">
-                        <ArrowRightIcon />
-                        Edit other filters in the filter panel.
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          <PreviewPanel 
+            rowData={rowData}
+            columns={columns}
+            sorting={sorting}
+            setSorting={setSorting}
+            columnFilters={columnFilters}
+            setColumnFilters={setColumnFilters}
+            columnVisibility={columnVisibility}
+            setColumnVisibility={setColumnVisibility}
+            pagination={pagination}
+            setPagination={setPagination}
+            showRowCounts={showRowCounts}
+            toggleRowCounts={toggleRowCounts}
+            showDetailRows={showDetailRows}
+            toggleDetailRows={toggleDetailRows}
+            grouping={grouping}
+            onGroupingChange={setGrouping}
+            expandedRowGroups={expandedRowGroups}
+            setExpandedRowGroups={setExpandedRowGroups}
+            pageCount={pageCount}
+            totalRows={totalRows}
+            isLoading={isLoading}
+            autoUpdatePreview={autoUpdatePreview}
+            setAutoUpdatePreview={setAutoUpdatePreview}
+            onExpandView={() => {
+              setLeftPanelCollapsed(true);
+              setCenterPanelCollapsed(true);
+            }}
+          />
         </div>
 
-        {/* Formula Builder Panel (shown conditionally) */}
-        {showFormulaBuilder && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-              <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-                <h2 className="text-xl font-semibold">Edit Row-Level Formula Column</h2>
-                <button
-                  onClick={() => setShowFormulaBuilder(false)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <CrossIcon size={20} />
-                </button>
-              </div>
+        {/* Formula Builder */}
+        <FormulaBuilder
+          isOpen={showFormulaBuilder}
+          onClose={() => setShowFormulaBuilder(false)}
+          onSubmit={handleSubmitFormula}
+          fieldsByCategory={fieldsByCategory}
+          formulaFunctions={formulaFunctions}
+          expandedCategories={expandedCategories}
+          toggleCategory={toggleCategory}
+          searchTerm={searchTerm}
+          formulaSearchTerm={formulaSearchTerm}
+          onSearchTermChange={setSearchTerm}
+          onFormulaSearchTermChange={setFormulaSearchTerm}
+        />
 
-              <div className="p-4 text-sm text-gray-600">
-                Create a custom formula to calculate values for each row in your report.
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {/* Left Section: Fields & Functions */}
-                  <div className="md:col-span-1 border border-gray-200 rounded-md overflow-hidden">
-                    <div className="border-b border-gray-200">
-                      <div className="flex w-full">
-                        <button
-                          onClick={() => setFormulaDialogTab("fields")}
-                          className={`flex-1 px-4 py-2 text-center ${formulaDialogTab === "fields"
-                            ? "bg-white border-b-2 border-blue-600 text-blue-600 font-medium"
-                            : "bg-gray-50 text-gray-600"}`}
-                        >
-                          Fields
-                        </button>
-                        <button
-                          onClick={() => setFormulaDialogTab("functions")}
-                          className={`flex-1 px-4 py-2 text-center ${formulaDialogTab === "functions"
-                            ? "bg-white border-b-2 border-blue-600 text-blue-600 font-medium"
-                            : "bg-gray-50 text-gray-600"}`}
-                        >
-                          Functions
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="p-2 border-b border-gray-200">
-                      <Input
-                        placeholder={formulaDialogTab === "fields" ? "Search fields..." : "Search functions..."}
-                        value={formulaDialogTab === "fields" ? searchTerm : formulaSearchTerm}
-                        onChange={(e) => formulaDialogTab === "fields"
-                          ? setSearchTerm(e.target.value)
-                          : setFormulaSearchTerm(e.target.value)
-                        }
-                        className="text-sm"
-                      />
-                    </div>
-
-                    <div className="overflow-y-auto max-h-72">
-                      {formulaDialogTab === "fields" ? (
-                        // Fields Tab Content
-                        <div>
-                          {Object.entries(fieldsByCategory).map(([category, fields]) => (
-                            <div key={category} className="border-b border-gray-200 last:border-b-0">
-                              <div
-                                className="p-2 flex justify-between items-center cursor-pointer hover:bg-gray-50"
-                                onClick={() => toggleCategory(category)}
-                              >
-                                <div className="text-xs font-semibold text-gray-500 uppercase">
-                                  {category} ({fields.length})
-                                </div>
-                                <ChevronDownIcon 
-                                  className={`transition-transform ${expandedCategories[category as keyof typeof expandedCategories] ? 'rotate-180' : ''}`}
-                                />
-                              </div>
-
-                              {expandedCategories[category as keyof typeof expandedCategories] && (
-                                <div className="pl-2">
-                                  {fields
-                                    .filter(field =>
-                                      !searchTerm.trim() ||
-                                      field.name.toLowerCase().includes(searchTerm.toLowerCase())
-                                    )
-                                    .map(field => (
-                                      <div
-                                        key={field.id}
-                                        className="pl-2 pr-3 py-1.5 text-sm hover:bg-blue-50 flex items-center justify-between cursor-pointer"
-                                        onClick={() => insertFieldIntoFormula(field)}
-                                      >
-                                        <div className="flex items-center gap-2">
-                                          <span className={`w-4 h-4 flex items-center justify-center rounded-sm text-xs ${field.type === 'number' || field.type === 'currency' ? 'bg-purple-100 text-purple-700' : 'bg-indigo-100 text-indigo-700'}`}>
-                                            {field.icon}
-                                          </span>
-                                          <span>{field.name}</span>
-                                        </div>
-                                      </div>
-                                    ))}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        // Functions Tab Content
-                        <div>
-                          {filteredFunctions.map((category) => (
-                            <div key={category.category} className="border-b border-gray-200 last:border-b-0">
-                              <div className="p-2 bg-gray-50">
-                                <div className="text-xs font-semibold text-gray-500 uppercase">
-                                  {category.category} ({category.functions.length})
-                                </div>
-                              </div>
-                              <div className="pl-2">
-                                {category.functions.map((func) => (
-                                  <div
-                                    key={func.name}
-                                    className="pl-2 pr-3 py-1.5 text-sm hover:bg-blue-50 flex items-center justify-between cursor-pointer"
-                                    onClick={() => insertFunctionIntoFormula(func.name)}
-                                  >
-                                    <div>
-                                      <div className="font-medium text-blue-600">{func.name}</div>
-                                      <div className="text-xs text-gray-500">{func.description}</div>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Right Section: Formula Builder */}
-                  <div className="md:col-span-2">
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="formula-name" className="flex items-center text-sm font-medium">
-                            * Column Name
-                            <span className="text-red-500 ml-1">*</span>
-                          </Label>
-                          <Input
-                            id="formula-name"
-                            value={formulaName}
-                            onChange={(e) => setFormulaName(e.target.value)}
-                            placeholder="Enter a name for this column"
-                            className="mt-1"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="formula-description" className="text-sm font-medium">
-                            Description
-                          </Label>
-                          <Input
-                            id="formula-description"
-                            value={formulaDescription}
-                            onChange={(e) => setFormulaDescription(e.target.value)}
-                            placeholder="Optional description"
-                            className="mt-1"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="output-type" className="text-sm font-medium">
-                            Formula Output Type
-                          </Label>
-                          <Select
-                            value={formulaOutputType}
-                            onValueChange={setFormulaOutputType}
-                          >
-                            <SelectTrigger id="output-type" className="mt-1">
-                              <SelectValue placeholder="Select output type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="number">Number</SelectItem>
-                              <SelectItem value="text">Text</SelectItem>
-                              <SelectItem value="currency">Currency</SelectItem>
-                              <SelectItem value="percent">Percent</SelectItem>
-                              <SelectItem value="date">Date</SelectItem>
-                              <SelectItem value="datetime">Date/Time</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        {(formulaOutputType === 'number' || formulaOutputType === 'currency' || formulaOutputType === 'percent') && (
-                          <div>
-                            <Label htmlFor="decimal-points" className="text-sm font-medium">
-                              Decimal Points
-                            </Label>
-                            <Select
-                              value={decimalPoints}
-                              onValueChange={setDecimalPoints}
-                            >
-                              <SelectTrigger id="decimal-points" className="mt-1">
-                                <SelectValue placeholder="Select decimal points" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="0">0</SelectItem>
-                                <SelectItem value="1">1</SelectItem>
-                                <SelectItem value="2">2</SelectItem>
-                                <SelectItem value="3">3</SelectItem>
-                                <SelectItem value="4">4</SelectItem>
-                                <SelectItem value="5">5</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        )}
-                      </div>
-
-                      <div>
-                        <div className="flex justify-between items-center mb-2">
-                          <Label className="text-sm font-medium">Formula</Label>
-                          <div className="flex items-center space-x-1">
-                            {['+', '-', '*', '/', '^', '(', ')'].map((op) => (
-                              <button
-                                key={op}
-                                className="w-6 h-6 flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-700 rounded"
-                                onClick={() => setFormulaEditorValue(prev => `${prev}${op}`)}
-                              >
-                                {op}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="relative border border-gray-300 rounded-md">
-                          <div className="absolute left-0 top-0 bottom-0 w-8 bg-gray-50 border-r border-gray-300 text-right">
-                            {Array.from({ length: Math.max((formulaEditorValue.match(/\n/g) || []).length + 1, 1) }).map((_, i) => (
-                              <div key={i} className="text-xs text-gray-400 px-1.5 h-6 leading-6">{i + 1}</div>
-                            ))}
-                          </div>
-                          <Textarea
-                            value={formulaEditorValue}
-                            onChange={(e) => setFormulaEditorValue(e.target.value)}
-                            className="min-h-[150px] pl-8 font-mono text-sm resize-none"
-                            placeholder="Enter your formula here..."
-                          />
-                        </div>
-
-                        <div className="flex justify-end mt-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={!formulaEditorValue.trim()}
-                          >
-                            Validate Formula
-                          </Button>
-                        </div>
-                      </div>
-
-                      <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-md border border-blue-100 text-sm text-blue-700">
-                        <InfoIcon className="mt-0.5" />
-                        <div>
-                          <strong>Tips for creating formulas:</strong>
-                          <ul className="list-disc ml-5 mt-1">
-                            <li>Use square brackets to reference fields: [Field Name]</li>
-                            <li>Numeric operations: +, -, *, /, ^ (exponentiation)</li>
-                            <li>Use functions like SUM(), MAX(), IF() for advanced calculations</li>
-                            <li>Validate your formula before applying it</li>
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-4 border-t border-gray-200 flex justify-end space-x-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowFormulaBuilder(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleSubmitFormula}
-                  disabled={!formulaName.trim() || !formulaEditorValue.trim()}
-                >
-                  Apply
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Filter Field Selector Dialog */}
-        {showFilterFieldSelector && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-              <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-                <h2 className="text-xl font-semibold">Add Filter</h2>
-                <button
-                  onClick={() => setShowFilterFieldSelector(false)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <CrossIcon size={20} />
-                </button>
-              </div>
-
-              <div className="p-4 border-b border-gray-200">
-                <div className="relative">
-                  <Input
-                    className="pl-8 text-sm"
-                    placeholder="Search fields..."
-                    value={filterSearchTerm}
-                    onChange={(e) => setFilterSearchTerm(e.target.value)}
-                  />
-                  <SearchIcon 
-                    className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"
-                  />
-                </div>
-              </div>
-
-              <div className="overflow-y-auto flex-1 p-4">
-                {Object.entries(fieldsByCategory).map(([category, fields]) => (
-                  <div key={category} className="mb-4">
-                    <div
-                      className="p-2 flex justify-between items-center cursor-pointer hover:bg-gray-50"
-                      onClick={() => toggleCategory(category)}
-                    >
-                      <div className="text-xs font-semibold text-gray-500 uppercase">
-                        {category} FIELDS ({fields.length})
-                      </div>
-                      <ChevronDownIcon
-                        className={`transition-transform ${expandedCategories[category as keyof typeof expandedCategories] ? 'rotate-180' : ''}`}
-                      />
-                    </div>
-
-                    {expandedCategories[category as keyof typeof expandedCategories] && (
-                      <div className="pl-2">
-                        {fields
-                          .filter(field =>
-                            !filterSearchTerm.trim() ||
-                            field.name.toLowerCase().includes(filterSearchTerm.toLowerCase())
-                          )
-                          .map(field => (
-                            <div
-                              key={field.id}
-                              className="pl-2 pr-3 py-1.5 text-sm hover:bg-blue-50 flex items-center justify-between cursor-pointer group"
-                              onClick={() => {
-                                // Convert the field to the correct type
-                                const typedField: Field = {
-                                  id: field.id,
-                                  name: field.name,
-                                  type: field.type as FieldType,
-                                  category: field.category,
-                                  icon: field.icon
-                                };
-                                addFilter(typedField);
-                                setShowFilterFieldSelector(false);
-                              }}
-                            >
-                              <div className="flex items-center gap-2">
-                                <span className={`w-4 h-4 flex items-center justify-center rounded-sm text-xs ${field.type === 'number' || field.type === 'currency' ? 'bg-purple-100 text-purple-700' : 'bg-indigo-100 text-indigo-700'}`}>
-                                  {getFieldIcon(field.type as FieldType)}
-                                </span>
-                                <span>{field.name}</span>
-                              </div>
-                              <PlusIcon 
-                                className="text-blue-600 opacity-0 group-hover:opacity-100"
-                              />
-                            </div>
-                          ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Filter Field Selector */}
+        <FilterFieldSelector 
+          isOpen={showFilterFieldSelector}
+          onClose={() => setShowFilterFieldSelector(false)}
+          fieldsByCategory={fieldsByCategory}
+          expandedCategories={expandedCategories}
+          toggleCategory={toggleCategory}
+          filterSearchTerm={filterSearchTerm}
+          onFilterSearchTermChange={setFilterSearchTerm}
+          addFilter={addFilter}
+        />
       </div>
     </>
   );
 }
+
