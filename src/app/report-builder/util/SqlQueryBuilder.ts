@@ -55,7 +55,16 @@ export function buildSqlQuery(options: SqlQueryOptions): string {
 function generateSelectClause(selectedColumns: Field[], groupByFields: string[]): string {
   // If no grouping fields are specified, just return all columns without aggregation
   if (groupByFields.length === 0) {
-    return selectedColumns.map(column => `  ${column.id}`).join(',\n');
+    return selectedColumns.map(column => {
+      // Check if this is a formula column
+      if ('isFormula' in column && column.isFormula) {
+        // For formula columns, use their formula and alias
+        const formulaCol = column as any; // Type assertion to access formula properties
+        return `  ${formulaCol.formula} AS ${formulaCol.alias}`;
+      }
+      // Regular column, just use the ID
+      return `  ${column.id}`;
+    }).join(',\n');
   }
 
   // Otherwise, apply appropriate aggregation based on whether the column is in the GROUP BY
@@ -66,9 +75,33 @@ function generateSelectClause(selectedColumns: Field[], groupByFields: string[])
   const nonGroupedColumns = selectedColumns.filter(column => !groupByFields.includes(column.id));
   
   // Generate the SELECT clause with grouped columns first, then non-grouped columns with aggregation
-  const groupedPart = groupedColumns.map(column => `  ${column.id}`);
+  const groupedPart = groupedColumns.map(column => {
+    // Check if this is a formula column
+    if ('isFormula' in column && column.isFormula) {
+      const formulaCol = column as any; // Type assertion to access formula properties
+      return `  ${formulaCol.formula} AS ${formulaCol.alias}`;
+    }
+    return `  ${column.id}`;
+  });
   
   const nonGroupedPart = nonGroupedColumns.map(column => {
+    // Check if this is a formula column
+    if ('isFormula' in column && column.isFormula) {
+      const formulaCol = column as any; // Type assertion to access formula properties
+      
+      // For formula columns, we'll still apply aggregation but use the formula expression
+      let aggregateFunction = 'COUNT';
+      
+      if (formulaCol.type === 'number' || formulaCol.type === 'currency') {
+        aggregateFunction = 'SUM';
+      } else if (formulaCol.type === 'datetime' || formulaCol.type === 'date') {
+        aggregateFunction = 'MAX';
+      }
+      
+      return `  ${aggregateFunction}(${formulaCol.formula}) AS ${formulaCol.alias}_${aggregateFunction.toLowerCase()}`;
+    }
+    
+    // Regular column with aggregation
     const columnId = column.id;
     
     // Apply an appropriate aggregate function based on the column type
