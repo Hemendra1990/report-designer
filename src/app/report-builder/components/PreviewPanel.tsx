@@ -14,7 +14,8 @@ import {
   FileIcon,
   ListIcon,
   TableIcon,
-  ArrowRightIcon
+  ArrowRightIcon,
+  CollapseIcon
 } from "@/components/icons";
 
 interface PreviewPanelProps {
@@ -42,6 +43,7 @@ interface PreviewPanelProps {
   autoUpdatePreview: boolean;
   setAutoUpdatePreview: Dispatch<SetStateAction<boolean>>;
   onExpandView: () => void;
+  isExpanded?: boolean;
 }
 
 const PreviewPanel: React.FC<PreviewPanelProps> = ({
@@ -68,7 +70,8 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
   isLoading,
   autoUpdatePreview,
   setAutoUpdatePreview,
-  onExpandView
+  onExpandView,
+  isExpanded = false
 }) => {
   return (
     <div className="flex-1 bg-accent/10 flex flex-col min-w-0" style={{ height: 'calc(100vh - 130px)' }}>
@@ -77,9 +80,9 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
           <button
             className="mr-2 p-1 text-muted-foreground hover:text-foreground transition-colors"
             onClick={onExpandView}
-            title="Expand preview"
+            title={isExpanded ? "Collapse preview" : "Expand preview"}
           >
-            <ExpandIcon />
+            {isExpanded ? <CollapseIcon /> : <ExpandIcon />}
           </button>
           <span className="text-sm font-medium">Preview</span>
         </div>
