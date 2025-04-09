@@ -7,7 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { 
   ChevronDownIcon,
   CrossIcon,
-  InfoIcon
+  InfoIcon,
+  SearchIcon
 } from "@/components/icons";
 import { translateFormulaToDuckDBSQL } from '../util/FormulaTranslator';
 import FormulaFieldsPanel from './formula/FormulaFieldsPanel';
@@ -63,7 +64,10 @@ interface FormulaBuilderProps {
     description: string;
     alias: string;
     isFormula: boolean;
+    isSummaryFormula?: boolean;
   };
+  isSummaryFormula?: boolean;
+  title?: string;
 }
 
 const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
@@ -78,7 +82,9 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
   formulaSearchTerm,
   onSearchTermChange,
   onFormulaSearchTermChange,
-  editFormulaColumn
+  editFormulaColumn,
+  isSummaryFormula = false,
+  title = "Add Formula"
 }) => {
   // Local state
   const [formulaName, setFormulaName] = useState(editFormulaColumn?.name || "");
@@ -128,9 +134,12 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
       formula: formulaEditorValue,
       description: formulaDescription,
       alias: formulaAlias,
-      isFormula: true
+      isFormula: true,
+      // Always explicitly set the isSummaryFormula flag based on both the existing value and the prop
+      isSummaryFormula: !!(editFormulaColumn?.isSummaryFormula || isSummaryFormula)
     };
 
+    console.log('FormulaBuilder submitting:', newFormulaColumn);
     onSubmit(newFormulaColumn);
 
     // Reset form
@@ -153,9 +162,34 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     onClose();
   };
 
-  // Validate the formula
+  // Modify validateFormula for summary formulas
   const validateFormula = () => {
     try {
+      // For summary formulas, we don't need SQL validation
+      if (isSummaryFormula) {
+        // Simple validation for common aggregation functions
+        const validFunctions = ['SUM', 'AVG', 'AVERAGE', 'MIN', 'MAX', 'COUNT'];
+        const formula = formulaEditorValue.toUpperCase();
+        
+        // Check if the formula contains at least one of the valid functions
+        const isValid = validFunctions.some(func => formula.includes(func));
+        
+        if (!isValid) {
+          setValidationResult({ 
+            success: false, 
+            message: `Error: Summary formula must use one of these functions: ${validFunctions.join(', ')}` 
+          });
+          return false;
+        }
+        
+        setValidationResult({ 
+          success: true, 
+          message: "Summary formula is valid." 
+        });
+        return true;
+      }
+
+      // Regular formula validation with SQL translation
       // Create a field map from the available fields
       const fieldMap: Record<string, string> = {};
       Object.entries(fieldsByCategory).forEach(([_, fields]) => {
@@ -189,10 +223,16 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     }
   };
 
-  // Update function to create field map for formula translation
+  // Modify the effect for SQL preview to handle summary formulas
   useEffect(() => {
     if (formulaEditorValue.trim()) {
       try {
+        if (isSummaryFormula) {
+          // For summary formulas, just show the formula without SQL translation
+          setSqlPreview("Summary formulas are only used for client-side aggregation in the grid view.");
+          return;
+        }
+
         // Create a field map from the available fields
         const fieldMap: Record<string, string> = {};
         Object.entries(fieldsByCategory).forEach(([_, fields]) => {
@@ -210,7 +250,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     } else {
       setSqlPreview("");
     }
-  }, [formulaEditorValue, fieldsByCategory, formulaAlias]);
+  }, [formulaEditorValue, fieldsByCategory, formulaAlias, isSummaryFormula]);
 
   if (!isOpen) return null;
 
@@ -226,59 +266,48 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     })).filter(category => category.functions.length > 0);
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="p-3 border-b border-gray-200 flex justify-between items-center">
-          <h2 className="text-base font-semibold">Edit Row-Level Formula Column</h2>
-          <button
-            onClick={handleClose}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            <CrossIcon size={18} />
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
+        <div className="bg-background border-b px-4 py-3 flex justify-between items-center">
+          <h2 className="font-semibold">{title}</h2>
+          <button onClick={handleClose} className="text-muted-foreground hover:text-foreground">
+            <CrossIcon className="size-4" />
           </button>
         </div>
-
-        <div className="p-2 text-xs text-gray-600">
-          Create a custom formula to calculate values for each row in your report.
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-4 py-2">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Left Section: Fields & Functions */}
-            <div className="md:col-span-1 border border-gray-200 rounded-md overflow-hidden max-h-[calc(100vh-240px)]">
-              <div className="border-b border-gray-200">
-                <div className="flex w-full">
+        
+        <div className="flex-1 overflow-auto p-4">
+          <div className="grid md:grid-cols-3 gap-4 h-full">
+            {/* Left Section: Fields and Functions */}
+            <div>
+              <div className="mb-3">
+                <div className="flex space-x-0.5 mb-2 border-b">
                   <button
+                    className={`px-3 py-1.5 text-xs font-medium ${formulaDialogTab === "fields" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-500 hover:text-gray-900"}`}
                     onClick={() => setFormulaDialogTab("fields")}
-                    className={`flex-1 px-3 py-1.5 text-center text-xs ${formulaDialogTab === "fields"
-                      ? "bg-white border-b-2 border-blue-600 text-blue-600 font-medium"
-                      : "bg-gray-50 text-gray-600"}`}
                   >
                     Fields
                   </button>
                   <button
+                    className={`px-3 py-1.5 text-xs font-medium ${formulaDialogTab === "functions" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-500 hover:text-gray-900"}`}
                     onClick={() => setFormulaDialogTab("functions")}
-                    className={`flex-1 px-3 py-1.5 text-center text-xs ${formulaDialogTab === "functions"
-                      ? "bg-white border-b-2 border-blue-600 text-blue-600 font-medium"
-                      : "bg-gray-50 text-gray-600"}`}
                   >
                     Functions
                   </button>
                 </div>
+                {formulaDialogTab === "functions" && (
+                  <div className="mb-2 relative">
+                    <input
+                      type="text"
+                      className="w-full px-2.5 pl-7 py-1.5 text-xs border border-gray-300 rounded"
+                      placeholder="Search functions..."
+                      value={formulaSearchTerm}
+                      onChange={(e) => onFormulaSearchTermChange(e.target.value)}
+                    />
+                    <SearchIcon className="absolute left-2 top-1.5 size-3.5 text-gray-400" />
+                  </div>
+                )}
               </div>
-
-              <div className="p-1.5 border-b border-gray-200">
-                <Input
-                  placeholder={formulaDialogTab === "fields" ? "Search fields..." : "Search functions..."}
-                  value={formulaDialogTab === "fields" ? searchTerm : formulaSearchTerm}
-                  onChange={(e) => formulaDialogTab === "fields"
-                    ? onSearchTermChange(e.target.value)
-                    : onFormulaSearchTermChange(e.target.value)
-                  }
-                  className="text-xs h-7"
-                />
-              </div>
-
+              
               {/* Sidebar content */}
               <div className="overflow-y-auto max-h-full">
                 {formulaDialogTab === "fields" ? (

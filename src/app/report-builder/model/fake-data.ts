@@ -152,6 +152,11 @@ export const accountFields = [
 { id: "number_of_locations", name: "Number of Locations", category: "general", type: "number", icon: "#" },
 { id: "upsell_opportunity", name: "Upsell Opportunity", category: "general", type: "picklist", icon: "A" },
 { id: "last_viewed_date", name: "Last Viewed Date", category: "system", type: "datetime", icon: "A" },
+// Add formula fields
+{ id: "profit_margin", name: "Profit Margin", category: "formula", type: "percent", icon: "#", isFormula: true, formula: "Annual_Revenue * 0.15" },
+{ id: "full_address", name: "Full Address", category: "formula", type: "text", icon: "A", isFormula: true, formula: "Billing_Street & ', ' & Billing_City & ', ' & Billing_State" },
+{ id: "total_revenue", name: "Total Revenue", category: "formula", type: "currency", icon: "#", isFormula: true, isSummaryFormula: true, formula: "SUM(Annual_Revenue)" },
+{ id: "avg_deal_size", name: "Average Deal Size", category: "formula", type: "currency", icon: "#", isFormula: true, isSummaryFormula: true, formula: "AVG(Annual_Revenue)" }
 ];
 
 export const sampleData: AccountData[] = [

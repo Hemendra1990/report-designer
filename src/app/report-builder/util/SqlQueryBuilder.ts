@@ -18,8 +18,14 @@ export interface SqlQueryOptions {
 export function buildSqlQuery(options: SqlQueryOptions): string {
   const { reportType, selectedColumns, groupByFields, filters, filterLogic, customFilterFormula } = options;
   
+  // Filter out summary formula fields from the selected columns
+  // Summary formulas are used for client-side aggregation in the UI only and should not be included in SQL
+  const filteredColumns = selectedColumns.filter(column => 
+    !('isSummaryFormula' in column && column.isSummaryFormula === true)
+  );
+  
   // Generate the SELECT clause
-  const selectClause = generateSelectClause(selectedColumns, groupByFields);
+  const selectClause = generateSelectClause(filteredColumns, groupByFields);
   
   // Generate the FROM clause
   const fromClause = `FROM ${reportType}`;
@@ -55,6 +61,16 @@ export function buildSqlQuery(options: SqlQueryOptions): string {
  * Generates the SELECT clause based on selected columns and group by fields
  */
 function generateSelectClause(selectedColumns: Field[], groupByFields: string[]): string {
+  // Skip summary formula fields - these should already be filtered out, but this is a safeguard
+  const columnsToInclude = selectedColumns.filter(column => 
+    !('isSummaryFormula' in column && column.isSummaryFormula === true)
+  );
+  
+  // Early return if no columns are left after filtering
+  if (columnsToInclude.length === 0) {
+    return '  1 as dummy_column'; // Fallback to ensure valid SQL
+  }
+  
   // Create a field map for formula translation that includes ALL available fields
   // This ensures formulas can reference fields not in the current selection
   const fieldMap: Record<string, string> = {};
@@ -65,7 +81,7 @@ function generateSelectClause(selectedColumns: Field[], groupByFields: string[])
   });
   
   // Then add any custom fields from the selected columns that might not be in accountFields
-  selectedColumns.forEach(column => {
+  columnsToInclude.forEach(column => {
     if (!fieldMap[column.id]) {
       fieldMap[column.id] = column.id;
     }
@@ -73,7 +89,7 @@ function generateSelectClause(selectedColumns: Field[], groupByFields: string[])
 
   // If no grouping fields are specified, just return all columns without aggregation
   if (groupByFields.length === 0) {
-    return selectedColumns.map(column => {
+    return columnsToInclude.map(column => {
       // Check if this is a formula column
       if ('isFormula' in column && column.isFormula) {
         // For formula columns, use the translated SQL expression instead of raw formula
@@ -94,10 +110,10 @@ function generateSelectClause(selectedColumns: Field[], groupByFields: string[])
 
   // Otherwise, apply appropriate aggregation based on whether the column is in the GROUP BY
   // First, get all columns that are in the GROUP BY clause
-  const groupedColumns = selectedColumns.filter(column => groupByFields.includes(column.id));
+  const groupedColumns = columnsToInclude.filter(column => groupByFields.includes(column.id));
   
   // Then, get all columns that are NOT in the GROUP BY clause
-  const nonGroupedColumns = selectedColumns.filter(column => !groupByFields.includes(column.id));
+  const nonGroupedColumns = columnsToInclude.filter(column => !groupByFields.includes(column.id));
   
   // Generate the SELECT clause with grouped columns first, then non-grouped columns with aggregation
   const groupedPart = groupedColumns.map(column => {

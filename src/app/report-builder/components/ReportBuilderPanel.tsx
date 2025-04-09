@@ -35,6 +35,8 @@ interface ReportBuilderPanelProps {
   handleGroupBy: (fieldId: string) => void;
   grouping: GroupingState;
   groupSearchRef: MutableRefObject<HTMLDivElement | null>;
+  addSummaryFormulaColumn?: () => void;
+  editSummaryFormulaColumn?: (column: any) => void;
   
   // Columns section props
   isMenuOpen: boolean;
@@ -86,6 +88,8 @@ const ReportBuilderPanel: React.FC<ReportBuilderPanelProps> = ({
   handleGroupBy,
   grouping,
   groupSearchRef,
+  addSummaryFormulaColumn,
+  editSummaryFormulaColumn,
   
   // Columns section props
   isMenuOpen,
@@ -160,6 +164,8 @@ const ReportBuilderPanel: React.FC<ReportBuilderPanelProps> = ({
               handleGroupBy={handleGroupBy}
               grouping={grouping}
               groupSearchRef={groupSearchRef}
+              addSummaryFormulaColumn={addSummaryFormulaColumn}
+              editSummaryFormulaColumn={editSummaryFormulaColumn}
             />
 
             {/* Columns Section */}
@@ -179,6 +185,8 @@ const ReportBuilderPanel: React.FC<ReportBuilderPanelProps> = ({
               setIsMenuOpen={setIsMenuOpen}
               setSelectedColumns={setSelectedColumns}
               setDraggedItem={setDraggedItem}
+              addSummaryFormulaColumn={addSummaryFormulaColumn}
+              editSummaryFormulaColumn={editSummaryFormulaColumn}
             />
           </TabsContent>
 

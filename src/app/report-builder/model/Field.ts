@@ -10,6 +10,11 @@ export interface Field {
   type: FieldType;
   category?: string;
   icon?: string;
+  isFormula?: boolean;
+  formula?: string;
+  description?: string;
+  alias?: string;
+  isSummaryFormula?: boolean;
 }
 
 // Formula column interface that extends Field
@@ -18,4 +23,5 @@ export interface FormulaColumn extends Field {
   description: string;
   alias: string;
   isFormula: boolean;
+  isSummaryFormula?: boolean;
 }

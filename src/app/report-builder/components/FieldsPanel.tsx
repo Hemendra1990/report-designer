@@ -1,6 +1,7 @@
 import React from 'react';
 import { Input } from "@/components/ui/input";
 import { ChevronDownIcon, ChevronLeftIcon, PlusIcon, SearchIcon } from "@/components/icons";
+import { FormulaIcon } from "@/components/icons/ReportIcons";
 
 // Match the field type to the one in accountFields
 interface Field {
@@ -9,6 +10,8 @@ interface Field {
   type: string;
   category: string;
   icon: string;
+  isFormula?: boolean;
+  isSummaryFormula?: boolean;
 }
 
 interface FieldsByCategory {
@@ -70,11 +73,25 @@ const FieldsPanel: React.FC<FieldsPanelProps> = ({
           </div>
 
           <div className="overflow-y-auto flex-1">
+            {/* Summary Formulas Section */}
             <div className="p-2 border-b border-gray-200 flex justify-between items-center">
-              <div className="text-xs font-semibold text-gray-500">SUMMARY FORMULAS (0)</div>
-              <button className="text-blue-600 text-xs">Add</button>
+              <div className="text-xs font-semibold text-gray-500">
+                SUMMARY FORMULAS ({Object.entries(fieldsByCategory)
+                  .filter(([category]) => category === 'formula')
+                  .map(([_, fields]) => fields)
+                  .flat()
+                  .filter(field => field.isSummaryFormula)
+                  .length || 0})
+              </div>
+              <button 
+                className="text-purple-600 text-xs"
+                onClick={() => {/* Add summary formula action if needed */}}
+              >
+                Add
+              </button>
             </div>
 
+            {/* All Fields Categories */}
             {Object.entries(fieldsByCategory).map(([category, fields]) => (
               <div key={category} className="border-b border-gray-200">
                 <div
@@ -82,7 +99,7 @@ const FieldsPanel: React.FC<FieldsPanelProps> = ({
                   onClick={() => toggleCategory(category)}
                 >
                   <div className="text-xs font-semibold text-gray-500 uppercase">
-                    {category} FIELDS ({fields.length})
+                    {category === 'formula' ? 'FORMULA' : category} FIELDS ({fields.length})
                   </div>
                   <ChevronDownIcon 
                     className={`transition-transform ${expandedCategories[category as keyof typeof expandedCategories] ? 'rotate-180' : ''}`} 
@@ -99,19 +116,41 @@ const FieldsPanel: React.FC<FieldsPanelProps> = ({
                       .map(field => (
                         <div
                           key={field.id}
-                          className="pl-2 pr-3 py-1.5 text-sm hover:bg-blue-50 flex items-center justify-between cursor-pointer group"
+                          className={`pl-2 pr-3 py-1.5 text-sm flex items-center justify-between cursor-pointer group
+                            ${field.isFormula 
+                              ? field.isSummaryFormula 
+                                ? 'hover:bg-purple-50' 
+                                : 'hover:bg-blue-50'
+                              : 'hover:bg-blue-50'
+                            }`}
                           onClick={() => addColumn(field)}
                           draggable
                           onDragStart={() => {/* Handle field drag if needed */ }}
                         >
                           <div className="flex items-center gap-2">
-                            <span className={`w-4 h-4 flex items-center justify-center rounded-sm text-xs ${field.type === 'number' || field.type === 'currency' ? 'bg-purple-100 text-purple-700' : 'bg-indigo-100 text-indigo-700'}`}>
-                              {field.icon}
+                            <span className={`w-4 h-4 flex items-center justify-center rounded-sm text-xs 
+                              ${field.isFormula 
+                                ? field.isSummaryFormula 
+                                  ? 'bg-purple-100 text-purple-700' 
+                                  : 'bg-blue-100 text-blue-700'
+                                : field.type === 'number' || field.type === 'currency' 
+                                  ? 'bg-purple-100 text-purple-700' 
+                                  : 'bg-indigo-100 text-indigo-700'
+                              }`}>
+                              {field.isFormula ? 
+                                <FormulaIcon className={`size-3 ${field.isSummaryFormula ? 'text-purple-700' : 'text-blue-700'}`} /> 
+                                : field.icon}
                             </span>
                             <span>{field.name}</span>
                           </div>
                           <PlusIcon
-                            className="text-blue-600 opacity-0 group-hover:opacity-100"
+                            className={`opacity-0 group-hover:opacity-100
+                              ${field.isFormula 
+                                ? field.isSummaryFormula 
+                                  ? 'text-purple-600' 
+                                  : 'text-blue-600'
+                                : 'text-blue-600'
+                              }`}
                           />
                         </div>
                       ))}
