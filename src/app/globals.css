@@ -120,3 +120,95 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* CodeMirror Editor Styles */
+.cm-editor-container .cm-editor {
+  height: 100%;
+  min-height: 150px;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+}
+
+.cm-editor-container .cm-editor .cm-content {
+  padding: 0.5rem;
+}
+
+.cm-editor-container .cm-editor .cm-line {
+  padding: 0 0.5rem;
+}
+
+.cm-editor-container .cm-editor .cm-cursor {
+  border-left: 2px solid var(--primary);
+}
+
+.cm-editor-container .cm-editor .cm-activeLine {
+  background-color: oklch(0.97 0 0);
+}
+
+.dark .cm-editor-container .cm-editor .cm-activeLine {
+  background-color: oklch(0.269 0 0);
+}
+
+.cm-editor-container .cm-tooltip {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background-color: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.cm-editor-container .cm-tooltip .cm-completionLabel {
+  font-family: var(--font-mono);
+}
+
+.cm-editor-container .cm-tooltip .cm-completionDetail {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+
+.cm-editor-container .cm-tooltip .cm-completionIcon {
+  font-size: 0.875rem;
+  padding: 0 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cm-editor-container .cm-tooltip .cm-completionIcon::before {
+  content: "";
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  margin-right: 4px;
+}
+
+.cm-editor-container .cm-tooltip [data-completion-type="field-number"]::before,
+.cm-editor-container .cm-tooltip [data-completion-type="field-currency"]::before,
+.cm-editor-container .cm-tooltip [data-completion-type="field-percent"]::before {
+  background-color: var(--chart-1);
+}
+
+.cm-editor-container .cm-tooltip [data-completion-type="field-text"]::before {
+  background-color: var(--chart-2);
+}
+
+.cm-editor-container .cm-tooltip [data-completion-type="field-date"]::before,
+.cm-editor-container .cm-tooltip [data-completion-type="field-datetime"]::before {
+  background-color: var(--chart-3);
+}
+
+.cm-editor-container .cm-tooltip [data-completion-type="function"]::before {
+  background-color: var(--chart-4);
+}
+
+.cm-editor-container .cm-tooltip .cm-completionMatchedText {
+  text-decoration: none;
+  font-weight: bold;
+  color: var(--primary);
+}
+
+.cm-editor-container .cm-tooltip .cm-activeCompletion {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}

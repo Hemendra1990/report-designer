@@ -4,6 +4,7 @@ export interface ReportTypeTemplate {
     description: string;
     icon: string;
     color: string;
+    type: string; // The database table name to query
 }
 
 
