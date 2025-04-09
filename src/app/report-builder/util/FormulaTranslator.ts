@@ -662,15 +662,17 @@ function parseFunctionCall(funcName: string, context: ParserContext): string {
     case 'BEGINS':
     case 'STARTSWITH':
       if (args.length !== 2) {
-        throw new FormulaError('BEGINS() requires exactly 2 arguments');
+        throw new FormulaError('BEGINS/STARTSWITH requires exactly 2 arguments');
       }
-      return `STARTS_WITH(${args[0]}, ${args[1]})`;
+      // Use LIKE with % wildcard for DuckDB compatibility instead of STARTS_WITH
+      return `${args[0]} LIKE (${args[1]} || '%')`;
       
     case 'ENDSWITH':
       if (args.length !== 2) {
         throw new FormulaError('ENDSWITH() requires exactly 2 arguments');
       }
-      return `ENDS_WITH(${args[0]}, ${args[1]})`;
+      // Use LIKE with % wildcard for DuckDB compatibility instead of ENDS_WITH
+      return `${args[0]} LIKE ('%' || ${args[1]})`;
       
     case 'EQUALS':
       if (args.length !== 2) {

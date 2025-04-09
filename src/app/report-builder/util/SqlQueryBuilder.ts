@@ -1,5 +1,7 @@
 import { Field } from "../model/Field";
 import { Filter } from "../model/Filter";
+import { translateFormulaToDuckDBSQL } from "./FormulaTranslator";
+import { accountFields } from "../model/fake-data";
 
 export interface SqlQueryOptions {
   reportType: string;
@@ -53,14 +55,37 @@ export function buildSqlQuery(options: SqlQueryOptions): string {
  * Generates the SELECT clause based on selected columns and group by fields
  */
 function generateSelectClause(selectedColumns: Field[], groupByFields: string[]): string {
+  // Create a field map for formula translation that includes ALL available fields
+  // This ensures formulas can reference fields not in the current selection
+  const fieldMap: Record<string, string> = {};
+  
+  // First add all available fields from the system
+  accountFields.forEach(field => {
+    fieldMap[field.id] = field.id;
+  });
+  
+  // Then add any custom fields from the selected columns that might not be in accountFields
+  selectedColumns.forEach(column => {
+    if (!fieldMap[column.id]) {
+      fieldMap[column.id] = column.id;
+    }
+  });
+
   // If no grouping fields are specified, just return all columns without aggregation
   if (groupByFields.length === 0) {
     return selectedColumns.map(column => {
       // Check if this is a formula column
       if ('isFormula' in column && column.isFormula) {
-        // For formula columns, use their formula and alias
+        // For formula columns, use the translated SQL expression instead of raw formula
         const formulaCol = column as any; // Type assertion to access formula properties
-        return `  ${formulaCol.formula} AS ${formulaCol.alias}`;
+        try {
+          // Translate the formula to SQL
+          return `  ${translateFormulaToDuckDBSQL(formulaCol.formula, fieldMap, formulaCol.alias)}`;
+        } catch (error) {
+          console.error(`Error translating formula "${formulaCol.formula}":`, error);
+          // Fallback: return the formula as-is with the alias
+          return `  '${formulaCol.formula}' AS ${formulaCol.alias}`;
+        }
       }
       // Regular column, just use the ID
       return `  ${column.id}`;
@@ -79,7 +104,14 @@ function generateSelectClause(selectedColumns: Field[], groupByFields: string[])
     // Check if this is a formula column
     if ('isFormula' in column && column.isFormula) {
       const formulaCol = column as any; // Type assertion to access formula properties
-      return `  ${formulaCol.formula} AS ${formulaCol.alias}`;
+      try {
+        // Translate the formula to SQL
+        return `  ${translateFormulaToDuckDBSQL(formulaCol.formula, fieldMap, formulaCol.alias)}`;
+      } catch (error) {
+        console.error(`Error translating formula "${formulaCol.formula}":`, error);
+        // Fallback: return the formula as-is with the alias
+        return `  '${formulaCol.formula}' AS ${formulaCol.alias}`;
+      }
     }
     return `  ${column.id}`;
   });
@@ -89,7 +121,7 @@ function generateSelectClause(selectedColumns: Field[], groupByFields: string[])
     if ('isFormula' in column && column.isFormula) {
       const formulaCol = column as any; // Type assertion to access formula properties
       
-      // For formula columns, we'll still apply aggregation but use the formula expression
+      // For formula columns, we'll still apply aggregation but use the translated SQL expression
       let aggregateFunction = 'COUNT';
       
       if (formulaCol.type === 'number' || formulaCol.type === 'currency') {
@@ -97,8 +129,16 @@ function generateSelectClause(selectedColumns: Field[], groupByFields: string[])
       } else if (formulaCol.type === 'datetime' || formulaCol.type === 'date') {
         aggregateFunction = 'MAX';
       }
-      
-      return `  ${aggregateFunction}(${formulaCol.formula}) AS ${formulaCol.alias}_${aggregateFunction.toLowerCase()}`;
+
+      try {
+        // Translate the formula without an alias, as we'll add the aggregation suffix
+        const translatedFormula = translateFormulaToDuckDBSQL(formulaCol.formula, fieldMap);
+        return `  ${aggregateFunction}(${translatedFormula}) AS ${formulaCol.alias}_${aggregateFunction.toLowerCase()}`;
+      } catch (error) {
+        console.error(`Error translating formula "${formulaCol.formula}":`, error);
+        // Fallback: use a placeholder
+        return `  NULL AS ${formulaCol.alias}_${aggregateFunction.toLowerCase()}`;
+      }
     }
     
     // Regular column with aggregation
