@@ -4,6 +4,7 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 import ClientQueryProviders from "@/contexts/query-client-provider";
 import { AuthContextProvider } from "@/contexts/auth-context";
+import { ReportTypeFormProvider } from "@/contexts/report-type-form-context";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,8 +34,10 @@ export default function RootLayout({
         <div className="min-h-screen bg-gray-50">
           <ClientQueryProviders>
             <AuthContextProvider>
-              <Navbar />
-              <main>{children}</main>
+              <ReportTypeFormProvider>
+                <Navbar />
+                <main>{children}</main>
+              </ReportTypeFormProvider>
             </AuthContextProvider>
           </ClientQueryProviders>
         </div>

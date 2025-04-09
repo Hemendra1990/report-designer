@@ -29,7 +29,7 @@ export const useAllTableMetadata = () => {
     const allTableMetaData = () => {
         return findAllTableMetaData().then((res) => {
             let response =  res?.data?.data.map((table: TableMetadata) => {
-                table.schema = 'bip'; //TODO by Aswini (get from backend / move to env)
+                table.schema = process.env.NEXT_PUBLIC_CRM_CLIENT_ID || '';
                 return table;
             })
             return response;
