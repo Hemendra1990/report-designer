@@ -116,7 +116,9 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
 
   // Handle form submission
   const handleSubmit = () => {
-    if (!formulaName.trim()) return;
+    if (!validateFormula() || !formulaName) {
+      return;
+    }
 
     // Create a new formula column or update existing one
     const newFormulaColumn = {
@@ -177,11 +179,13 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
       }
       
       setSqlPreview(sql);
+      return true;
     } catch (error) {
       setValidationResult({ 
         success: false, 
         message: `Error: ${(error as Error).message}` 
       });
+      return false;
     }
   };
 
