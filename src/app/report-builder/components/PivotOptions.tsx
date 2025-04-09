@@ -117,209 +117,351 @@ const PivotOptions: React.FC<PivotOptionsProps> = ({
     return field ? field.name : fieldId;
   };
 
+  // Create a visual representation of the pivot structure
+  const hasPivotConfig = pivotColumnIds.length > 0 && pivotValues.length > 0 && groupByFields.length > 0;
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      {/* Header with toggle */}
+      <div className="flex items-center justify-between border-b border-slate-200 pb-4">
         <div className="flex items-center gap-2">
           <PivotTableIcon className="h-5 w-5 text-blue-600" />
-          <h3 className="text-lg font-medium">Pivot Table</h3>
+          <h3 className="text-lg font-medium">Pivot Table Configuration</h3>
         </div>
-        <div className="flex items-center gap-2">
-          <Label htmlFor="pivot-active" className="text-sm">Enable Pivot</Label>
+        <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-md">
+          <Label htmlFor="pivot-active" className="text-sm font-medium text-slate-700">Enable Pivot</Label>
           <Switch 
             id="pivot-active" 
             checked={isPivotActive} 
             onCheckedChange={setIsPivotActive} 
+            className="data-[state=checked]:bg-blue-600"
           />
         </div>
       </div>
       
       {isPivotActive && (
         <>
-          <div className="rounded-md border border-slate-200 p-4 space-y-4">
-            {/* Group By (Row) fields */}
-            <div>
-              <Label className="text-sm font-medium mb-2 block text-slate-700">
-                <GroupIcon className="h-4 w-4 inline-block mr-1 text-slate-500" />
-                Group By Fields (ROWS)
-              </Label>
-              <div className="flex gap-2 mt-2">
-                <Select 
-                  value={selectedGroupByField} 
-                  onValueChange={setSelectedGroupByField}
-                >
-                  <SelectTrigger className="w-full h-9">
-                    <SelectValue placeholder="Select field to group by" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {selectedColumns.map(col => (
-                      <SelectItem 
-                        key={col.id} 
-                        value={col.id}
-                        disabled={groupByFields.includes(col.id)}
-                      >
-                        {col.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button 
-                  size="sm" 
-                  onClick={addGroupByField}
-                  disabled={!selectedGroupByField || groupByFields.includes(selectedGroupByField)}
-                >
-                  Add
-                </Button>
-              </div>
-              
-              {/* Display currently selected group by fields */}
-              {groupByFields.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {groupByFields.map(fieldId => (
-                    <div key={fieldId} className="flex items-center bg-slate-100 px-2 py-1 rounded-md text-sm">
-                      <span>{getFieldNameById(fieldId)}</span>
-                      <button 
-                        className="ml-2 text-slate-400 hover:text-slate-600"
-                        onClick={() => removeGroupByField(fieldId)}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
+          <div className="grid grid-cols-1 gap-6">
+            {/* Brief instructions */}
+            <div className="bg-blue-50 p-3 rounded-md text-sm text-blue-800 border border-blue-100">
+              <p className="font-medium mb-1">How to create a pivot table:</p>
+              <ol className="list-decimal pl-5 space-y-1">
+                <li>Select fields for rows (Group By)</li>
+                <li>Select fields for columns (Pivot)</li>
+                <li>Select numeric fields to aggregate (Values)</li>
+                <li>Click "Apply Pivot" to generate the table</li>
+              </ol>
             </div>
             
-            {/* Pivot On (Column) fields */}
-            <div>
-              <Label className="text-sm font-medium mb-2 block text-slate-700">
-                <PivotTableIcon className="h-4 w-4 inline-block mr-1 text-slate-500" />
-                Pivot Fields (COLUMNS)
-              </Label>
-              <div className="flex gap-2 mt-2">
-                <Select 
-                  value={selectedPivotField} 
-                  onValueChange={setSelectedPivotField}
-                >
-                  <SelectTrigger className="w-full h-9">
-                    <SelectValue placeholder="Select field to pivot on" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {pivotableFields.map(col => (
-                      <SelectItem 
-                        key={col.id} 
-                        value={col.id}
-                        disabled={pivotColumnIds.includes(col.id)}
-                      >
-                        {col.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button 
-                  size="sm" 
-                  onClick={addPivotField}
-                  disabled={!selectedPivotField || pivotColumnIds.includes(selectedPivotField)}
-                >
-                  Add
-                </Button>
-              </div>
-              
-              {/* Display currently selected pivot fields */}
-              {pivotColumnIds.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {pivotColumnIds.map(fieldId => (
-                    <div key={fieldId} className="flex items-center bg-blue-50 px-2 py-1 rounded-md text-sm">
-                      <span>{getFieldNameById(fieldId)}</span>
-                      <button 
-                        className="ml-2 text-blue-400 hover:text-blue-600"
-                        onClick={() => removePivotField(fieldId)}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
+            {/* Main config container */}
+            <div className="rounded-md border border-slate-200 overflow-hidden">
+              {/* Group By (Row) fields */}
+              <div className="border-b border-slate-200">
+                <div className="bg-slate-50 p-3 flex items-center gap-2">
+                  <GroupIcon className="h-4 w-4 text-slate-700" />
+                  <h4 className="font-medium text-slate-800">Rows (Group By Fields)</h4>
                 </div>
-              )}
-            </div>
-            
-            {/* Value fields with aggregation */}
-            <div>
-              <Label className="text-sm font-medium mb-2 block text-slate-700">
-                <AggregateIcon className="h-4 w-4 inline-block mr-1 text-slate-500" />
-                Aggregation Values
-              </Label>
-              <div className="flex gap-2 mt-2">
-                <Select 
-                  value={selectedValueField} 
-                  onValueChange={setSelectedValueField}
-                >
-                  <SelectTrigger className="w-full h-9">
-                    <SelectValue placeholder="Select field to aggregate" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {aggregatableFields.map(col => (
-                      <SelectItem 
-                        key={col.id} 
-                        value={col.id}
-                        disabled={pivotValues.includes(col.id)}
-                      >
-                        {col.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button 
-                  size="sm" 
-                  onClick={addValueField}
-                  disabled={!selectedValueField || pivotValues.includes(selectedValueField)}
-                >
-                  Add
-                </Button>
+                
+                <div className="p-4">
+                  <div className="flex gap-2 mb-3">
+                    <Select 
+                      value={selectedGroupByField} 
+                      onValueChange={setSelectedGroupByField}
+                    >
+                      <SelectTrigger className="w-full h-9 bg-white">
+                        <SelectValue placeholder="Select field for rows" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {selectedColumns.map(col => (
+                          <SelectItem 
+                            key={col.id} 
+                            value={col.id}
+                            disabled={groupByFields.includes(col.id)}
+                          >
+                            {col.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button 
+                      className="shrink-0 bg-blue-600 hover:bg-blue-700"
+                      size="sm" 
+                      onClick={addGroupByField}
+                      disabled={!selectedGroupByField || groupByFields.includes(selectedGroupByField)}
+                    >
+                      Add
+                    </Button>
+                  </div>
+                  
+                  {/* Currently selected group by fields */}
+                  {groupByFields.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {groupByFields.map(fieldId => (
+                        <div key={fieldId} className="flex items-center bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-md text-sm">
+                          <span className="font-medium text-slate-700">{getFieldNameById(fieldId)}</span>
+                          <button 
+                            className="ml-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200 h-5 w-5 rounded-full flex items-center justify-center"
+                            onClick={() => removeGroupByField(fieldId)}
+                            title="Remove field"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-500 italic">No row fields selected</p>
+                  )}
+                </div>
               </div>
               
-              {/* Display currently selected value fields with aggregation selectors */}
-              {pivotValues.length > 0 && (
-                <div className="mt-3 space-y-2">
-                  {pivotValues.map(fieldId => (
-                    <div key={fieldId} className="flex items-center p-2 bg-gray-50 rounded-md">
-                      <span className="flex-1 font-medium text-sm">{getFieldNameById(fieldId)}</span>
-                      <Select 
-                        value={selectedAggregations[fieldId] || 'SUM'} 
-                        onValueChange={(value) => changeAggregation(fieldId, value)}
-                      >
-                        <SelectTrigger className="w-32 h-8 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {aggregationFunctions.map(agg => (
-                            <SelectItem key={agg} value={agg} className="text-xs">
-                              {agg}
+              {/* Pivot On (Column) fields */}
+              <div className="border-b border-slate-200">
+                <div className="bg-slate-50 p-3 flex items-center gap-2">
+                  <PivotTableIcon className="h-4 w-4 text-slate-700" />
+                  <h4 className="font-medium text-slate-800">Columns (Pivot Fields)</h4>
+                </div>
+                
+                <div className="p-4">
+                  <div className="flex gap-2 mb-3">
+                    <Select 
+                      value={selectedPivotField} 
+                      onValueChange={setSelectedPivotField}
+                    >
+                      <SelectTrigger className="w-full h-9 bg-white">
+                        <SelectValue placeholder="Select field for columns" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {pivotableFields.length > 0 ? (
+                          pivotableFields.map(col => (
+                            <SelectItem 
+                              key={col.id} 
+                              value={col.id}
+                              disabled={pivotColumnIds.includes(col.id)}
+                            >
+                              {col.name}
                             </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <button 
-                        className="ml-2 text-slate-400 hover:text-slate-600"
-                        onClick={() => removeValueField(fieldId)}
-                      >
-                        ×
-                      </button>
+                          ))
+                        ) : (
+                          <SelectItem value="none" disabled>No categorical fields available</SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <Button 
+                      className="shrink-0 bg-blue-600 hover:bg-blue-700"
+                      size="sm" 
+                      onClick={addPivotField}
+                      disabled={!selectedPivotField || pivotColumnIds.includes(selectedPivotField)}
+                    >
+                      Add
+                    </Button>
+                  </div>
+                  
+                  {/* Currently selected pivot fields */}
+                  {pivotColumnIds.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {pivotColumnIds.map(fieldId => (
+                        <div key={fieldId} className="flex items-center bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-md text-sm">
+                          <span className="font-medium text-blue-700">{getFieldNameById(fieldId)}</span>
+                          <button 
+                            className="ml-2 text-blue-400 hover:text-blue-600 hover:bg-blue-100 h-5 w-5 rounded-full flex items-center justify-center"
+                            onClick={() => removePivotField(fieldId)}
+                            title="Remove field"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  ) : (
+                    <p className="text-sm text-slate-500 italic">No column fields selected</p>
+                  )}
                 </div>
-              )}
+              </div>
+              
+              {/* Value fields with aggregation */}
+              <div>
+                <div className="bg-slate-50 p-3 flex items-center gap-2">
+                  <AggregateIcon className="h-4 w-4 text-slate-700" />
+                  <h4 className="font-medium text-slate-800">Values (Aggregation)</h4>
+                </div>
+                
+                <div className="p-4">
+                  <div className="flex gap-2 mb-3">
+                    <Select 
+                      value={selectedValueField} 
+                      onValueChange={setSelectedValueField}
+                    >
+                      <SelectTrigger className="w-full h-9 bg-white">
+                        <SelectValue placeholder="Select field to aggregate" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {aggregatableFields.length > 0 ? (
+                          aggregatableFields.map(col => (
+                            <SelectItem 
+                              key={col.id} 
+                              value={col.id}
+                              disabled={pivotValues.includes(col.id)}
+                            >
+                              {col.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="none" disabled>No numeric fields available</SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <Button 
+                      className="shrink-0 bg-blue-600 hover:bg-blue-700"
+                      size="sm" 
+                      onClick={addValueField}
+                      disabled={!selectedValueField || pivotValues.includes(selectedValueField)}
+                    >
+                      Add
+                    </Button>
+                  </div>
+                  
+                  {/* Value fields with aggregation functions */}
+                  {pivotValues.length > 0 ? (
+                    <div className="space-y-2">
+                      {pivotValues.map(fieldId => (
+                        <div key={fieldId} className="flex items-center bg-green-50 border border-green-200 px-3 py-2 rounded-md">
+                          <span className="font-medium text-green-700 mr-2">{getFieldNameById(fieldId)}</span>
+                          <Select 
+                            value={selectedAggregations[fieldId] || 'SUM'} 
+                            onValueChange={(value) => changeAggregation(fieldId, value)}
+                          >
+                            <SelectTrigger className="h-7 w-24 bg-white text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {aggregationFunctions.map(func => (
+                                <SelectItem key={func} value={func}>{func}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <button 
+                            className="ml-auto text-green-400 hover:text-green-600 hover:bg-green-100 h-6 w-6 rounded-full flex items-center justify-center"
+                            onClick={() => removeValueField(fieldId)}
+                            title="Remove field"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-500 italic">No value fields selected</p>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
-          
-          <div className="flex justify-end">
-            <Button 
-              className="bg-blue-600 hover:bg-blue-700 text-white" 
-              onClick={onApplyPivot}
-              disabled={pivotColumnIds.length === 0 || pivotValues.length === 0}
-            >
-              Apply Pivot
-            </Button>
+            
+            {/* Visual preview */}
+            {hasPivotConfig && (
+              <div className="bg-gradient-to-r from-slate-50 to-slate-100 border border-slate-200 rounded-md p-3 shadow-sm">
+                <h4 className="text-xs uppercase font-semibold text-slate-600 mb-2 tracking-wide">Pivot Structure</h4>
+                <div className="flex items-center justify-center gap-2 text-xs">
+                  <div className="bg-white shadow-sm border border-slate-200 px-2 py-1.5 rounded">
+                    <div className="font-medium text-slate-700 mb-0.5 flex items-center">
+                      <span className="h-2 w-2 bg-slate-400 rounded-full mr-1.5"></span>
+                      Rows
+                    </div>
+                    <div className="text-slate-600 truncate max-w-[100px]">
+                      {groupByFields.map(id => getFieldNameById(id)).join(', ')}
+                    </div>
+                  </div>
+                  
+                  <svg className="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M6 12h12M12 6v12" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  
+                  <div className="bg-white shadow-sm border border-blue-100 px-2 py-1.5 rounded">
+                    <div className="font-medium text-slate-700 mb-0.5 flex items-center">
+                      <span className="h-2 w-2 bg-blue-400 rounded-full mr-1.5"></span>
+                      Columns
+                    </div>
+                    <div className="text-blue-600 truncate max-w-[100px]">
+                      {pivotColumnIds.map(id => getFieldNameById(id)).join(', ')}
+                    </div>
+                  </div>
+                  
+                  <svg className="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  
+                  <div className="bg-white shadow-sm border border-green-100 px-2 py-1.5 rounded">
+                    <div className="font-medium text-slate-700 mb-0.5 flex items-center">
+                      <span className="h-2 w-2 bg-green-400 rounded-full mr-1.5"></span>
+                      Values
+                    </div>
+                    <div className="text-green-600 truncate max-w-[150px]">
+                      {pivotValues.map(id => 
+                        `${selectedAggregations[id] || 'SUM'}(${getFieldNameById(id)})`
+                      ).join(', ')}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Visual representation */}
+                <div className="mt-3 bg-white border border-slate-200 rounded overflow-hidden shadow-sm">
+                  <div className="grid grid-cols-[max-content_1fr] h-24">
+                    {/* Top-left corner */}
+                    <div className="border-r border-b border-slate-200 p-1 bg-slate-50 flex items-center justify-center">
+                      <div className="w-4 h-4"></div>
+                    </div>
+                    
+                    {/* Column headers */}
+                    <div className="border-b border-slate-200 p-1 bg-blue-50 flex items-center justify-center overflow-hidden text-[10px] font-medium text-blue-700">
+                      <div className="whitespace-nowrap text-center">
+                        {pivotColumnIds.length === 1 ? (
+                          <span className="px-1">{getFieldNameById(pivotColumnIds[0])}</span>
+                        ) : (
+                          <span className="px-1">Pivot Columns</span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Row headers */}
+                    <div className="border-r border-slate-200 p-1 bg-slate-50 flex flex-col items-center justify-center overflow-hidden text-[10px] font-medium text-slate-700">
+                      <div className="whitespace-nowrap text-center">
+                        {groupByFields.length === 1 ? (
+                          <span className="px-1">{getFieldNameById(groupByFields[0])}</span>
+                        ) : (
+                          <span className="px-1">Group By</span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Values grid cells */}
+                    <div className="bg-green-50 p-0.5 grid grid-cols-3 grid-rows-3 gap-0.5">
+                      {[...Array(9)].map((_, i) => (
+                        <div key={i} className="bg-white rounded-sm shadow-sm text-[9px] flex items-center justify-center text-green-700 border border-green-100">
+                          {pivotValues.length === 1 ? (
+                            <span className="truncate px-1">
+                              {selectedAggregations[pivotValues[0]] || 'SUM'}
+                            </span>
+                          ) : (
+                            <span className="truncate px-1">Values</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Apply button */}
+            <div className="flex justify-end pt-2">
+              <Button 
+                className="bg-blue-600 hover:bg-blue-700 transition-colors"
+                onClick={onApplyPivot}
+                disabled={!pivotColumnIds.length || !pivotValues.length}
+              >
+                Apply Pivot
+              </Button>
+            </div>
           </div>
         </>
       )}
