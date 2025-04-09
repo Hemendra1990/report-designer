@@ -1,8 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   QueryClient,
   QueryClientProvider,
@@ -13,16 +10,7 @@ import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 // Import our icon components
-import {
-  ChevronDownIcon,
-  ChevronLeftIcon,
-  PlusIcon,
-  SearchIcon
-} from "@/components/icons";
 
-import {
-  FilterIcon
-} from "@/components/icons/ReportIcons";
 
 // Import TanStack Table
 import {
@@ -34,15 +22,12 @@ import {
   VisibilityState
 } from "@tanstack/react-table";
 import AppliedFiltersBar from "./components/AppliedFiltersBar";
-import ColumnsSection from "./components/ColumnsSection";
+import FieldsPanel from "./components/FieldsPanel";
 import FilterFieldSelector from "./components/FilterFieldSelector";
-import FilterLogicSelector from "./components/FilterLogicSelector";
-import { FilterRow } from "./components/FilterRow";
 import FormulaBuilder from "./components/FormulaBuilder";
-import GroupsSection from "./components/GroupsSection";
 import InfoBanner from "./components/InfoBanner";
 import PreviewPanel from "./components/PreviewPanel";
-import QuickFilterSelector from "./components/QuickFilterSelector";
+import ReportBuilderPanel from "./components/ReportBuilderPanel";
 import { ReportTypeSelectionModal } from "./components/ReportTypeSelectionModal";
 import TopHeaderBar from "./components/TopHeaderBar";
 import { getDefaultOperator } from "./helper/ReportBuilderHelper";
@@ -53,8 +38,6 @@ import { Filter } from "./model/Filter";
 import { ReportTypeTemplate } from "./model/ReportType";
 import { FetchDataOptions, ServerResponse } from "./model/ServerReqRes";
 import { formulaFunctions } from "./util/ReportBuilderUtil";
-import FieldsPanel from "./components/FieldsPanel";
-import ReportBuilderPanel from "./components/ReportBuilderPanel";
 
 // Group fields by category
 const fieldsByCategory = accountFields.reduce((acc, field) => {
