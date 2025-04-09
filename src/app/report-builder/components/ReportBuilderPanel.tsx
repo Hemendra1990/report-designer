@@ -2,7 +2,7 @@ import React, { MutableRefObject } from 'react';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChevronLeftIcon } from "@/components/icons";
-import { FilterIcon } from "@/components/icons/ReportIcons";
+import { FilterIcon, PivotTableIcon } from "@/components/icons/ReportIcons";
 import { Filter } from "../model/Filter";
 import { GroupingState } from "@tanstack/react-table";
 
@@ -11,6 +11,7 @@ import GroupsSection from "./GroupsSection";
 import FilterLogicSelector from "./FilterLogicSelector";
 import { FilterRow } from "./FilterRow";
 import QuickFilterSelector from "./QuickFilterSelector";
+import PivotOptions from "./PivotOptions";
 
 interface Column {
   id: string;
@@ -70,6 +71,19 @@ interface ReportBuilderPanelProps {
   removeFilter: (filterId: string) => void;
   updateFilter: (filterId: string, updates: Partial<Filter>) => void;
   setShowFilterFieldSelector: (show: boolean) => void;
+  
+  // Pivot section props
+  isPivotActive?: boolean;
+  setIsPivotActive?: (active: boolean) => void;
+  pivotColumnIds?: string[];
+  setPivotColumnIds?: (ids: string[]) => void;
+  pivotValues?: string[];
+  setPivotValues?: (values: string[]) => void;
+  groupByFields?: string[];
+  setGroupByFields?: (fields: string[]) => void;
+  selectedAggregations?: Record<string, string>;
+  setSelectedAggregations?: (aggs: Record<string, string>) => void;
+  onApplyPivot?: () => void;
 }
 
 const ReportBuilderPanel: React.FC<ReportBuilderPanelProps> = ({
@@ -116,8 +130,24 @@ const ReportBuilderPanel: React.FC<ReportBuilderPanelProps> = ({
   addFilter,
   removeFilter,
   updateFilter,
-  setShowFilterFieldSelector
+  setShowFilterFieldSelector,
+  
+  // Pivot section props
+  isPivotActive = false,
+  setIsPivotActive = () => {},
+  pivotColumnIds = [],
+  setPivotColumnIds = () => {},
+  pivotValues = [],
+  setPivotValues = () => {},
+  groupByFields = [],
+  setGroupByFields = () => {},
+  selectedAggregations = {},
+  setSelectedAggregations = () => {},
+  onApplyPivot = () => {}
 }) => {
+  // Default aggregation functions that can be used in pivot tables
+  const aggregationFunctions = ["SUM", "AVG", "MIN", "MAX", "COUNT"];
+  
   return (
     <div className={`${centerPanelCollapsed ? 'w-12' : 'w-64'} flex flex-col bg-card border-r border-border transition-all duration-300 shrink-0`}>
       {/* Collapse Control */}
@@ -149,45 +179,53 @@ const ReportBuilderPanel: React.FC<ReportBuilderPanelProps> = ({
               >
                 Filters ({filters.length})
               </TabsTrigger>
+              <TabsTrigger
+                value="pivot"
+                className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 data-[state=active]:shadow-none"
+              >
+                <PivotTableIcon className="h-4 w-4 mr-1" />
+                Pivot
+              </TabsTrigger>
             </TabsList>
           </div>
 
-          <TabsContent value="outline" className="flex-1 flex flex-col m-0 data-[state=active]:p-0">
-            {/* Groups Section */}
-            <GroupsSection
-              selectedColumns={selectedColumns}
-              groupSearchTerm={groupSearchTerm}
-              setGroupSearchTerm={setGroupSearchTerm}
-              showGroupDropdown={showGroupDropdown}
-              setShowGroupDropdown={setShowGroupDropdown}
-              setSelectedGroup={setSelectedGroup}
-              handleGroupBy={handleGroupBy}
-              grouping={grouping}
-              groupSearchRef={groupSearchRef}
-              addSummaryFormulaColumn={addSummaryFormulaColumn}
-              editSummaryFormulaColumn={editSummaryFormulaColumn}
-            />
+          <TabsContent value="outline" className="m-0 data-[state=active]:p-4 flex-1 overflow-auto">
+            <div>
+              <h3 className="text-lg font-medium mb-3">Groups</h3>
+              <GroupsSection
+                groupSearchTerm={groupSearchTerm}
+                setGroupSearchTerm={setGroupSearchTerm}
+                showGroupDropdown={showGroupDropdown}
+                setShowGroupDropdown={setShowGroupDropdown}
+                selectedColumns={selectedColumns}
+                setSelectedGroup={setSelectedGroup}
+                handleGroupBy={handleGroupBy}
+                grouping={grouping}
+                groupSearchRef={groupSearchRef}
+                addSummaryFormulaColumn={addSummaryFormulaColumn}
+                editSummaryFormulaColumn={editSummaryFormulaColumn}
+              />
+            </div>
 
-            {/* Columns Section */}
-            <ColumnsSection
-              selectedColumns={selectedColumns}
-              isMenuOpen={isMenuOpen}
-              menuRef={menuRef}
-              menuPosition={menuPosition}
-              columnRefs={columnRefs}
-              draggedItem={draggedItem}
-              openColumnMenu={openColumnMenu}
-              addFormulaColumn={addFormulaColumn}
-              editFormulaColumn={editFormulaColumn}
-              handleDragStart={handleDragStart}
-              handleDragOver={handleDragOver}
-              removeColumn={removeColumn}
-              setIsMenuOpen={setIsMenuOpen}
-              setSelectedColumns={setSelectedColumns}
-              setDraggedItem={setDraggedItem}
-              addSummaryFormulaColumn={addSummaryFormulaColumn}
-              editSummaryFormulaColumn={editSummaryFormulaColumn}
-            />
+            <div className="mt-6">
+              <ColumnsSection
+                selectedColumns={selectedColumns}
+                isMenuOpen={isMenuOpen}
+                menuRef={menuRef}
+                menuPosition={menuPosition}
+                columnRefs={columnRefs}
+                draggedItem={draggedItem}
+                openColumnMenu={openColumnMenu}
+                addFormulaColumn={addFormulaColumn}
+                editFormulaColumn={editFormulaColumn}
+                handleDragStart={handleDragStart}
+                handleDragOver={handleDragOver}
+                removeColumn={removeColumn}
+                setIsMenuOpen={setIsMenuOpen}
+                setSelectedColumns={setSelectedColumns}
+                setDraggedItem={setDraggedItem}
+              />
+            </div>
           </TabsContent>
 
           <TabsContent value="filters" className="m-0 data-[state=active]:p-4">
@@ -234,30 +272,63 @@ const ReportBuilderPanel: React.FC<ReportBuilderPanelProps> = ({
               </div>
 
               {/* Filter Field Selection UI */}
-              {/* <QuickFilterSelector 
-                accountFields={accountFields}
-                addFilter={addFilter}
-                onOpenFullSelector={() => setShowFilterFieldSelector(true)}
-              /> */}
+              {/* QuickFilterSelector will be rendered as a modal/popup at the app level */}
             </div>
+          </TabsContent>
+          
+          <TabsContent value="pivot" className="m-0 data-[state=active]:p-4">
+            <PivotOptions
+              selectedColumns={selectedColumns}
+              isPivotActive={isPivotActive}
+              setIsPivotActive={setIsPivotActive}
+              pivotColumnIds={pivotColumnIds}
+              setPivotColumnIds={setPivotColumnIds}
+              pivotValues={pivotValues}
+              setPivotValues={setPivotValues}
+              groupByFields={groupByFields}
+              setGroupByFields={setGroupByFields}
+              aggregationFunctions={aggregationFunctions}
+              selectedAggregations={selectedAggregations}
+              setSelectedAggregations={setSelectedAggregations}
+              onApplyPivot={onApplyPivot}
+            />
           </TabsContent>
         </Tabs>
       ) : (
-        // Collapsed view for center panel
-        <div className="flex flex-col items-center pt-4 overflow-hidden">
-          <div className="text-base font-medium text-gray-700 rotate-90 whitespace-nowrap tracking-wide mb-8">
-            Outline
-          </div>
-          
-          {/* Conditionally render shortcuts based on state */}
+        <div className="flex flex-col gap-4 items-center px-0 py-4">
           {showShortcuts && (
             <>
-              <div className="text-base font-medium text-gray-700 rotate-90 whitespace-nowrap tracking-wide mt-8">
-                Outline
-              </div>
-              <div className="text-base font-medium text-gray-700 rotate-90 whitespace-nowrap tracking-wide mt-8">
-                Filters ({filters.length})
-              </div>
+              <button
+                title="Outline"
+                className="p-2 rounded-full text-slate-500 hover:text-foreground hover:bg-accent/50 transition-colors"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M21 3H3v7h18V3z" />
+                  <path d="M21 14H3v7h18v-7z" />
+                </svg>
+              </button>
+              <button
+                title="Filters"
+                className="p-2 rounded-full text-slate-500 hover:text-foreground hover:bg-accent/50 transition-colors"
+              >
+                <FilterIcon width={16} height={16} />
+              </button>
+              <button
+                title="Pivot"
+                className="p-2 rounded-full text-slate-500 hover:text-foreground hover:bg-accent/50 transition-colors"
+              >
+                <PivotTableIcon width={16} height={16} />
+              </button>
             </>
           )}
         </div>

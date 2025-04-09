@@ -33,7 +33,7 @@ import TopHeaderBar from "./components/TopHeaderBar";
 import { getDefaultOperator } from "./helper/ReportBuilderHelper";
 import { AccountData } from "./model/AccountData";
 import { accountFields, moreSampleData, sampleData } from "./model/fake-data";
-import { Field, FormulaColumn, FieldType } from "./model/Field";
+import { Field, FormulaColumn, FieldType, toField } from "./model/Field";
 import { Filter } from "./model/Filter";
 import { ReportTypeTemplate } from "./model/ReportType";
 import { FetchDataOptions, ServerResponse } from "./model/ServerReqRes";
@@ -221,6 +221,12 @@ function ReportBuilderPage() {
   // Add state for summary formula builder
   const [showSummaryFormulaBuilder, setShowSummaryFormulaBuilder] = useState(false);
   const [editingSummaryFormula, setEditingSummaryFormula] = useState<FormulaColumn | null>(null);
+
+  // Add state for pivot table functionality
+  const [isPivotActive, setIsPivotActive] = useState(false);
+  const [pivotColumnIds, setPivotColumnIds] = useState<string[]>([]);
+  const [pivotValues, setPivotValues] = useState<string[]>([]);
+  const [selectedAggregations, setSelectedAggregations] = useState<Record<string, string>>({});
 
   // Initialize column refs
   useEffect(() => {
@@ -435,10 +441,10 @@ function ReportBuilderPage() {
   const [filterSearchTerm, setFilterSearchTerm] = useState('');
 
   // Function to add a new filter
-  const addFilter = (field: Field) => {
+  const addFilter = (field: any) => {
     const newFilter: Filter = {
       id: `filter-${Date.now()}`,
-      field,
+      field: toField(field),
       operator: getDefaultOperator(field.type),
       value: '',
       rangeStart: '',
@@ -985,6 +991,110 @@ function ReportBuilderPage() {
     setIsPreviewExpanded(!isPreviewExpanded);
   };
 
+  // Generate SQL for the report
+  const generatePivotSQL = useCallback(() => {
+    if (!isPivotActive || pivotColumnIds.length === 0 || pivotValues.length === 0) {
+      return '';
+    }
+
+    // Start building the SQL
+    let sql = 'WITH base_data AS (\n';
+    sql += '  SELECT\n';
+    
+    // Add selected columns
+    const allSelectedColumns = [
+      ...groupByFields,
+      ...pivotColumnIds,
+      ...pivotValues
+    ];
+    
+    allSelectedColumns.forEach((id, index) => {
+      const column = selectedColumns.find(col => col.id === id);
+      sql += `    ${id} as "${column?.name || id}"${index < allSelectedColumns.length - 1 ? ',' : ''}\n`;
+    });
+    
+    sql += '  FROM your_table\n';
+    
+    // Add filters if any
+    if (filters.length > 0) {
+      sql += '  WHERE ';
+      
+      // Simple filter logic for demonstration
+      if (filterLogic === 'and') {
+        filters.forEach((filter, index) => {
+          sql += `${filter.field.id} = '${filter.value}'`;
+          if (index < filters.length - 1) {
+            sql += ' AND ';
+          }
+        });
+      } else if (filterLogic === 'or') {
+        filters.forEach((filter, index) => {
+          sql += `${filter.field.id} = '${filter.value}'`;
+          if (index < filters.length - 1) {
+            sql += ' OR ';
+          }
+        });
+      } else {
+        // Custom formula
+        sql += customFormula;
+      }
+      
+      sql += '\n';
+    }
+    
+    sql += ')\n\n';
+    
+    // Now build the PIVOT query
+    sql += 'PIVOT base_data\n';
+    
+    // ON clause (what to pivot)
+    if (pivotColumnIds.length === 1) {
+      sql += `ON ${pivotColumnIds[0]}\n`;
+    } else {
+      // For multiple pivot columns, use concatenation as shown in DuckDB docs
+      sql += `ON ${pivotColumnIds.join(' || \'_\' || ')}\n`;
+    }
+    
+    // USING clause (aggregations)
+    sql += 'USING ';
+    pivotValues.forEach((id, index) => {
+      const aggregation = selectedAggregations[id] || 'SUM';
+      sql += `${aggregation}(${id})`;
+      
+      if (index < pivotValues.length - 1) {
+        sql += ', ';
+      }
+    });
+    sql += '\n';
+    
+    // Group BY clause if needed - IMPORTANT: exclude fields used in the pivot ON clause
+    const validGroupByFields = groupByFields.filter(field => !pivotColumnIds.includes(field));
+    
+    if (validGroupByFields.length > 0) {
+      sql += 'GROUP BY ';
+      validGroupByFields.forEach((id, index) => {
+        sql += id;
+        if (index < validGroupByFields.length - 1) {
+          sql += ', ';
+        }
+      });
+    }
+    
+    return sql;
+  }, [isPivotActive, pivotColumnIds, pivotValues, selectedAggregations, selectedColumns, groupByFields, filters, filterLogic, customFormula]);
+
+  // Function to handle applying the pivot configuration
+  const handleApplyPivot = useCallback(() => {
+    if (isPivotActive && autoUpdatePreview) {
+      const sql = generatePivotSQL();
+      setGeneratedSql(sql);
+      console.log('Generated PIVOT SQL:', sql);
+      
+      // In a real implementation, we would execute this SQL and update the rowData
+      fetchData();
+    }
+  }, [isPivotActive, autoUpdatePreview, generatePivotSQL, fetchData]);
+
   return (
     <>
       <ReportTypeSelectionModal
@@ -1006,6 +1116,11 @@ function ReportBuilderPage() {
           filters={filters}
           filterLogic={filterLogic}
           customFilterFormula={customFormula}
+          // Pass pivot-related properties
+          isPivotActive={isPivotActive}
+          pivotColumnIds={pivotColumnIds}
+          pivotValues={pivotValues}
+          selectedAggregations={selectedAggregations}
           onSaveReport={handleSaveReport}
         />
         
@@ -1079,6 +1194,19 @@ function ReportBuilderPage() {
             removeFilter={removeFilter}
             updateFilter={updateFilter}
             setShowFilterFieldSelector={setShowFilterFieldSelector}
+            
+            // Pivot section props
+            isPivotActive={isPivotActive}
+            setIsPivotActive={setIsPivotActive}
+            pivotColumnIds={pivotColumnIds}
+            setPivotColumnIds={setPivotColumnIds}
+            pivotValues={pivotValues}
+            setPivotValues={setPivotValues}
+            groupByFields={groupByFields}
+            setGroupByFields={setGroupByFields}
+            selectedAggregations={selectedAggregations}
+            setSelectedAggregations={setSelectedAggregations}
+            onApplyPivot={handleApplyPivot}
           />
 
           {/* Right Panel - Preview */}
@@ -1108,6 +1236,9 @@ function ReportBuilderPage() {
             setAutoUpdatePreview={setAutoUpdatePreview}
             onExpandView={togglePreviewExpand}
             isExpanded={isPreviewExpanded}
+            isPivotTable={isPivotActive}
+            pivotColumns={pivotColumnIds}
+            pivotValues={pivotValues}
           />
         </div>
 

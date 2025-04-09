@@ -44,6 +44,10 @@ interface PreviewPanelProps {
   setAutoUpdatePreview: Dispatch<SetStateAction<boolean>>;
   onExpandView: () => void;
   isExpanded?: boolean;
+  // Pivot-related properties
+  isPivotTable?: boolean;
+  pivotColumns?: string[];
+  pivotValues?: string[];
 }
 
 const PreviewPanel: React.FC<PreviewPanelProps> = ({
@@ -71,7 +75,11 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
   autoUpdatePreview,
   setAutoUpdatePreview,
   onExpandView,
-  isExpanded = false
+  isExpanded = false,
+  // Pivot-related properties
+  isPivotTable,
+  pivotColumns,
+  pivotValues
 }) => {
   return (
     <div className="flex-1 bg-accent/10 flex flex-col min-w-0" style={{ height: 'calc(100vh - 130px)' }}>
@@ -141,6 +149,9 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
               pageCount={pageCount}
               totalRows={totalRows}
               isLoading={isLoading}
+              isPivotTable={isPivotTable}
+              pivotColumns={pivotColumns || []}
+              pivotValues={pivotValues || []}
             />
           </div>
         </div>

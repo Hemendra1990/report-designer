@@ -10,16 +10,80 @@ export interface SqlQueryOptions {
   filters: Filter[];
   filterLogic: 'and' | 'or' | 'custom';
   customFilterFormula: string;
+  isPivotActive?: boolean;
+  pivotColumnIds?: string[];
+  pivotValues?: string[];
+  selectedAggregations?: Record<string, string>;
 }
 
 /**
  * Builds a valid DuckDB SQL query based on the report configuration
  */
 export function buildSqlQuery(options: SqlQueryOptions): string {
-  const { reportType, selectedColumns, groupByFields, filters, filterLogic, customFilterFormula } = options;
+  const { 
+    reportType, 
+    selectedColumns, 
+    groupByFields, 
+    filters, 
+    filterLogic, 
+    customFilterFormula,
+    isPivotActive,
+    pivotColumnIds,
+    pivotValues,
+    selectedAggregations
+  } = options;
   
+  // Check if we're building a pivot query
+  if (isPivotActive && pivotColumnIds && pivotColumnIds.length > 0 && pivotValues && pivotValues.length > 0) {
+    // For pivot queries, we need to build the base query first, then add the pivot clause
+    
+    // Filter out summary formula fields from the selected columns
+    const filteredColumns = selectedColumns.filter(column => 
+      !('isSummaryFormula' in column && column.isSummaryFormula === true)
+    );
+    
+    // Build the base query to use in the WITH clause
+    let sql = 'WITH base_data AS (\n';
+    
+    // Calculate all fields needed - from group by, pivot, and value columns
+    const allNeededColumns = Array.from(new Set([
+      ...groupByFields,
+      ...(pivotColumnIds || []),
+      ...(pivotValues || [])
+    ]));
+    
+    // SELECT clause for base data
+    sql += '  SELECT\n';
+    allNeededColumns.forEach((id, index) => {
+      const column = selectedColumns.find(col => col.id === id);
+      sql += `    ${id}${index < allNeededColumns.length - 1 ? ',' : ''}\n`;
+    });
+    
+    // FROM clause
+    sql += `  FROM ${reportType}\n`;
+    
+    // WHERE clause if needed
+    if (filters.length > 0) {
+      sql += `  WHERE ${generateWhereClause(filters, filterLogic, customFilterFormula)}\n`;
+    }
+    
+    // Close the base CTE
+    sql += ')\n\n';
+    
+    // Add the pivot clause
+    sql += generatePivotClause({
+      selectedColumns,
+      pivotColumnIds,
+      pivotValues,
+      selectedAggregations,
+      groupByFields
+    });
+    
+    return sql;
+  }
+  
+  // Handle non-pivot queries (regular SQL)
   // Filter out summary formula fields from the selected columns
-  // Summary formulas are used for client-side aggregation in the UI only and should not be included in SQL
   const filteredColumns = selectedColumns.filter(column => 
     !('isSummaryFormula' in column && column.isSummaryFormula === true)
   );
@@ -41,7 +105,6 @@ export function buildSqlQuery(options: SqlQueryOptions): string {
     : '';
   
   // Combine all clauses into the final SQL query
-  // Only include groupByClause if groupByFields is not empty
   const clauses = [
     `SELECT`,
     selectClause,
@@ -613,4 +676,55 @@ function escapeValue(value: string): string {
 function getNumericValue(value: string): number | string {
   const num = parseFloat(value);
   return isNaN(num) ? '0' : num;
+}
+
+/**
+ * Helper function to generate a pivot SQL clause
+ */
+function generatePivotClause(
+  options: Pick<SqlQueryOptions, 'selectedColumns' | 'pivotColumnIds' | 'pivotValues' | 'selectedAggregations' | 'groupByFields'>
+): string {
+  const { selectedColumns, pivotColumnIds = [], pivotValues = [], selectedAggregations = {}, groupByFields = [] } = options;
+  
+  if (pivotColumnIds.length === 0 || pivotValues.length === 0) {
+    return '';
+  }
+  
+  // Build the PIVOT clause
+  let pivotSql = 'PIVOT base_data\n';
+  
+  // ON clause (what to pivot)
+  if (pivotColumnIds.length === 1) {
+    pivotSql += `ON ${pivotColumnIds[0]}\n`;
+  } else {
+    // For multiple pivot columns, use concatenation
+    pivotSql += `ON ${pivotColumnIds.join(' || \'_\' || ')}\n`;
+  }
+  
+  // USING clause (aggregations)
+  pivotSql += 'USING ';
+  pivotValues.forEach((id, index) => {
+    const aggregation = selectedAggregations[id] || 'SUM';
+    pivotSql += `${aggregation}(${id})`;
+    
+    if (index < pivotValues.length - 1) {
+      pivotSql += ', ';
+    }
+  });
+  pivotSql += '\n';
+  
+  // GROUP BY clause if needed - IMPORTANT: exclude fields used in the pivot ON clause
+  const validGroupByFields = groupByFields.filter(field => !pivotColumnIds.includes(field));
+  
+  if (validGroupByFields.length > 0) {
+    pivotSql += 'GROUP BY ';
+    validGroupByFields.forEach((id, index) => {
+      pivotSql += id;
+      if (index < validGroupByFields.length - 1) {
+        pivotSql += ', ';
+      }
+    });
+  }
+  
+  return pivotSql;
 } 
