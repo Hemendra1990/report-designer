@@ -148,6 +148,9 @@ const ReportBuilderPanel: React.FC<ReportBuilderPanelProps> = ({
   // Default aggregation functions that can be used in pivot tables
   const aggregationFunctions = ["SUM", "AVG", "MIN", "MAX", "COUNT"];
   
+  // Store active tab for showing label in collapsed state
+  const [activeTab, setActiveTab] = React.useState<string>("outline");
+  
   return (
     <div className={`${centerPanelCollapsed ? 'w-12' : 'w-64'} flex flex-col bg-card border-r border-border transition-all duration-300 shrink-0`}>
       {/* Collapse Control */}
@@ -163,8 +166,47 @@ const ReportBuilderPanel: React.FC<ReportBuilderPanelProps> = ({
         </button>
       </div>
 
-      {!centerPanelCollapsed ? (
-        <Tabs defaultValue="outline" className="flex flex-col flex-1">
+      {centerPanelCollapsed ? (
+        // Collapsed state with vertical label
+        <div className="flex flex-col items-center flex-1">
+          {/* Move label to top with larger text */}
+          <div className="mt-8 mb-6">
+            <div className="rotate-90 transform origin-center whitespace-nowrap text-base font-medium text-indigo-600">
+              {activeTab === "outline" && "Outline"}
+              {activeTab === "filters" && "Filters"}
+              {activeTab === "pivot" && "Pivot"}
+            </div>
+          </div>
+          
+          {/* Move indicators to top, after the label */}
+          <div className="flex flex-col items-center space-y-3 mb-4">
+            <button 
+              onClick={() => { setActiveTab("outline"); setCenterPanelCollapsed(false); }}
+              className={`w-2 h-2 rounded-full ${activeTab === "outline" ? "bg-indigo-600" : "bg-slate-300 hover:bg-slate-400"}`}
+              title="Outline"
+            />
+            <button 
+              onClick={() => { setActiveTab("filters"); setCenterPanelCollapsed(false); }}
+              className={`w-2 h-2 rounded-full ${activeTab === "filters" ? "bg-indigo-600" : "bg-slate-300 hover:bg-slate-400"}`}
+              title="Filters"
+            />
+            <button 
+              onClick={() => { setActiveTab("pivot"); setCenterPanelCollapsed(false); }}
+              className={`w-2 h-2 rounded-full ${activeTab === "pivot" ? "bg-indigo-600" : "bg-slate-300 hover:bg-slate-400"}`} 
+              title="Pivot"
+            />
+          </div>
+          
+          {/* Add empty space to fill the rest */}
+          <div className="flex-1"></div>
+        </div>
+      ) : (
+        <Tabs 
+          defaultValue="outline" 
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="flex flex-col flex-1"
+        >
           <div className="border-b border-gray-200">
             <TabsList className="p-0 bg-transparent border-b-0">
               <TabsTrigger
@@ -294,44 +336,6 @@ const ReportBuilderPanel: React.FC<ReportBuilderPanelProps> = ({
             />
           </TabsContent>
         </Tabs>
-      ) : (
-        <div className="flex flex-col gap-4 items-center px-0 py-4">
-          {showShortcuts && (
-            <>
-              <button
-                title="Outline"
-                className="p-2 rounded-full text-slate-500 hover:text-foreground hover:bg-accent/50 transition-colors"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M21 3H3v7h18V3z" />
-                  <path d="M21 14H3v7h18v-7z" />
-                </svg>
-              </button>
-              <button
-                title="Filters"
-                className="p-2 rounded-full text-slate-500 hover:text-foreground hover:bg-accent/50 transition-colors"
-              >
-                <FilterIcon width={16} height={16} />
-              </button>
-              <button
-                title="Pivot"
-                className="p-2 rounded-full text-slate-500 hover:text-foreground hover:bg-accent/50 transition-colors"
-              >
-                <PivotTableIcon width={16} height={16} />
-              </button>
-            </>
-          )}
-        </div>
       )}
     </div>
   );
