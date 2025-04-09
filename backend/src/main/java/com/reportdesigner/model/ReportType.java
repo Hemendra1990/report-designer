@@ -29,6 +29,7 @@ public class ReportType extends BaseEntity {
     private String primaryTableId;
     private String primaryTable;
     private String primaryTableDisplayName;
+    private String typeGroup;
 
     @Column(columnDefinition = "TEXT")
     private String cteQuery;

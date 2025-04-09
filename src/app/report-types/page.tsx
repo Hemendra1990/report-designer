@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Plus, Edit2, Trash2, ArrowUpDown, ChevronLeft, ChevronRight, MoreHorizontal, FileText, Calendar, User, Users } from "lucide-react";
@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import Image from "next/image";
+import { useAllReportTypes } from "@/hooks/report-type-hook";
 
 // Report Types with additional details
 interface BaseReportType {
@@ -73,37 +74,6 @@ const reportTypes: ReportTypeTemplate[] = [
   }
 ];
 
-// Mock data for existing report types
-const existingReportTypes: ExistingReportType[] = [
-  {
-    id: "1",
-    name: "Sales Report",
-    description: "Monthly sales report with regional breakdown",
-    icon: "/file.svg",
-    color: "#1E88E5",
-    createdAt: "2023-01-15T10:30:00Z",
-    updatedAt: "2023-02-20T14:45:00Z"
-  },
-  {
-    id: "2",
-    name: "Inventory Status",
-    description: "Current inventory levels across warehouses",
-    icon: "/file.svg",
-    color: "#43A047",
-    createdAt: "2023-03-05T09:15:00Z",
-    updatedAt: "2023-03-10T11:30:00Z"
-  },
-  {
-    id: "3",
-    name: "Customer Analytics",
-    description: "Customer behavior and purchase patterns",
-    icon: "/file.svg",
-    color: "#E53935",
-    createdAt: "2023-04-12T16:20:00Z",
-    updatedAt: "2023-05-01T10:15:00Z"
-  }
-];
-
 export default function ReportTypesPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -112,11 +82,27 @@ export default function ReportTypesPage() {
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [sortBy, setSortBy] = useState<"name" | "createdAt" | "updatedAt">("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-
+  const [existingReportTypes, setExistingReportTypes] = useState<ExistingReportType[]>([]);
   // List view states
   const [loading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const {allReportTypeResponse}  = useAllReportTypes();
 
+  useEffect(() => {
+    if (allReportTypeResponse?.data?.length) {
+      const transformed = allReportTypeResponse.data.map((item): ExistingReportType => ({
+        id: item?.id || '',
+        name: item?.label || item.name,
+        description: item?.description || '',
+        icon: '/file.svg',
+        color: '#888888',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }));
+      setExistingReportTypes((prev) => [...transformed]);
+    }
+  }, [allReportTypeResponse?.data]);
+  
   const handleDelete = async (reportType: any) => {
     if (window.confirm(`Are you sure you want to delete ${reportType.name}?`)) {
       try {
@@ -356,9 +342,9 @@ export default function ReportTypesPage() {
                     <FileText className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent className="pt-1">
-                    <div className="text-xl font-semibold">{totalItems}</div>
+                    <div className="text-xl font-semibold">{allReportTypeResponse?.data?.length}</div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {totalItems === 1 ? '1 report type' : `${totalItems} report types`} available
+                      {allReportTypeResponse?.data?.length === 1 ? '1 report type' : `${totalItems} report types`} available
                     </p>
                   </CardContent>
                 </Card>

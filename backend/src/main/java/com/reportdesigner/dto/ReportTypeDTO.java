@@ -19,6 +19,7 @@ public class ReportTypeDTO {
     private String primaryTable;
     private String primaryTableDisplayName;
     private String cteQuery;
+    private String typeGroup;
     private List<String> usedTables;
     private List<ReportTypeConfigDTO> configList;
     private List<ReportTypeLayoutDTO> layoutList;

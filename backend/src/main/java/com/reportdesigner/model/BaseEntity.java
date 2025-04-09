@@ -34,6 +34,7 @@ public abstract class BaseEntity {
     @PrePersist
     public void prePersist() {
         this.setCreatedOn(OffsetDateTime.now());
+        this.setUpdatedOn(OffsetDateTime.now());
         this.setIsActive(true);
         this.setIsDeleted(false);
     }

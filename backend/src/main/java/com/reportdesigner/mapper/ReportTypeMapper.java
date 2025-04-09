@@ -28,6 +28,7 @@ public class ReportTypeMapper implements BaseMapper<ReportTypeDTO, ReportType> {
                 .primaryTableDisplayName(entity.getPrimaryTableDisplayName())
                 .cteQuery(entity.getCteQuery())
                 .usedTables(entity.getUsedTables())
+                .typeGroup(entity.getTypeGroup())
                 .configList(reportTypeConfigMapper.toDtoList(entity.getConfigList()))
                 .layoutList(reportTypeLayoutMapper.toDtoList(entity.getLayoutList()))
                 .build();
@@ -42,6 +43,7 @@ public class ReportTypeMapper implements BaseMapper<ReportTypeDTO, ReportType> {
                 .description(dto.getDescription())
                 .primaryTableId(dto.getPrimaryTableId())
                 .primaryTable(dto.getPrimaryTable())
+                .typeGroup(dto.getTypeGroup())
                 .primaryTableDisplayName(dto.getPrimaryTableDisplayName())
                 .cteQuery(dto.getCteQuery())
                 .usedTables(dto.getUsedTables())
