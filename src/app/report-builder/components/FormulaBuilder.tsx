@@ -44,6 +44,8 @@ interface FormulaBuilderProps {
     type: string;
     formula: string;
     description: string;
+    alias: string;
+    isFormula: boolean;
   }) => void;
   fieldsByCategory: Record<string, Field[]>;
   formulaFunctions: FunctionCategory[];
@@ -53,6 +55,15 @@ interface FormulaBuilderProps {
   formulaSearchTerm: string;
   onSearchTermChange: (value: string) => void;
   onFormulaSearchTermChange: (value: string) => void;
+  editFormulaColumn?: {
+    id: string;
+    name: string;
+    type: string;
+    formula: string;
+    description: string;
+    alias: string;
+    isFormula: boolean;
+  };
 }
 
 const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
@@ -66,18 +77,33 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
   searchTerm,
   formulaSearchTerm,
   onSearchTermChange,
-  onFormulaSearchTermChange
+  onFormulaSearchTermChange,
+  editFormulaColumn
 }) => {
   // Local state
-  const [formulaName, setFormulaName] = useState("");
-  const [formulaDescription, setFormulaDescription] = useState("");
-  const [formulaEditorValue, setFormulaEditorValue] = useState("");
-  const [formulaOutputType, setFormulaOutputType] = useState("number");
+  const [formulaName, setFormulaName] = useState(editFormulaColumn?.name || "");
+  const [formulaAlias, setFormulaAlias] = useState(editFormulaColumn?.alias || "");
+  const [formulaDescription, setFormulaDescription] = useState(editFormulaColumn?.description || "");
+  const [formulaEditorValue, setFormulaEditorValue] = useState(editFormulaColumn?.formula || "");
+  const [formulaOutputType, setFormulaOutputType] = useState(editFormulaColumn?.type || "number");
   const [decimalPoints, setDecimalPoints] = useState("2");
   const [formulaDialogTab, setFormulaDialogTab] = useState("fields");
   const [showSqlPreview, setShowSqlPreview] = useState(false);
   const [sqlPreview, setSqlPreview] = useState("");
   const [validationResult, setValidationResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  // Initialize form fields when editFormulaColumn changes
+  useEffect(() => {
+    if (editFormulaColumn) {
+      setFormulaName(editFormulaColumn.name);
+      setFormulaAlias(editFormulaColumn.alias);
+      setFormulaDescription(editFormulaColumn.description);
+      setFormulaEditorValue(editFormulaColumn.formula);
+      setFormulaOutputType(editFormulaColumn.type);
+      // Automatically validate and show SQL preview for existing formulas
+      setTimeout(() => validateFormula(), 300);
+    }
+  }, [editFormulaColumn]);
 
   // Get all fields as a flat array
   const getAllFields = () => {
@@ -92,13 +118,15 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
   const handleSubmit = () => {
     if (!formulaName.trim()) return;
 
-    // Create a new formula column
+    // Create a new formula column or update existing one
     const newFormulaColumn = {
-      id: `formula_${Date.now()}`,
+      id: editFormulaColumn?.id || `formula_${Date.now()}`,
       name: formulaName,
       type: formulaOutputType,
       formula: formulaEditorValue,
       description: formulaDescription,
+      alias: formulaAlias,
+      isFormula: true
     };
 
     onSubmit(newFormulaColumn);
@@ -110,6 +138,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
   // Reset the form fields
   const resetForm = () => {
     setFormulaName("");
+    setFormulaAlias("");
     setFormulaDescription("");
     setFormulaEditorValue("");
     setFormulaOutputType("number");
@@ -134,7 +163,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
       });
 
       // Translate the formula to SQL to check for syntax errors
-      const sql = translateFormulaToDuckDBSQL(formulaEditorValue, fieldMap);
+      const sql = translateFormulaToDuckDBSQL(formulaEditorValue, fieldMap, formulaAlias);
       
       // If we get here without errors, the formula is valid
       setValidationResult({ 
@@ -169,7 +198,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
         });
 
         // Translate the formula to SQL
-        const sql = translateFormulaToDuckDBSQL(formulaEditorValue, fieldMap);
+        const sql = translateFormulaToDuckDBSQL(formulaEditorValue, fieldMap, formulaAlias);
         setSqlPreview(sql);
       } catch (error) {
         setSqlPreview(`Error: ${(error as Error).message}`);
@@ -177,7 +206,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     } else {
       setSqlPreview("");
     }
-  }, [formulaEditorValue, fieldsByCategory]);
+  }, [formulaEditorValue, fieldsByCategory, formulaAlias]);
 
   if (!isOpen) return null;
 
@@ -281,6 +310,8 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
                 <FormulaSettings
                   formulaName={formulaName}
                   setFormulaName={setFormulaName}
+                  formulaAlias={formulaAlias}
+                  setFormulaAlias={setFormulaAlias}
                   formulaDescription={formulaDescription}
                   setFormulaDescription={setFormulaDescription}
                   formulaOutputType={formulaOutputType}

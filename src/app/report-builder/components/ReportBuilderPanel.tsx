@@ -44,6 +44,7 @@ interface ReportBuilderPanelProps {
   draggedItem: number | null;
   openColumnMenu: (e: React.MouseEvent) => void;
   addFormulaColumn: () => void;
+  editFormulaColumn: (column: any) => void;
   handleDragStart: (index: number) => void;
   handleDragOver: (e: React.DragEvent, index: number) => void;
   removeColumn: (id: string) => void;
@@ -94,6 +95,7 @@ const ReportBuilderPanel: React.FC<ReportBuilderPanelProps> = ({
   draggedItem,
   openColumnMenu,
   addFormulaColumn,
+  editFormulaColumn,
   handleDragStart,
   handleDragOver,
   removeColumn,
@@ -170,6 +172,7 @@ const ReportBuilderPanel: React.FC<ReportBuilderPanelProps> = ({
               draggedItem={draggedItem}
               openColumnMenu={openColumnMenu}
               addFormulaColumn={addFormulaColumn}
+              editFormulaColumn={editFormulaColumn}
               handleDragStart={handleDragStart}
               handleDragOver={handleDragOver}
               removeColumn={removeColumn}

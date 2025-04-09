@@ -8,11 +8,13 @@
  * Translate a Salesforce row-level formula to a DuckDB SQL expression
  * @param formula The formula to translate
  * @param fieldMap A map from Salesforce field names to SQL column names
+ * @param alias Optional alias for the formula column
  * @returns The translated SQL expression
  */
 export function translateFormulaToDuckDBSQL(
   formula: string,
-  fieldMap: Record<string, string>
+  fieldMap: Record<string, string>,
+  alias?: string
 ): string {
   if (!formula.trim()) {
     throw new FormulaError('Formula cannot be empty');
@@ -32,6 +34,11 @@ export function translateFormulaToDuckDBSQL(
     throw new FormulaError(
       `Unexpected token: ${context.formula.substring(context.index)}`
     );
+  }
+
+  // If an alias is provided, return the expression with the alias
+  if (alias) {
+    return `${result} AS ${alias}`;
   }
 
   return result;
