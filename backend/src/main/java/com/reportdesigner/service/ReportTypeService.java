@@ -47,7 +47,7 @@ public class ReportTypeService {
             if (StringUtils.isNotBlank(reportTypeId)) {
                 Preconditions.checkArgument(reportTypeRepository.existsByNameAndIdNot(reportTypeDTO.getName(), reportTypeId), "Report Type with same name exist");
             } else {
-                Preconditions.checkArgument(reportTypeRepository.existsByName(reportTypeDTO.getName()), "Report Type with same name exist");
+                Preconditions.checkArgument(!reportTypeRepository.existsByName(reportTypeDTO.getName()), "Report Type with same name exist");
             }
             Preconditions.checkArgument(StringUtils.isNotBlank(reportTypeDTO.getPrimaryTable()), "At-least one table need to select");
             List<ReportTypeConfigDTO> dtoConfigList = reportTypeDTO.getConfigList();

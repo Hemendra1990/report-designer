@@ -1,5 +1,6 @@
 export interface ReportType {
     id: string;
+    type: string;
     label: string;
     name: string;
     description: string;

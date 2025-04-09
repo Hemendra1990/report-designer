@@ -1,9 +1,9 @@
 'use client';
 
 import { ReportType } from "@/components/model/report-type";
-import { useReportTypeInitialValues } from "@/helper/report-type/report-type-helper";
+import { defaultReportType, useReportTypeInitialValues } from "@/helper/report-type/report-type-helper";
 import { useReportTypeById } from "@/hooks/report-type-hook";
-import { createContext, Dispatch, SetStateAction, useContext, useState } from "react";
+import { createContext, Dispatch, SetStateAction, useContext, useEffect, useState } from "react";
 
 interface ReportTypeFormContextType {
     reportTypeId: string;
@@ -15,20 +15,33 @@ interface ReportTypeFormContextType {
 
 const ReportTypeFormContext = createContext<ReportTypeFormContextType | null>(null);
 
-export const useReportTypeFormContext = (): ReportTypeFormContextType | null => {
+export const useReportTypeFormContext = (): ReportTypeFormContextType => {
     const context = useContext(ReportTypeFormContext);
     if (!context) {
-        return null;
+        return {
+            reportType: defaultReportType,
+            reportTypeId: '',
+            setReportType: () => { },
+            setReportTypeId: () => { },
+            isReportTypeLoading: false
+        };
     }
     return context;
 }
 
 export const ReportTypeFormProvider = ({ children }: { children: React.ReactNode }) => {
-    //Need a hook to get the report type by id (required for edit)
+
     const [reportTypeId, setReportTypeId] = useState<string>('');
     const { reportTypeResponse } = useReportTypeById(reportTypeId);
     const initialValues = useReportTypeInitialValues(reportTypeResponse?.data);
     const [reportType, setReportType] = useState<ReportType>(initialValues);
+
+    useEffect(() => {
+        if (initialValues) {
+            setReportType(initialValues);
+        }
+    }, [initialValues])
+
     return (
         <ReportTypeFormContext.Provider
             value={
