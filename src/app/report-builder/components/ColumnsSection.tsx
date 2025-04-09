@@ -25,6 +25,7 @@ interface ColumnsSectionProps {
   draggedItem: number | null;
   openColumnMenu: (e: React.MouseEvent) => void;
   addFormulaColumn: () => void;
+  editFormulaColumn: (column: Column) => void;
   handleDragStart: (index: number) => void;
   handleDragOver: (e: React.DragEvent, index: number) => void;
   removeColumn: (id: string) => void;
@@ -42,6 +43,7 @@ const ColumnsSection: React.FC<ColumnsSectionProps> = ({
   draggedItem,
   openColumnMenu,
   addFormulaColumn,
+  editFormulaColumn,
   handleDragStart,
   handleDragOver,
   removeColumn,
@@ -84,6 +86,14 @@ const ColumnsSection: React.FC<ColumnsSectionProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isMenuOpen, menuRef, setIsMenuOpen]);
+
+  // Add a function to handle formula column click
+  const handleFormulaColumnClick = (column: Column, e: React.MouseEvent) => {
+    if ('formula' in column && column.formula) {
+      e.stopPropagation(); // Prevent triggering drag or other events
+      editFormulaColumn(column);
+    }
+  };
 
   return (
     <div className="p-3 flex-1">
@@ -190,7 +200,12 @@ const ColumnsSection: React.FC<ColumnsSectionProps> = ({
               </span>
               <span className="text-xs">{column.name}</span>
               {'formula' in column && (
-                <span className="ml-0.5 px-1 py-0.5 text-[10px] bg-blue-100 text-blue-800 rounded">Formula</span>
+                <span 
+                  className="ml-0.5 px-1 py-0.5 text-[10px] bg-blue-100 text-blue-800 rounded cursor-pointer hover:bg-blue-200"
+                  onClick={(e) => handleFormulaColumnClick(column, e)}
+                >
+                  Formula
+                </span>
               )}
             </div>
             <button

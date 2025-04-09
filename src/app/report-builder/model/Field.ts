@@ -1,6 +1,7 @@
 // Field types definition
 export type FieldType = 'text' | 'textarea' | 'url' | 'email' | 'phone' | 'number' | 'currency' | 
-                'date' | 'datetime' | 'picklist' | 'multipicklist' | 'lookup' | 'user' | 'checkbox';
+                'date' | 'datetime' | 'picklist' | 'multipicklist' | 'lookup' | 'user' | 'checkbox' |
+                'percent';
 
 // Field interface
 export interface Field {
@@ -9,4 +10,12 @@ export interface Field {
   type: FieldType;
   category?: string;
   icon?: string;
+}
+
+// Formula column interface that extends Field
+export interface FormulaColumn extends Field {
+  formula: string;
+  description: string;
+  alias: string;
+  isFormula: boolean;
 }

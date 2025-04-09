@@ -33,7 +33,7 @@ import TopHeaderBar from "./components/TopHeaderBar";
 import { getDefaultOperator } from "./helper/ReportBuilderHelper";
 import { AccountData } from "./model/AccountData";
 import { accountFields, moreSampleData, sampleData } from "./model/fake-data";
-import { Field } from "./model/Field";
+import { Field, FormulaColumn, FieldType } from "./model/Field";
 import { Filter } from "./model/Filter";
 import { ReportTypeTemplate } from "./model/ReportType";
 import { FetchDataOptions, ServerResponse } from "./model/ServerReqRes";
@@ -58,7 +58,7 @@ const initialSelectedColumns: Field[] = [
 ];
 
 // Drag and drop helper function
-const reorder = (list: any[], startIndex: number, endIndex: number) => {
+const reorder = <T extends unknown>(list: T[], startIndex: number, endIndex: number): T[] => {
   const result = Array.from(list);
   const [removed] = result.splice(startIndex, 1);
   result.splice(endIndex, 0, removed);
@@ -92,6 +92,20 @@ async function fetchTableData(options: FetchDataOptions): Promise<ServerResponse
   const { pageIndex, pageSize, sorting, grouping, selectedColumns, filters } = options;
 
   try {
+    // When sending to the backend, ensure formula columns have their SQL expression and alias
+    const columnsWithFormulas = selectedColumns.map(col => {
+      // Use type guard to check if the column is a formula column
+      if ('isFormula' in col) {
+        const formulaCol = col as FormulaColumn;
+        return {
+          ...col,
+          sqlExpression: formulaCol.formula, // Include the formula expression
+          sqlAlias: formulaCol.alias // Include the alias for SQL generation
+        };
+      }
+      return col;
+    });
+
     const response = await fetch('/api/report-data', {
       method: 'POST',
       headers: {
@@ -102,7 +116,7 @@ async function fetchTableData(options: FetchDataOptions): Promise<ServerResponse
         pageSize,
         sorting,
         grouping,
-        columns: selectedColumns,
+        columns: columnsWithFormulas, // Use the enhanced columns with formula info
         filters,
       }),
     });
@@ -142,7 +156,7 @@ function ReportBuilderPage() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [formulaSearchTerm, setFormulaSearchTerm] = useState("");
-  const [selectedColumns, setSelectedColumns] = useState(initialSelectedColumns);
+  const [selectedColumns, setSelectedColumns] = useState<(Field | FormulaColumn)[]>(initialSelectedColumns);
   const [expandedCategories, setExpandedCategories] = useState({
     general: true,
     address: false,
@@ -199,6 +213,9 @@ function ReportBuilderPage() {
   // State for tracking if preview is expanded
   const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
 
+  // Add state for the formula being edited
+  const [editingFormulaColumn, setEditingFormulaColumn] = useState<FormulaColumn | null>(null);
+
   // Initialize column refs
   useEffect(() => {
     columnRefs.current = columnRefs.current.slice(0, selectedColumns.length);
@@ -251,8 +268,15 @@ function ReportBuilderPage() {
   // Handle adding a column to the report
   const addColumn = (field: typeof accountFields[0]) => {
     if (!selectedColumns.some(col => col.id === field.id)) {
-      const newColumns = [...selectedColumns, { id: field.id, name: field.name, type: field.type }];
-      setSelectedColumns(newColumns);
+      // Ensure the field being added has the proper FieldType
+      const newColumn: Field = {
+        id: field.id,
+        name: field.name,
+        type: field.type,
+        category: field.category,
+        icon: field.icon
+      };
+      setSelectedColumns([...selectedColumns, newColumn]);
       if (autoUpdatePreview) {
         fetchData();
       }
@@ -306,6 +330,13 @@ function ReportBuilderPage() {
   // Handle adding a formula column
   const addFormulaColumn = () => {
     setIsMenuOpen(false);
+    setEditingFormulaColumn(null); // Clear any previous edit state
+    setShowFormulaBuilder(true);
+  };
+
+  // Handle editing a formula column
+  const editFormulaColumn = (column: FormulaColumn) => {
+    setEditingFormulaColumn(column);
     setShowFormulaBuilder(true);
   };
 
@@ -316,9 +347,27 @@ function ReportBuilderPage() {
     type: string;
     formula: string;
     description: string;
+    alias: string;
+    isFormula: boolean;
   }) => {
-    setSelectedColumns([...selectedColumns, newFormulaColumn]);
+    // Cast the type to FieldType for compatibility
+    const formulaColumn: FormulaColumn = {
+      ...newFormulaColumn,
+      type: newFormulaColumn.type as FieldType
+    };
+    
+    if (editingFormulaColumn) {
+      // If editing an existing formula, update it in the columns list
+      setSelectedColumns(selectedColumns.map(col => 
+        col.id === formulaColumn.id ? formulaColumn : col
+      ));
+    } else {
+      // If adding a new formula, add it to the columns list
+      setSelectedColumns([...selectedColumns, formulaColumn]);
+    }
+    
     setShowFormulaBuilder(false);
+    setEditingFormulaColumn(null);
   };
 
   // Add state for filter field selector
@@ -591,8 +640,34 @@ function ReportBuilderPage() {
       id: field.id,
       accessorKey: field.id,
       header: field.name,
-      cell: info => info.getValue(),
+      cell: info => {
+        // For formula columns, we may want to apply specific formatting
+        if ('isFormula' in field) {
+          const formulaField = field as FormulaColumn;
+          const value = info.getValue();
+          
+          // Format based on output type
+          if (formulaField.type === 'currency' && typeof value === 'number') {
+            return new Intl.NumberFormat('en-US', { 
+              style: 'currency', 
+              currency: 'USD' 
+            }).format(value);
+          }
+          
+          if (formulaField.type === 'percent' && typeof value === 'number') {
+            return new Intl.NumberFormat('en-US', { 
+              style: 'percent'
+            }).format(value / 100);
+          }
+          
+          return value;
+        }
+        
+        return info.getValue();
+      },
       enableGrouping: true,
+      enableSorting: true,
+      enableFiltering: true,
       aggregationFn: field.type === 'number' || field.type === 'currency' ? 'mean' : 'count',
       aggregatedCell: info => {
         const value = info.getValue();
@@ -600,6 +675,13 @@ function ReportBuilderPage() {
           return Math.round(value * 100) / 100;
         }
         return value;
+      },
+      meta: {
+        isFormula: 'isFormula' in field,
+        formulaDetails: 'isFormula' in field ? {
+          formula: (field as FormulaColumn).formula,
+          alias: (field as FormulaColumn).alias
+        } : undefined
       },
       minSize: 180, // Ensure minimum column width
       size: 200,    // Default column width
@@ -706,6 +788,7 @@ function ReportBuilderPage() {
             draggedItem={draggedItem}
             openColumnMenu={openColumnMenu}
             addFormulaColumn={addFormulaColumn}
+            editFormulaColumn={editFormulaColumn}
             handleDragStart={handleDragStart}
             handleDragOver={handleDragOver}
             removeColumn={removeColumn}
@@ -758,7 +841,10 @@ function ReportBuilderPage() {
         {/* Formula Builder */}
         <FormulaBuilder
           isOpen={showFormulaBuilder}
-          onClose={() => setShowFormulaBuilder(false)}
+          onClose={() => {
+            setShowFormulaBuilder(false);
+            setEditingFormulaColumn(null);
+          }}
           onSubmit={handleSubmitFormula}
           fieldsByCategory={fieldsByCategory}
           formulaFunctions={formulaFunctions}
@@ -768,6 +854,7 @@ function ReportBuilderPage() {
           formulaSearchTerm={formulaSearchTerm}
           onSearchTermChange={setSearchTerm}
           onFormulaSearchTermChange={setFormulaSearchTerm}
+          editFormulaColumn={editingFormulaColumn || undefined}
         />
 
         {/* Filter Field Selector */}
