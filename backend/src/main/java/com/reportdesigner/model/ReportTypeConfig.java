@@ -1,5 +1,6 @@
 package com.reportdesigner.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import io.hypersistence.utils.hibernate.id.Tsid;
 import jakarta.persistence.*;
 import lombok.*;
@@ -31,8 +32,9 @@ public class ReportTypeConfig extends BaseEntity {
     private String referColumn;
     private Integer sortOrder;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @JoinColumn(name = "report_type_id")
+    @JsonBackReference
     private ReportType reportType;
 
 }

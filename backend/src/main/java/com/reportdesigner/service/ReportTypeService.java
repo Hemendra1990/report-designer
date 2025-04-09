@@ -9,6 +9,8 @@ import com.reportdesigner.exception.ValidationException;
 import com.reportdesigner.mapper.ReportTypeConfigMapper;
 import com.reportdesigner.mapper.ReportTypeMapper;
 import com.reportdesigner.model.ReportType;
+import com.reportdesigner.model.ReportTypeConfig;
+import com.reportdesigner.model.ReportTypeLayout;
 import com.reportdesigner.repository.ReportTypeConfigRepository;
 import com.reportdesigner.repository.ReportTypeLayoutRepository;
 import com.reportdesigner.repository.ReportTypeRepository;
@@ -37,53 +39,56 @@ public class ReportTypeService {
     private final ReportUtil reportUtil;
 
     @Transactional
-    public ReportTypeDTO create(ReportTypeDTO reportTypeDTO) throws ValidationException {
+    public ReportTypeDTO saveOrUpdate(ReportTypeDTO reportTypeDTO) throws ValidationException {
         try {
-            String label = reportTypeDTO.getLabel();
-            Preconditions.checkArgument(StringUtils.isNotBlank(label), "Label can not be empty");
-            String name = reportUtil.generateNameFromLabel(label);
-            reportTypeDTO.setName(name);
-            String reportTypeId = reportTypeDTO.getId();
-            if (StringUtils.isNotBlank(reportTypeId)) {
-                Preconditions.checkArgument(reportTypeRepository.existsByNameAndIdNot(reportTypeDTO.getName(), reportTypeId), "Report Type with same name exist");
-            } else {
-                Preconditions.checkArgument(!reportTypeRepository.existsByName(reportTypeDTO.getName()), "Report Type with same name exist");
-            }
-            Preconditions.checkArgument(StringUtils.isNotBlank(reportTypeDTO.getPrimaryTable()), "At-least one table need to select");
-            List<ReportTypeConfigDTO> dtoConfigList = reportTypeDTO.getConfigList();
-            Preconditions.checkArgument(!CollectionUtils.isEmpty(dtoConfigList), "At-least one configuration need to be set");
-            Set<String> usedTables = new HashSet<>();
-            dtoConfigList.forEach(config -> {
-                Preconditions.checkArgument(StringUtils.isNotBlank(config.getJoinType()), "Join Type can not be empty");
-                Preconditions.checkArgument(StringUtils.isNotBlank(config.getPrimaryTableId()), "Primary Table Id can not be empty");
-                Preconditions.checkArgument(StringUtils.isNotBlank(config.getPrimaryTableName()), "Primary Table can not be empty");
-                Preconditions.checkArgument(StringUtils.isNotBlank(config.getPrimaryTableDisplayName()), "Primary Table Display Name can not be empty");
-                Preconditions.checkArgument(StringUtils.isNotBlank(config.getFromColumn()), "Join Column can not be empty");
-                Preconditions.checkArgument(StringUtils.isNotBlank(config.getJoinTableName()), "Join Table can not be empty");
-                Preconditions.checkArgument(StringUtils.isNotBlank(config.getJoinTableDisplayName()), "Join Table display can not be empty");
-                Preconditions.checkArgument(StringUtils.isNotBlank(config.getReferColumn()), "Refer Column can not be empty");
-                Preconditions.checkNotNull(config.getSortOrder(), "Configuration Order can not be empty");
-
-                usedTables.add(config.getPrimaryTableDisplayName());
-                usedTables.add(config.getJoinTableDisplayName());
-            });
-            // delete config if any
-            if (StringUtils.isNotBlank(reportTypeId)) {
-                reportTypeConfigRepository.deleteByReportTypeId(reportTypeId);
-            }
-
-            reportTypeDTO.setUsedTables(usedTables.stream().toList());
-            String cteQuery = generateCTEQuery(reportTypeDTO.getName(), reportTypeDTO.getPrimaryTable(), dtoConfigList, reportTypeDTO.getLayoutList());
-            reportTypeDTO.setCteQuery(cteQuery);
-
-            ReportType reportType = reportTypeMapper.toEntity(reportTypeDTO);
+            ReportType reportType = prepareAndValidateReportType(reportTypeDTO);
             ReportType savedReportType = reportTypeRepository.save(reportType);
-            reportTypeDTO.setId(savedReportType.getId());
-            return reportTypeDTO;
+            return reportTypeMapper.toDto(savedReportType);
         } catch (Exception ex) {
-            throw new ValidationException(ex.getMessage(), ErrorCode.ERR_PROCESSING, "ReportTypeService.create");
+            throw new ValidationException(ex.getMessage(), ErrorCode.ERR_PROCESSING, "ReportTypeService.saveOrUpdate");
         }
     }
+    private ReportType prepareAndValidateReportType(ReportTypeDTO reportTypeDTO) {
+        String label = reportTypeDTO.getLabel();
+        Preconditions.checkArgument(StringUtils.isNotBlank(label), "Label can not be empty");
+        String name = reportUtil.generateNameFromLabel(label);
+        reportTypeDTO.setName(name);
+        String reportTypeId = reportTypeDTO.getId();
+
+        if (StringUtils.isNotBlank(reportTypeId)) {
+            Preconditions.checkArgument(!reportTypeRepository.existsByNameAndIdNot(name, reportTypeId), "Report Type with same name exist");
+        } else {
+            Preconditions.checkArgument(!reportTypeRepository.existsByName(name), "Report Type with same name exist");
+        }
+        Preconditions.checkArgument(StringUtils.isNotBlank(reportTypeDTO.getPrimaryTable()), "At-least one table needs to be selected");
+        List<ReportTypeConfigDTO> dtoConfigList = reportTypeDTO.getConfigList();
+        Preconditions.checkArgument(!CollectionUtils.isEmpty(dtoConfigList), "At-least one configuration needs to be set");
+
+        Set<String> usedTables = new HashSet<>();
+        dtoConfigList.forEach(config -> {
+            Preconditions.checkArgument(StringUtils.isNotBlank(config.getJoinType()), "Join Type can not be empty");
+            Preconditions.checkArgument(StringUtils.isNotBlank(config.getPrimaryTableId()), "Primary Table Id can not be empty");
+            Preconditions.checkArgument(StringUtils.isNotBlank(config.getPrimaryTableName()), "Primary Table can not be empty");
+            Preconditions.checkArgument(StringUtils.isNotBlank(config.getPrimaryTableDisplayName()), "Primary Table Display Name can not be empty");
+            Preconditions.checkArgument(StringUtils.isNotBlank(config.getFromColumn()), "Join Column can not be empty");
+            Preconditions.checkArgument(StringUtils.isNotBlank(config.getJoinTableName()), "Join Table can not be empty");
+            Preconditions.checkArgument(StringUtils.isNotBlank(config.getJoinTableDisplayName()), "Join Table display can not be empty");
+            Preconditions.checkArgument(StringUtils.isNotBlank(config.getReferColumn()), "Refer Column can not be empty");
+            Preconditions.checkNotNull(config.getSortOrder(), "Configuration Order can not be empty");
+            usedTables.add(config.getPrimaryTableDisplayName());
+            usedTables.add(config.getJoinTableDisplayName());
+        });
+        // delete old config if updating
+        if (StringUtils.isNotBlank(reportTypeId)) {
+            reportTypeLayoutRepository.deleteByReportTypeId(reportTypeId);
+            reportTypeConfigRepository.deleteByReportTypeId(reportTypeId);
+        }
+        reportTypeDTO.setUsedTables(new ArrayList<>(usedTables));
+        String cteQuery = generateCTEQuery(reportTypeDTO.getName(), reportTypeDTO.getPrimaryTable(), dtoConfigList, reportTypeDTO.getLayoutList());
+        reportTypeDTO.setCteQuery(cteQuery);
+        return reportTypeMapper.toEntity(reportTypeDTO);
+    }
+
 
     private String generateCTEQuery(String name, String primaryTableName, List<ReportTypeConfigDTO> dtoConfigList, List<ReportTypeLayoutDTO> layoutList) {
         dtoConfigList.sort(Comparator.comparingInt(ReportTypeConfigDTO::getSortOrder));

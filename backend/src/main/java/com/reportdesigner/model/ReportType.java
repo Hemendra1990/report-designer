@@ -1,5 +1,6 @@
 package com.reportdesigner.model;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.reportdesigner.util.StringListConverter;
 import io.hypersistence.utils.hibernate.id.Tsid;
 import jakarta.persistence.*;
@@ -38,9 +39,11 @@ public class ReportType extends BaseEntity {
     @Convert(converter = StringListConverter.class)
     private List<String> usedTables;
 
-    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "reportType", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonManagedReference
     private List<ReportTypeConfig> configList;
 
-    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "reportType", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonManagedReference
     private List<ReportTypeLayout> layoutList;
 }

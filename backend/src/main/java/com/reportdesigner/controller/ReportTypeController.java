@@ -30,7 +30,7 @@ public class ReportTypeController {
 
     @PostMapping
     public ApiResponse create(@RequestBody ReportTypeDTO reportType) throws ValidationException {
-        ReportTypeDTO resp = reportTypeService.create(reportType);
+        ReportTypeDTO resp = reportTypeService.saveOrUpdate(reportType);
         return ApiResponse.builder()
                 .status(HttpStatus.CREATED.toString())
                 .data(resp)
