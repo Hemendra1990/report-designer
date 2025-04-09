@@ -1,3 +1,4 @@
+import { ReportType, ReportTypeLayout } from "@/components/model/report-type";
 import { httpClient } from "../http-service";
 
 const BASE_URL = `${process.env.NEXT_PUBLIC_BASE_URL}/report-type`;
@@ -10,6 +11,10 @@ export const getReportTypeById = (reportTypeId: string) => {
     return httpClient.get(`${BASE_URL}/${reportTypeId}`);
 }
 
-export const createReportType = (reportType: any) => {
+export const createReportType = (reportType: ReportType) => {
     return httpClient.post(`${BASE_URL}`, reportType);
+}
+
+export const updateReportTypeLayoutStatus = (reportType: ReportTypeLayout[]) => {
+    return httpClient.put(`${BASE_URL}/layout/update-status`, reportType);
 }
