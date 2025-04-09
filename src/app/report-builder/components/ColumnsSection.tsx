@@ -1,4 +1,4 @@
-import React, { RefObject, MutableRefObject } from 'react';
+import React, { RefObject, MutableRefObject, KeyboardEvent, useEffect } from 'react';
 import { 
   ChevronDownIcon, 
   CrossIcon,
@@ -49,62 +49,119 @@ const ColumnsSection: React.FC<ColumnsSectionProps> = ({
   setSelectedColumns,
   setDraggedItem
 }) => {
+  // Handle keyboard navigation in dropdown menu
+  const handleKeyDown = (e: KeyboardEvent<HTMLElement>, actionFn?: () => void) => {
+    if (e.key === 'Escape') {
+      setIsMenuOpen(false);
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      const nextFocusable = (e.target as HTMLElement).nextElementSibling as HTMLElement;
+      if (nextFocusable && nextFocusable.tagName !== 'DIV') {
+        nextFocusable.focus();
+      }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const prevFocusable = (e.target as HTMLElement).previousElementSibling as HTMLElement;
+      if (prevFocusable && prevFocusable.tagName !== 'DIV') {
+        prevFocusable.focus();
+      }
+    } else if ((e.key === 'Enter' || e.key === ' ') && actionFn) {
+      e.preventDefault();
+      actionFn();
+    }
+  };
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    if (!isMenuOpen) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isMenuOpen, menuRef, setIsMenuOpen]);
+
   return (
-    <div className="p-4 flex-1">
-      <div className="flex justify-between items-center mb-3">
+    <div className="p-3 flex-1">
+      <div className="flex justify-between items-center mb-2">
         <div className="text-xs font-semibold text-gray-500">COLUMNS</div>
         <div className="relative">
           <button
-            className="text-sm text-blue-600 flex items-center"
+            className="text-xs text-blue-600 flex items-center"
             onClick={openColumnMenu}
+            aria-haspopup="true"
+            aria-expanded={isMenuOpen}
           >
-            <PlusIcon className="mr-1" />
+            <PlusIcon className="mr-0.5 size-3.5" />
             Add Column
-            <ChevronDownIcon className="ml-1" />
+            <ChevronDownIcon className="ml-0.5 size-3.5" />
           </button>
 
           {/* Column Menu Dropdown */}
           {isMenuOpen && (
             <div
               ref={menuRef}
-              className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-10 w-48"
+              className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-md shadow-xl z-50 w-44 max-w-[calc(100vw-1rem)] text-xs"
+              role="menu"
+              aria-orientation="vertical"
+              tabIndex={-1}
+              onKeyDown={(e) => handleKeyDown(e)}
               style={{
-                top: menuPosition.top - 250,
-                left: menuPosition.left - 100,
-                position: 'fixed'
+                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12), 0 0 1px rgba(0, 0, 0, 0.05)'
               }}
             >
-              <div className="py-1">
+              <div className="py-0.5">
                 <button
-                  className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left flex items-center"
+                  className="px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none w-full text-left flex items-center gap-1.5 transition-colors"
                   onClick={() => setIsMenuOpen(false)}
+                  role="menuitem"
+                  tabIndex={0}
+                  onKeyDown={(e) => handleKeyDown(e, () => setIsMenuOpen(false))}
                 >
-                  <BucketIcon className="mr-2" />
-                  Add Bucket Column
+                  <BucketIcon className="size-3.5" />
+                  <span>Add Bucket Column</span>
                 </button>
                 <button
-                  className="px-4 py-2 text-sm text-gray-400 w-full text-left flex items-center cursor-not-allowed"
+                  className="px-3 py-1.5 text-xs text-gray-400 w-full text-left flex items-center gap-1.5 cursor-not-allowed"
+                  role="menuitem"
+                  aria-disabled="true"
+                  tabIndex={-1}
                 >
-                  <FormulaIcon className="mr-2" />
-                  Add Summary Formula
+                  <FormulaIcon className="size-3.5" />
+                  <span>Add Summary Formula</span>
                 </button>
                 <button
-                  className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left flex items-center"
+                  className="px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none w-full text-left flex items-center gap-1.5 transition-colors"
                   onClick={addFormulaColumn}
+                  role="menuitem"
+                  tabIndex={0}
+                  onKeyDown={(e) => handleKeyDown(e, addFormulaColumn)}
                 >
-                  <FormulaIcon className="mr-2" />
-                  Add Row-Level Formula
+                  <FormulaIcon className="size-3.5" />
+                  <span>Add Row-Level Formula</span>
                 </button>
-                <div className="border-t border-gray-200 my-1"></div>
+                <div className="border-t border-gray-200 my-0.5" role="separator"></div>
                 <button
-                  className="px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full text-left flex items-center"
+                  className="px-3 py-1.5 text-xs text-red-600 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none w-full text-left flex items-center gap-1.5 transition-colors"
                   onClick={() => {
                     setSelectedColumns([]);
                     setIsMenuOpen(false);
                   }}
+                  role="menuitem"
+                  tabIndex={0}
+                  onKeyDown={(e) => 
+                    handleKeyDown(e, () => {
+                      setSelectedColumns([]);
+                      setIsMenuOpen(false);
+                    })
+                  }
                 >
-                  <TrashIcon className="mr-2" />
-                  Remove All Columns
+                  <TrashIcon className="size-3.5" />
+                  <span>Remove All Columns</span>
                 </button>
               </div>
             </div>
@@ -112,36 +169,36 @@ const ColumnsSection: React.FC<ColumnsSectionProps> = ({
         </div>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         {selectedColumns.map((column, index) => (
           <div
             key={column.id}
             ref={(el) => {
-              // Fix the ref assignment
               if (columnRefs.current) {
                 columnRefs.current[index] = el;
               }
             }}
-            className={`bg-white border border-gray-200 rounded p-2 flex items-center justify-between group hover:border-gray-300 shadow-sm ${draggedItem === index ? 'opacity-50 border-dashed' : ''}`}
+            className={`bg-white border border-gray-200 rounded px-2 py-1.5 flex items-center justify-between group hover:border-gray-300 shadow-sm ${draggedItem === index ? 'opacity-50 border-dashed' : ''}`}
             draggable
             onDragStart={() => handleDragStart(index)}
             onDragOver={(e) => handleDragOver(e, index)}
             onDragEnd={() => setDraggedItem(null)}
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <span className="text-gray-400 cursor-move">
-                <DragHandleIcon />
+                <DragHandleIcon className="size-3.5" />
               </span>
-              <span className="text-sm">{column.name}</span>
+              <span className="text-xs">{column.name}</span>
               {'formula' in column && (
-                <span className="ml-1 px-1.5 py-0.5 text-xs bg-blue-100 text-blue-800 rounded">Formula</span>
+                <span className="ml-0.5 px-1 py-0.5 text-[10px] bg-blue-100 text-blue-800 rounded">Formula</span>
               )}
             </div>
             <button
-              className="text-gray-400 hover:text-gray-600"
+              className="text-gray-400 hover:text-gray-600 focus:text-gray-600 focus:outline-none"
               onClick={() => removeColumn(column.id)}
+              aria-label={`Remove ${column.name} column`}
             >
-              <CrossIcon />
+              <CrossIcon className="size-3.5" />
             </button>
           </div>
         ))}
