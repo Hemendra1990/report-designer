@@ -196,6 +196,9 @@ function ReportBuilderPage() {
   const menuRef = useRef<HTMLDivElement>(null);
   const groupSearchRef = useRef<HTMLDivElement>(null);
 
+  // State for tracking if preview is expanded
+  const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
+
   // Initialize column refs
   useEffect(() => {
     columnRefs.current = columnRefs.current.slice(0, selectedColumns.length);
@@ -617,6 +620,20 @@ function ReportBuilderPage() {
     // router.push('/reports');
   };
 
+  // Toggle preview expanded state
+  const togglePreviewExpand = () => {
+    if (isPreviewExpanded) {
+      // Restore panels to their previous state
+      setLeftPanelCollapsed(false);
+      setCenterPanelCollapsed(false);
+    } else {
+      // Collapse other panels
+      setLeftPanelCollapsed(true);
+      setCenterPanelCollapsed(true);
+    }
+    setIsPreviewExpanded(!isPreviewExpanded);
+  };
+
   return (
     <>
       <ReportTypeSelectionModal
@@ -733,10 +750,8 @@ function ReportBuilderPage() {
             isLoading={isLoading}
             autoUpdatePreview={autoUpdatePreview}
             setAutoUpdatePreview={setAutoUpdatePreview}
-            onExpandView={() => {
-              setLeftPanelCollapsed(true);
-              setCenterPanelCollapsed(true);
-            }}
+            onExpandView={togglePreviewExpand}
+            isExpanded={isPreviewExpanded}
           />
         </div>
 
