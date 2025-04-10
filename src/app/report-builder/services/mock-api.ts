@@ -62,6 +62,16 @@ const generateReportTypes = (count: number): ApiReportType[] => {
 // Generate a set of report types
 const REPORT_TYPES = generateReportTypes(10);
 
+// Add a custom report type for Asset Dashboard
+REPORT_TYPES.unshift({
+  id: "custom-asset-dashboard",
+  label: "Custom Asset Dashboard",
+  name: "Custom_Asset_Dashboard",
+  description: "Custom dashboard for tracking and managing assets and related orders",
+  usedTables: ["Asset", "Order"],
+  fieldCount: 140
+});
+
 // Convert API report type to RecentReportType format
 const mapToRecentReportType = (apiReportType: ApiReportType): RecentReportType => {
   const reportTypeCategories = ["Analytics", "Customer", "Custom", "Sales", "Marketing", "Operations"];
@@ -124,7 +134,7 @@ const columnTypes = [
   "timestamptz(6)", "date", "numeric", "decimal", "float4", "float8"
 ];
 
-// Field name prefixes by table
+// Field name prefixes by table - Add Asset and Order specific fields
 const fieldPrefixes: Record<string, string[]> = {
   'account': ['name', 'industry', 'revenue', 'employees', 'type', 'region', 'status'],
   'contact': ['first_name', 'last_name', 'email', 'phone', 'title', 'department', 'status'],
@@ -132,10 +142,36 @@ const fieldPrefixes: Record<string, string[]> = {
   'opportunity': ['amount', 'stage', 'close_date', 'probability', 'type', 'source', 'forecast'],
   'campaign': ['name', 'budget', 'start_date', 'end_date', 'type', 'status', 'channel'],
   'product': ['name', 'code', 'price', 'cost', 'category', 'inventory', 'status'],
-  'order': ['number', 'date', 'status', 'amount', 'shipping', 'discount', 'tax'],
+  'order': ['number', 'date', 'status', 'amount', 'shipping', 'discount', 'tax', 'delivery_date', 
+    'customer_name', 'shipping_address', 'billing_address', 'payment_method', 'payment_status', 
+    'currency', 'items_count', 'subtotal', 'total', 'notes', 'tracking_number', 'shipping_method',
+    'priority', 'fulfillment_status', 'channel', 'sales_rep', 'warehouse', 'region', 'market',
+    'promotion_code', 'discounted', 'gift', 'international', 'returned', 'exchange', 'refund_amount'],
+  'asset': ['name', 'serial_number', 'model', 'manufacturer', 'category', 'status', 'condition',
+    'acquisition_date', 'acquisition_cost', 'current_value', 'depreciation_rate', 'location',
+    'department', 'assigned_to', 'warranty_expiry', 'maintenance_due', 'last_maintenance',
+    'lifecycle_status', 'operational_status', 'criticality', 'replacement_value', 'insurance_value',
+    'power_consumption', 'height', 'width', 'depth', 'weight', 'color', 'installation_date',
+    'certification', 'compliance_status', 'ip_address', 'mac_address', 'firmware_version', 'os_version'],
   'invoice': ['number', 'date', 'due_date', 'amount', 'status', 'tax', 'discount'],
   'case': ['number', 'subject', 'priority', 'status', 'origin', 'reason', 'description'],
   'task': ['subject', 'due_date', 'status', 'priority', 'type', 'description', 'assignee']
+};
+
+// Numeric field types for different tables
+const numericFields: Record<string, string[]> = {
+  'asset': ['acquisition_cost', 'current_value', 'depreciation_rate', 'replacement_value', 
+    'insurance_value', 'power_consumption', 'height', 'width', 'depth', 'weight', 'warranty_days'],
+  'order': ['amount', 'shipping', 'discount', 'tax', 'subtotal', 'total', 'items_count', 
+    'refund_amount', 'line_items', 'unit_price', 'quantity', 'weight', 'volume']
+};
+
+// Categorical field types for different tables
+const categoricalFields: Record<string, string[]> = {
+  'asset': ['status', 'condition', 'category', 'lifecycle_status', 'operational_status', 
+    'criticality', 'color', 'certification', 'compliance_status', 'manufacturer', 'model'],
+  'order': ['status', 'payment_method', 'payment_status', 'fulfillment_status', 'shipping_method', 
+    'priority', 'channel', 'market', 'currency', 'discounted', 'gift', 'international', 'returned']
 };
 
 // Common fields for most tables
@@ -155,10 +191,12 @@ const commonFields = [
 const generateReportTypeFields = (reportTypeId: string): ApiReportField[] => {
   // Find the report type
   const reportType = REPORT_TYPES.find(rt => rt.id === reportTypeId || rt.name === reportTypeId);
-  const tables = reportType?.usedTables || ['contact', 'contact_family__c'];
+  const tables = reportType?.usedTables || ['asset', 'order'];
   
   // Generate fields for each table
   const allFields: ApiReportField[] = [];
+  let totalFieldCount = 0;
+  const targetFieldCount = 140; // Total field count shown in image
   
   tables.forEach((tableFullName: string) => {
     // Extract base table name (lowercase, without suffixes like "History")
@@ -182,36 +220,165 @@ const generateReportTypeFields = (reportTypeId: string): ApiReportField[] => {
       });
     });
     
-    // Get prefixes for this table type or use generic ones
-    const fieldPrefix = fieldPrefixes[baseTableName] || 
-      ['name', 'type', 'status', 'description', 'category', 'code', 'value'];
+    totalFieldCount += commonFields.length;
     
-    // Add table-specific fields
-    const fieldCount = faker.number.int({ min: 10, max: 20 });
-    for (let i = 0; i < fieldCount; i++) {
-      const prefix = faker.helpers.arrayElement(fieldPrefix);
-      const suffix = faker.datatype.boolean(0.3) ? `_${faker.lorem.word()}` : '';
-      const customSuffix = faker.datatype.boolean(0.2) ? '__c' : '';
+    // Determine how many additional fields to add for this table
+    const fieldsPerTable = Math.floor((targetFieldCount - totalFieldCount) / tables.length);
+    let tableFieldsCount = 0;
+    
+    // For Asset and Order tables, use specific fields with balanced numeric/categorical distribution
+    if (baseTableName === 'asset' || baseTableName === 'order') {
+      // Add numeric fields
+      const numerics = numericFields[baseTableName] || [];
+      numerics.forEach(fieldName => {
+        if (tableFieldsCount < fieldsPerTable / 2) {
+          const columnName = fieldName;
+          const words = columnName.replace('_', ' ').split(' ');
+          const columnDisplayName = words
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+          
+          allFields.push({
+            id: generateId(),
+            columnName,
+            columnDisplayName,
+            columnType: 'numeric',
+            tableName,
+            tableId,
+            active: true
+          });
+          
+          tableFieldsCount++;
+          totalFieldCount++;
+        }
+      });
       
-      const columnName = `${prefix}${suffix}${customSuffix}`;
-      const words = columnName.replace('_', ' ').split(' ');
-      const columnDisplayName = words
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ')
-        .replace('__c', '');
+      // Add categorical fields
+      const categoricals = categoricalFields[baseTableName] || [];
+      categoricals.forEach(fieldName => {
+        if (tableFieldsCount < fieldsPerTable) {
+          const columnName = fieldName;
+          const words = columnName.replace('_', ' ').split(' ');
+          const columnDisplayName = words
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+          
+          allFields.push({
+            id: generateId(),
+            columnName,
+            columnDisplayName,
+            columnType: 'varchar',
+            tableName,
+            tableId,
+            active: true
+          });
+          
+          tableFieldsCount++;
+          totalFieldCount++;
+        }
+      });
       
+      // If we still need more fields, add generic ones from the prefixes
+      const prefix = fieldPrefixes[baseTableName] || 
+        ['name', 'type', 'status', 'description', 'category', 'code', 'value'];
+      
+      // Calculate remaining fields needed to reach fieldsPerTable
+      const remainingFields = fieldsPerTable - tableFieldsCount;
+      
+      if (remainingFields > 0) {
+        for (let i = 0; i < remainingFields; i++) {
+          const prefixIdx = i % prefix.length;
+          const fieldName = prefix[prefixIdx];
+          const suffix = `_${faker.lorem.word()}`;
+          
+          const columnName = `${fieldName}${suffix}`;
+          const words = columnName.replace('_', ' ').split(' ');
+          const columnDisplayName = words
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+          
+          // Alternate between numeric and categorical types
+          const columnType = i % 2 === 0 ? 
+            faker.helpers.arrayElement(['int4', 'decimal', 'numeric']) : 
+            'varchar';
+          
+          allFields.push({
+            id: generateId(),
+            columnName,
+            columnDisplayName,
+            columnType,
+            tableName,
+            tableId,
+            active: true
+          });
+          
+          tableFieldsCount++;
+          totalFieldCount++;
+        }
+      }
+    } else {
+      // For other tables, use the original logic
+      // Get prefixes for this table type or use generic ones
+      const fieldPrefix = fieldPrefixes[baseTableName] || 
+        ['name', 'type', 'status', 'description', 'category', 'code', 'value'];
+      
+      // Add table-specific fields
+      const fieldCount = Math.min(fieldsPerTable, faker.number.int({ min: 10, max: 20 }));
+      for (let i = 0; i < fieldCount; i++) {
+        const prefix = faker.helpers.arrayElement(fieldPrefix);
+        const suffix = faker.datatype.boolean(0.3) ? `_${faker.lorem.word()}` : '';
+        const customSuffix = faker.datatype.boolean(0.2) ? '__c' : '';
+        
+        const columnName = `${prefix}${suffix}${customSuffix}`;
+        const words = columnName.replace('_', ' ').split(' ');
+        const columnDisplayName = words
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(' ')
+          .replace('__c', '');
+        
+        allFields.push({
+          id: generateId(),
+          columnName,
+          columnDisplayName,
+          columnType: faker.helpers.arrayElement(columnTypes),
+          tableName,
+          tableId,
+          active: true
+        });
+        
+        tableFieldsCount++;
+        totalFieldCount++;
+      }
+    }
+  });
+  
+  // Ensure we have exactly the target number of fields (140)
+  if (totalFieldCount < targetFieldCount) {
+    const mainTable = tables[0].toLowerCase();
+    const tableId = allFields[0].tableId;
+    
+    for (let i = 0; i < (targetFieldCount - totalFieldCount); i++) {
+      const isNumeric = i % 2 === 0;
+      const fieldName = isNumeric ? 
+        `additional_metric_${i}` : 
+        `additional_attribute_${i}`;
+        
       allFields.push({
         id: generateId(),
-        columnName,
-        columnDisplayName,
-        columnType: faker.helpers.arrayElement(columnTypes),
-        tableName,
+        columnName: fieldName,
+        columnDisplayName: fieldName
+          .split('_')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(' '),
+        columnType: isNumeric ? 'numeric' : 'varchar',
+        tableName: mainTable,
         tableId,
         active: true
       });
     }
-  });
+  }
   
+  console.log(`Generated ${allFields.length} total fields for report type ${reportTypeId}`);
   return allFields;
 };
 

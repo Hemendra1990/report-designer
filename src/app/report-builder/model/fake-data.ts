@@ -38,6 +38,30 @@ type: "joined"
 
 export const recentReportTypes: RecentReportType[] = [
 {
+name: "Custom Asset Dashboard",
+category: "Custom",
+lastUsed: "28 days ago",
+status: "Active",
+description: "Urbs tutis vigor.",
+type: "tabular",
+createdBy: "You",
+objects: [
+{
+name: "Asset",
+icon: "📊",
+color: "#4299e1",
+relatedObjects: []
+},
+{
+name: "Order",
+icon: "📋",
+color: "#805ad5",
+relatedObjects: []
+}
+],
+fieldsCount: 140
+},
+{
 name: "Demo With SS",
 category: "Custom",
 lastUsed: "2 days ago",

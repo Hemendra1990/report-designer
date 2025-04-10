@@ -8,7 +8,7 @@ import {
 } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ReportTypesProvider } from "./context/ReportTypesContext";
+import { ReportTypesProvider, useReportTypes } from "./context/ReportTypesContext";
 
 // Import our icon components
 
@@ -144,12 +144,14 @@ async function fetchTableData(options: FetchDataOptions): Promise<ServerResponse
 // Main component
 function ReportBuilderPage() {
   const router = useRouter();
+  const { setSelectedReportTypeId } = useReportTypes();
   const [showReportTypeModal, setShowReportTypeModal] = useState(true);
   const [selectedReportType, setSelectedReportType] = useState<ReportTypeTemplate | null>(null);
 
   const handleReportTypeSelect = (reportType: ReportTypeTemplate) => {
     console.log("Selected report type:", reportType);
     setSelectedReportType(reportType);
+    setSelectedReportTypeId(reportType.id);
     setShowReportTypeModal(false);
   };
 
@@ -282,7 +284,7 @@ function ReportBuilderPage() {
   };
 
   // Handle adding a column to the report
-  const addColumn = (field: { id: string; name: string; type: string; category: string; icon: string; isFormula?: boolean; isSummaryFormula?: boolean; formula?: string; }) => {
+  const addColumn = (field: { id: string; name: string; type: string; category: string; icon?: string; isFormula?: boolean; isSummaryFormula?: boolean; formula?: string; }) => {
     if (!selectedColumns.some(col => col.id === field.id)) {
       // Ensure the field being added has the proper structure
       const newColumn: Field = {
@@ -290,7 +292,7 @@ function ReportBuilderPage() {
         name: field.name,
         type: field.type as unknown as FieldType,
         category: field.category,
-        icon: field.icon
+        icon: field.icon || '•' // Provide default icon if missing
       };
       
       // Add formula properties if needed
