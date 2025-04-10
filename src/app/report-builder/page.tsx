@@ -1173,17 +1173,40 @@ function ReportBuilderPage() {
     }
   }, [isPivotActive, autoUpdatePreview, generatePivotSQL, fetchData]);
 
-  // Inside ReportBuilderPage component, near the return statement
-  // Update to pass reportFields into ReportBuilderPanel
-  const fieldsForPanel = reportFields && reportFields.length > 0 ? 
-    reportFields.map(field => ({
-      id: field.id || field.columnName, 
-      name: field.columnDisplayName || field.name,
-      type: field.type || mapColumnTypeToFieldType(field.columnType),
-      category: field.category || field.tableName, 
-      icon: getFieldTypeIcon(field.columnType) || '•'
-    })) : 
-    accountFields;
+  // Update the fieldsForPanel construction to create a proper Record<string, any[]> structure
+  // Group fields by category to match the expected format
+  const fieldsForPanel = useMemo(() => {
+    const groupedFields: Record<string, any[]> = {};
+    
+    // If report fields are available, use them
+    if (reportFields && reportFields.length > 0) {
+      return reportFields.reduce((acc, field) => {
+        const category = field.tableName || field.category || 'Other';
+        const formattedCategory = category.charAt(0).toUpperCase() + category.slice(1);
+        
+        if (!acc[formattedCategory]) {
+          acc[formattedCategory] = [];
+        }
+        
+        acc[formattedCategory].push({
+          id: field.id || field.columnName,
+          name: field.columnDisplayName || field.name,
+          type: field.type || mapColumnTypeToFieldType(field.columnType),
+          category: field.category || field.tableName,
+          columnName: field.columnName,
+          columnDisplayName: field.columnDisplayName,
+          columnType: field.columnType,
+          tableName: field.tableName,
+          icon: getFieldTypeIcon(field.columnType) || '•'
+        });
+        
+        return acc;
+      }, {} as Record<string, any[]>);
+    }
+    
+    // Otherwise use accountFields, already grouped
+    return fieldsByCategory;
+  }, [reportFields, fieldsByCategory]);
 
   return (
     <>
@@ -1377,7 +1400,7 @@ function ReportBuilderPage() {
         <FilterFieldSelector 
           isOpen={showFilterFieldSelector}
           onClose={() => setShowFilterFieldSelector(false)}
-          fieldsByCategory={fieldsByCategory}
+          fieldsByCategory={fieldsForPanel}
           expandedCategories={expandedCategories}
           toggleCategory={toggleCategory}
           filterSearchTerm={filterSearchTerm}

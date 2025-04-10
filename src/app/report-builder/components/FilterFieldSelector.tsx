@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, FieldType } from "../model/Field";
 import { CrossIcon, SearchIcon } from "@/components/icons";
+import { useReportTypes } from '../context/ReportTypesContext';
+import { getFieldTypeIcon as utilGetFieldTypeIcon, mapColumnTypeToFieldType } from '../utils/fieldUtils';
 
 // Type for field in the selector
 interface FieldSelectorItem {
@@ -12,6 +14,16 @@ interface FieldSelectorItem {
   type: string;
   category: string;
   icon?: string;
+}
+
+// Extended field interface for API fields
+interface ExtendedField extends FieldSelectorItem {
+  columnName?: string;
+  columnDisplayName?: string;
+  columnType?: string;
+  tableName?: string;
+  tableId?: string;
+  active?: boolean;
 }
 
 interface FilterFieldSelectorProps {
@@ -27,8 +39,14 @@ interface FilterFieldSelectorProps {
   addFilter: (field: Field) => void;
 }
 
-// Helper function to get the icon for field type
+// Helper function to get the icon for field type (fallback if util function doesn't exist)
 const getFieldTypeIcon = (type: string): string => {
+  // Use the utility function if imported successfully
+  if (typeof utilGetFieldTypeIcon === 'function') {
+    return utilGetFieldTypeIcon(type);
+  }
+  
+  // Fallback implementation
   switch (type) {
     case 'text': return 'Aa';
     case 'number': return '123';
@@ -64,7 +82,7 @@ const FilterFieldSelector: React.FC<FilterFieldSelectorProps> = ({
   onSelect,
   onClose,
   isOpen,
-  fieldsByCategory,
+  fieldsByCategory: accountFieldsByCategory,
   expandedCategories,
   toggleCategory,
   filterSearchTerm,
@@ -73,6 +91,52 @@ const FilterFieldSelector: React.FC<FilterFieldSelectorProps> = ({
 }) => {
   if (!isOpen) return null;
   
+  // Get report fields from context
+  const { reportFields, isFieldsLoading, selectedReportTypeId } = useReportTypes();
+  
+  // Group report fields by tableName
+  const reportFieldsByTable = useMemo(() => {
+    if (!reportFields || !reportFields.length) {
+      return {};
+    }
+    
+    // Group fields by table
+    return reportFields.reduce((acc, field) => {
+      const tableName = field.tableName || 'Other';
+      const formattedTableName = tableName.charAt(0).toUpperCase() + tableName.slice(1);
+      
+      if (!acc[formattedTableName]) {
+        acc[formattedTableName] = [];
+      }
+      
+      acc[formattedTableName].push({
+        id: field.id,
+        name: field.columnDisplayName,
+        columnName: field.columnName,
+        columnDisplayName: field.columnDisplayName,
+        columnType: field.columnType,
+        tableName: field.tableName,
+        tableId: field.tableId,
+        type: mapColumnTypeToFieldType(field.columnType),
+        category: field.tableName,
+        active: field.active
+      } as ExtendedField);
+      
+      return acc;
+    }, {} as Record<string, ExtendedField[]>);
+  }, [reportFields]);
+  
+  // Determine which fields to display
+  const displayFieldsByCategory = useMemo(() => {
+    // If we have a selected report type, use its fields
+    if (selectedReportTypeId && reportFields.length > 0) {
+      return reportFieldsByTable;
+    }
+    
+    // Otherwise use the account fields
+    return accountFieldsByCategory;
+  }, [selectedReportTypeId, reportFields, reportFieldsByTable, accountFieldsByCategory]);
+
   // For backward compatibility and our example implementation
   const useProvidedFields = fields && onSelect;
   
@@ -178,20 +242,35 @@ const FilterFieldSelector: React.FC<FilterFieldSelectorProps> = ({
   const handleAddFilter = (field: any) => {
     const typedField: Field = {
       id: field.id,
-      name: field.name,
+      name: field.name || field.columnDisplayName,
       type: field.type as FieldType,
-      category: field.category,
+      category: field.category || field.tableName,
       icon: field.icon
     };
     addFilter(typedField);
     onClose();
   };
   
+  // Filter categories based on search term
+  const filteredCategories = useMemo(() => {
+    if (!filterSearchTerm.trim()) {
+      return Object.keys(displayFieldsByCategory);
+    }
+    
+    return Object.keys(displayFieldsByCategory).filter(category => 
+      displayFieldsByCategory[category].some((field: any) => 
+        (field.name?.toLowerCase() || '').includes(filterSearchTerm.toLowerCase()) ||
+        (field.columnDisplayName?.toLowerCase() || '').includes(filterSearchTerm.toLowerCase()) ||
+        (field.columnName?.toLowerCase() || '').includes(filterSearchTerm.toLowerCase())
+      )
+    );
+  }, [displayFieldsByCategory, filterSearchTerm]);
+  
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-          <h2 className="text-xl font-semibold">Add Filter</h2>
+          <h2 className="text-xl font-semibold">Add Filter modal</h2>
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700"
@@ -215,42 +294,70 @@ const FilterFieldSelector: React.FC<FilterFieldSelectorProps> = ({
         </div>
 
         <div className="overflow-y-auto flex-1 p-4">
-          {Object.entries(fieldsByCategory).map(([category, fields]) => (
-            <div key={category} className="mb-4">
-              <div
-                className="p-2 flex justify-between items-center cursor-pointer hover:bg-gray-50"
-                onClick={() => toggleCategory(category)}
-              >
-                <div className="text-xs font-semibold text-gray-500 uppercase">
-                  {category} FIELDS ({fields.length})
-                </div>
-                <div>&#9662;</div>
-              </div>
+          {isFieldsLoading ? (
+            <div className="p-4 text-center text-gray-500">Loading fields...</div>
+          ) : (
+            <>
+              {filteredCategories.map(category => (
+                <div key={category} className="mb-4">
+                  <div
+                    className="p-2 flex justify-between items-center cursor-pointer hover:bg-gray-50"
+                    onClick={() => toggleCategory(category)}
+                  >
+                    <div className="text-xs font-semibold text-gray-500 uppercase">
+                      {category} FIELDS ({displayFieldsByCategory[category].length})
+                    </div>
+                    <div>&#9662;</div>
+                  </div>
 
-              {expandedCategories[category] && (
-                <div className="pl-2">
-                  {fields
-                    .filter(field =>
-                      !filterSearchTerm.trim() ||
-                      field.name.toLowerCase().includes(filterSearchTerm.toLowerCase())
-                    )
-                    .map(field => (
-                      <div
-                        key={field.id}
-                        className="pl-2 pr-3 py-1.5 text-sm hover:bg-blue-50 flex items-center justify-between cursor-pointer group"
-                        onClick={() => handleAddFilter(field)}
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="w-4 h-4 flex-none">{getFieldTypeIcon(field.type)}</span>
-                          <span>{field.name}</span>
-                        </div>
-                        <span className="text-blue-600 opacity-0 group-hover:opacity-100">+</span>
-                      </div>
-                    ))}
+                  {expandedCategories[category] && (
+                    <div className="pl-2">
+                      {displayFieldsByCategory[category]
+                        .filter((field: any) =>
+                          !filterSearchTerm.trim() ||
+                          (field.name?.toLowerCase() || '').includes(filterSearchTerm.toLowerCase()) ||
+                          (field.columnDisplayName?.toLowerCase() || '').includes(filterSearchTerm.toLowerCase()) ||
+                          (field.columnName?.toLowerCase() || '').includes(filterSearchTerm.toLowerCase())
+                        )
+                        .map((field: any) => (
+                          <div
+                            key={field.id}
+                            className="pl-2 pr-3 py-1.5 text-sm hover:bg-blue-50 flex items-center justify-between cursor-pointer group"
+                            onClick={() => handleAddFilter(field)}
+                            title={field.columnName ? `${field.columnDisplayName} (${field.columnName})` : field.name}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="w-5 h-5 rounded flex items-center justify-center text-xs bg-indigo-100 text-indigo-700">
+                                {field.columnType ? getFieldTypeIcon(field.columnType) : getFieldTypeIcon(field.type)}
+                              </span>
+                              <span>{field.columnDisplayName || field.name}</span>
+                            </div>
+                            <span className="text-blue-600 opacity-0 group-hover:opacity-100">+</span>
+                          </div>
+                        ))}
+                        
+                      {displayFieldsByCategory[category].filter((field: any) =>
+                        !filterSearchTerm.trim() ||
+                        (field.name?.toLowerCase() || '').includes(filterSearchTerm.toLowerCase()) ||
+                        (field.columnDisplayName?.toLowerCase() || '').includes(filterSearchTerm.toLowerCase()) ||
+                        (field.columnName?.toLowerCase() || '').includes(filterSearchTerm.toLowerCase())
+                      ).length === 0 && filterSearchTerm.trim() !== "" && (
+                        <div className="p-2 text-sm text-gray-500">No matching fields found</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+              
+              {filteredCategories.length === 0 && (
+                <div className="p-4 text-center text-gray-500">
+                  {reportFields.length === 0 ? 
+                    "No fields available. Please select a report type." : 
+                    "No fields matching your search."}
                 </div>
               )}
-            </div>
-          ))}
+            </>
+          )}
         </div>
       </div>
     </div>
