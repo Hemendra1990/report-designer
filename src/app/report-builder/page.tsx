@@ -100,17 +100,24 @@ async function fetchTableData(options: FetchDataOptions): Promise<ServerResponse
 
   try {
     // When sending to the backend, ensure formula columns have their SQL expression and alias
-    const columnsWithFormulas = selectedColumns.map(col => {
+    const columnsWithFormulas = selectedColumns.map((col) => {
+      // Get the appropriate column name for SQL queries with fallbacks
+      const sqlColumnName = col.duckDBColumnName || col.columnName || col.id;
+      
       // Use type guard to check if the column is a formula column
-      if ('isFormula' in col) {
+      if ('isFormula' in col && col.isFormula === true) {
         const formulaCol = col as FormulaColumn;
         return {
           ...col,
+          sqlColumnName,
           sqlExpression: formulaCol.formula, // Include the formula expression
           sqlAlias: formulaCol.alias // Include the alias for SQL generation
         };
       }
-      return col;
+      return {
+        ...col,
+        sqlColumnName
+      };
     });
 
     const response = await fetch('/api/report-data', {
@@ -173,7 +180,14 @@ function ReportBuilderPage() {
             id: field.id || field.columnName,
             name: field.columnDisplayName || field.name,
             type: field.type || mapColumnTypeToFieldType(field.columnType) as FieldType,
-            category: field.category || field.tableName
+            category: field.category || field.tableName,
+            columnName: field.columnName,
+            columnDisplayName: field.columnDisplayName,
+            duckDBColumnName: field.duckDBColumnName,
+            duckDBColumnDisplayName: field.duckDBColumnDisplayName,
+            columnType: field.columnType,
+            tableName: field.tableName,
+            tableId: field.tableId
           }));
       
       setSelectedColumns(initialColumns);
@@ -348,16 +362,19 @@ function ReportBuilderPage() {
   };
 
   // Handle adding a column to the report
-  const addColumn = (field: { id: string; name: string; type: string; category: string; icon?: string; isFormula?: boolean; isSummaryFormula?: boolean; formula?: string; }) => {
+  //const addColumn = (field: { id: string; name: string; type: string; category: string; icon?: string; isFormula?: boolean; isSummaryFormula?: boolean; formula?: string; }) => {
+    const addColumn = (field: Field) => {
     if (!selectedColumns.some(col => col.id === field.id)) {
       // Ensure the field being added has the proper structure
-      const newColumn: Field = {
+      /* const newColumn: Field = {
         id: field.id,
         name: field.name,
         type: field.type as unknown as FieldType,
         category: field.category,
         icon: field.icon || '•' // Provide default icon if missing
-      };
+      }; */
+
+      const newColumn: Field = {...field};
       
       // Add formula properties if needed
       if (field.isFormula) {
@@ -443,7 +460,8 @@ function ReportBuilderPage() {
     // Cast the type to FieldType for compatibility
     const formulaColumn: FormulaColumn = {
       ...newFormulaColumn,
-      type: newFormulaColumn.type as FieldType
+      type: newFormulaColumn.type as FieldType,
+      isFormula: true, // Ensure this is always true for the FormulaColumn type
     };
     
     if (editingFormulaColumn) {
@@ -653,7 +671,8 @@ function ReportBuilderPage() {
 
   // Helper function to check if an item matches a filter
   const matchesFilter = (item: AccountData, filter: Filter): boolean => {
-    const fieldId = filter.field.id;
+    // Use duckDBColumnName with fallbacks for the field reference
+    const fieldId = filter.field.duckDBColumnName || filter.field.columnName || filter.field.id;
     const fieldValue = item[fieldId];
     
     // If the field doesn't exist on the item, it can't match
@@ -908,13 +927,18 @@ function ReportBuilderPage() {
       // Store field for use in closures
       const originalField = field;
       
+      // Get the appropriate column name for SQL and data access
+      const accessorKey = field.duckDBColumnName || field.columnName || field.id;
+      // Get the appropriate display name
+      const headerName = field.duckDBColumnDisplayName || field.columnDisplayName || field.name;
+      
       // Extract formula for summary formulas
       let formula = '';
       let calculatedValue: any = null;
       
       if (isSummaryFormula) {
         formula = (field as FormulaColumn).formula.trim();
-        console.log('Processing summary formula:', formula, 'for field:', field.id);
+        console.log('Processing summary formula:', formula, 'for field:', accessorKey);
         
         // Always attempt to evaluate the formula
         calculatedValue = evaluateFormula(formula);
@@ -958,8 +982,8 @@ function ReportBuilderPage() {
       // Create the column definition while maintaining original field properties
       return {
         id: field.id,
-        accessorKey: field.id,
-        header: field.name,
+        accessorKey: accessorKey,
+        header: headerName,
         cell: info => {
           // For formula columns, we may want to apply specific formatting
           if (isFormula) {
@@ -1033,7 +1057,9 @@ function ReportBuilderPage() {
             alias: (field as FormulaColumn).alias
           } : undefined,
           originalField,
-          calculatedValue
+          calculatedValue,
+          duckDBColumnName: field.duckDBColumnName,
+          columnName: field.columnName
         },
         minSize: 180, // Ensure minimum column width
         size: 200,    // Default column width
@@ -1087,11 +1113,14 @@ function ReportBuilderPage() {
     ];
     
     allSelectedColumns.forEach((id, index) => {
-      const column = selectedColumns.find(col => col.id === id);
-      sql += `    ${id} as "${column?.name || id}"${index < allSelectedColumns.length - 1 ? ',' : ''}\n`;
+      const column = selectedColumns.find(col => col.id === id) as Field | undefined;
+      // Use duckDBColumnName with fallbacks
+      const sqlColumnName = column?.duckDBColumnName || column?.columnName || id;
+      const displayName = column?.duckDBColumnDisplayName || column?.columnDisplayName || column?.name || id;
+      sql += `    ${sqlColumnName} as "${displayName}"${index < allSelectedColumns.length - 1 ? ',' : ''}\n`;
     });
     
-    sql += '  FROM your_table\n';
+    sql += '  FROM tabular\n';
     
     // Add filters if any
     if (filters.length > 0) {
@@ -1100,14 +1129,18 @@ function ReportBuilderPage() {
       // Simple filter logic for demonstration
       if (filterLogic === 'and') {
         filters.forEach((filter, index) => {
-          sql += `${filter.field.id} = '${filter.value}'`;
+          // Use duckDBColumnName with fallbacks
+          const sqlColumnName = filter.field.duckDBColumnName || filter.field.columnName || filter.field.id;
+          sql += `${sqlColumnName} = '${filter.value}'`;
           if (index < filters.length - 1) {
             sql += ' AND ';
           }
         });
       } else if (filterLogic === 'or') {
         filters.forEach((filter, index) => {
-          sql += `${filter.field.id} = '${filter.value}'`;
+          // Use duckDBColumnName with fallbacks
+          const sqlColumnName = filter.field.duckDBColumnName || filter.field.columnName || filter.field.id;
+          sql += `${sqlColumnName} = '${filter.value}'`;
           if (index < filters.length - 1) {
             sql += ' OR ';
           }
@@ -1127,17 +1160,26 @@ function ReportBuilderPage() {
     
     // ON clause (what to pivot)
     if (pivotColumnIds.length === 1) {
-      sql += `ON ${pivotColumnIds[0]}\n`;
+      // Find the column definition to get the duckDBColumnName
+      const pivotColumn = selectedColumns.find(col => col.id === pivotColumnIds[0]) as Field | undefined;
+      const sqlColumnName = pivotColumn?.duckDBColumnName || pivotColumn?.columnName || pivotColumnIds[0];
+      sql += `ON ${sqlColumnName}\n`;
     } else {
       // For multiple pivot columns, use concatenation as shown in DuckDB docs
-      sql += `ON ${pivotColumnIds.join(' || \'_\' || ')}\n`;
+      const pivotColumnsSql = pivotColumnIds.map(id => {
+        const column = selectedColumns.find(col => col.id === id) as Field | undefined;
+        return column?.duckDBColumnName || column?.columnName || id;
+      });
+      sql += `ON ${pivotColumnsSql.join(' || \'_\' || ')}\n`;
     }
     
     // USING clause (aggregations)
     sql += 'USING ';
     pivotValues.forEach((id, index) => {
+      const column = selectedColumns.find(col => col.id === id) as Field | undefined;
+      const sqlColumnName = column?.duckDBColumnName || column?.columnName || id;
       const aggregation = selectedAggregations[id] || 'SUM';
-      sql += `${aggregation}(${id})`;
+      sql += `${aggregation}(${sqlColumnName})`;
       
       if (index < pivotValues.length - 1) {
         sql += ', ';
@@ -1151,7 +1193,9 @@ function ReportBuilderPage() {
     if (validGroupByFields.length > 0) {
       sql += 'GROUP BY ';
       validGroupByFields.forEach((id, index) => {
-        sql += id;
+        const column = selectedColumns.find(col => col.id === id) as Field | undefined;
+        const sqlColumnName = column?.duckDBColumnName || column?.columnName || id;
+        sql += sqlColumnName;
         if (index < validGroupByFields.length - 1) {
           sql += ', ';
         }
@@ -1208,6 +1252,111 @@ function ReportBuilderPage() {
     return fieldsByCategory;
   }, [reportFields, fieldsByCategory]);
 
+  // Add a general function to generate a complete SQL statement for the report
+  // This function can be called from the TopHeaderBar component or anywhere you need SQL
+  const generateReportSQL = useCallback(() => {
+    // Start building the SQL
+    let sql = 'SELECT\n';
+    
+    // Add all selected columns to the SELECT clause
+    selectedColumns.forEach((column, index) => {
+      // Use duckDBColumnName with fallbacks
+      const sqlColumnName = column.duckDBColumnName || column.columnName || column.id;
+      
+      // For formula columns, use the formula expression with an alias
+      if ('isFormula' in column && column.isFormula === true) {
+        const formulaCol = column as FormulaColumn;
+        sql += `  ${formulaCol.formula} as "${column.name}"`;
+      } else {
+        // For regular columns, use the column name directly
+        sql += `  ${sqlColumnName}`;
+      }
+      
+      // Add comma if not the last column
+      if (index < selectedColumns.length - 1) {
+        sql += ',';
+      }
+      
+      sql += '\n';
+    });
+    
+    // Add FROM clause
+    sql += 'FROM tabular\n';
+    
+    // Add WHERE clause if filters exist
+    if (filters.length > 0) {
+      sql += 'WHERE ';
+      
+      // Apply filter logic
+      if (filterLogic === 'and') {
+        filters.forEach((filter, index) => {
+          // Use duckDBColumnName with fallbacks
+          const sqlColumnName = filter.field.duckDBColumnName || filter.field.columnName || filter.field.id;
+          
+          // Basic filter condition (this would be expanded based on operator)
+          sql += `${sqlColumnName} = '${filter.value}'`;
+          
+          if (index < filters.length - 1) {
+            sql += ' AND ';
+          }
+        });
+      } else if (filterLogic === 'or') {
+        filters.forEach((filter, index) => {
+          const sqlColumnName = filter.field.duckDBColumnName || filter.field.columnName || filter.field.id;
+          
+          sql += `${sqlColumnName} = '${filter.value}'`;
+          
+          if (index < filters.length - 1) {
+            sql += ' OR ';
+          }
+        });
+      } else {
+        // Custom formula
+        sql += customFormula;
+      }
+      
+      sql += '\n';
+    }
+    
+    // Add GROUP BY clause if grouping exists
+    if (groupByFields.length > 0) {
+      sql += 'GROUP BY ';
+      
+      groupByFields.forEach((fieldId, index) => {
+        const column = selectedColumns.find(col => col.id === fieldId) as Field | undefined;
+        const sqlColumnName = column?.duckDBColumnName || column?.columnName || fieldId;
+        
+        sql += sqlColumnName;
+        
+        if (index < groupByFields.length - 1) {
+          sql += ', ';
+        }
+      });
+      
+      sql += '\n';
+    }
+    
+    // Add ORDER BY clause if sorting exists
+    if (sorting.length > 0) {
+      sql += 'ORDER BY ';
+      
+      sorting.forEach((sort, index) => {
+        const column = selectedColumns.find(col => col.id === sort.id) as Field | undefined;
+        const sqlColumnName = column?.duckDBColumnName || column?.columnName || sort.id;
+        
+        sql += `${sqlColumnName} ${sort.desc ? 'DESC' : 'ASC'}`;
+        
+        if (index < sorting.length - 1) {
+          sql += ', ';
+        }
+      });
+      
+      sql += '\n';
+    }
+    
+    return sql;
+  }, [selectedColumns, filters, filterLogic, customFormula, groupByFields, sorting]);
+
   return (
     <>
       {/* Report Type Selection Modal */}
@@ -1235,6 +1384,8 @@ function ReportBuilderPage() {
           pivotColumnIds={pivotColumnIds}
           pivotValues={pivotValues}
           selectedAggregations={selectedAggregations}
+          // Pass the new generateReportSQL function
+          generateReportSQL={generateReportSQL}
           onSaveReport={handleSaveReport}
         />
         

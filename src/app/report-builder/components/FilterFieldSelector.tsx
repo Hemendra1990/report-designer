@@ -245,7 +245,20 @@ const FilterFieldSelector: React.FC<FilterFieldSelectorProps> = ({
       name: field.name || field.columnDisplayName,
       type: field.type as FieldType,
       category: field.category || field.tableName,
-      icon: field.icon
+      icon: field.icon,
+      columnName: field.columnName,
+      columnDisplayName: field.columnDisplayName,
+      columnType: field.columnType,
+      tableName: field.tableName,
+      tableId: field.tableId,
+      active: field.active,
+      duckDBColumnName: field.duckDBColumnName,
+      duckDBColumnDisplayName: field.duckDBColumnDisplayName,
+      isFormula: field.isFormula,
+      formula: field.formula,
+      isSummaryFormula: field.isSummaryFormula,
+      alias: field.alias,
+      description: field.description,
     };
     addFilter(typedField);
     onClose();

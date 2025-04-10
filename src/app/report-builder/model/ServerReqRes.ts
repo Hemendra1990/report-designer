@@ -1,5 +1,5 @@
 import { GroupingState, SortingState } from "@tanstack/react-table";
-import { AccountData } from "./AccountData";
+import { Field, FormulaColumn } from "./Field";
 import { Filter } from "./Filter";
 
 export interface FetchDataOptions {
@@ -7,12 +7,12 @@ export interface FetchDataOptions {
     pageSize: number;
     sorting: SortingState;
     grouping: GroupingState;
-    selectedColumns: { id: string; name: string; type: string }[];
+    selectedColumns: (Field | FormulaColumn)[];
     filters: Filter[];
   }
   
 export interface ServerResponse {
-    data: AccountData[];
+    data: any[];
     pageCount: number;
     totalRows: number;
   }
