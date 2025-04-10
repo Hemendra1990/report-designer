@@ -1,4 +1,5 @@
 import { METADATA } from "@/components/enum/query-keys";
+import { iTableMetaData } from "@/components/model/table-metadata";
 import { findAllTableMetaData, findColumnMetaDataByTableName, getRelatedData } from "@/services/crm/metadata-service";
 import { TableMetadata } from "@/services/databaseService";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -8,7 +9,7 @@ export const useAllColumnMetadataByTableName = (tableName: string) => {
         return findColumnMetaDataByTableName(tableName).then((res) => res?.data?.data);
     };
 
-    const columnListByTableName = useQuery<TableMetadata>({
+    const columnListByTableName = useQuery<iTableMetaData>({
         queryKey: [METADATA.ALL_COLUMNMETADATA_INFO, tableName],
         enabled: !!tableName,
         queryFn: allColumnMetadataByTableName,

@@ -25,7 +25,7 @@ interface ReportTypeSummaryPageProps {
 
 export default function ReportTypeSummaryPage(props: ReportTypeSummaryPageProps) {
   const { reportTypeId } = props;
-  const { reportTypeResponse: { data: reportType } } = useReportTypeById(reportTypeId);
+  const { reportType } =useReportTypeFormContext();
   const { data: availableObjects } = useAllTableMetadata();
   const deleteReportType = useDeleteReportType();
   const [showDeleteToast, setShowDeleteToast] = useState(false);

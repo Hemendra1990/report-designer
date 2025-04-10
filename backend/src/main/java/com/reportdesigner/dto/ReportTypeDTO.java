@@ -20,6 +20,7 @@ public class ReportTypeDTO {
     private String primaryTable;
     private String primaryTableDisplayName;
     private String cteQuery;
+    private String objectTree;
     private String typeGroup;
     private OffsetDateTime createdOn;
     private OffsetDateTime updatedOn;

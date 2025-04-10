@@ -60,18 +60,13 @@ interface DefineRelationshipsProps {
  * 
  */
 export default function DefineRelationships(props: DefineRelationshipsProps) {
-//   const searchParams = useSearchParams();
-//   const reportType = searchParams.get("type") || "";
-//   const primaryObjectId = searchParams.get("object") || "";
-//   const primaryObjectSchema = searchParams.get("schema") || "";
-//   const displayLabel = searchParams.get("label") || "";
-//   const apiName = searchParams.get("api") || "";
-//   const description = searchParams.get("desc") || "";
 
-  const { reportType, setReportType } = useReportTypeFormContext();
+  const { reportTypeId } = props;
+
+  const { reportType, setReportType, setReportTypeId } = useReportTypeFormContext();
   
   const [primaryObject, setPrimaryObject] = useState<AvailableObject | null>(null);
-  const [relatedObjects, setRelatedObjects] = useState<RelatedObject[]>([]);
+  const [relatedObjects, setRelatedObjects] = useState<RelatedObject[]>(reportType.objectTree ? JSON.parse(reportType.objectTree) : []);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [availableObjects, setAvailableObjects] = useState<AvailableObject[]>([]);
   const [relatedTables, setRelatedTables] = useState<TableMetadata[]>([]);
@@ -82,6 +77,12 @@ export default function DefineRelationships(props: DefineRelationshipsProps) {
   const createReportTypeMutation = useCreatereportType();
   const router = useRouter();
   const [showErrorToast, setShowErrorToast] = useState<string>('');
+
+  useEffect(() => {
+    if (reportTypeId) {
+      setReportTypeId(reportTypeId);
+    }
+  }, [reportTypeId])
   
   // Fetch available objects and initialize primary object
   useEffect(() => {
@@ -260,6 +261,7 @@ export default function DefineRelationships(props: DefineRelationshipsProps) {
 
   const handleOnSuccess = (data: any) => {
     setShowSuccessMessage(true);
+    setReportTypeId(data?.data?.data?.id);
     router.push(`/report-types/summary/${data?.data?.data?.id}`);
     // window.location.href = `/report-types/summary?type=${reportType}&object=${reportType?.primaryTable}&label=${reportType?.label}&api=${reportType?.name}&desc=${reportType?.description}`;
   }
@@ -474,7 +476,7 @@ export default function DefineRelationships(props: DefineRelationshipsProps) {
         {/* Action Buttons */}
         <div className="mt-8 flex justify-between">
           <Link href={`/report-types/select-object?type=${reportType}`}>
-            <Button variant="outline">Back</Button>
+            {!reportType?.id && <Button variant="outline">Back</Button>}
           </Link>
           <div className="flex gap-4">
             <Link href="/report-types">

@@ -25,6 +25,10 @@ import {
 import Image from "next/image";
 import { useAllReportTypes, useDeleteReportType, useInvalidateAllReportTypes } from "@/hooks/report-type-hook";
 import ToastMessage from "./summary/summary-helper";
+import { useReportTypeFormContext } from "@/contexts/report-type-form-context";
+import { defaultReportType } from "@/helper/report-type/report-type-helper";
+import { ReportType } from "@/components/model/report-type";
+import { useRouter } from "next/navigation";
 
 // Report Types with additional details
 interface BaseReportType {
@@ -91,6 +95,8 @@ export default function ReportTypesPage() {
   const deleteReportType = useDeleteReportType();
   const [showDeleteToast, setShowDeleteToast] = useState(false);
   const {invalidateAllReportTypes} = useInvalidateAllReportTypes();
+  const { setReportTypeId, setReportType } = useReportTypeFormContext();
+  const router = useRouter();
 
   useEffect(() => {
     if (Array.isArray(allReportTypeResponse?.data)) {
@@ -106,6 +112,13 @@ export default function ReportTypesPage() {
       setExistingReportTypes(transformed);
     }
   }, [allReportTypeResponse?.data]); // ✅ clean, no stringify
+
+  useEffect(() => {
+    if (isCreating) {
+      setReportTypeId('');
+      setReportType(defaultReportType);
+    }
+  }, [isCreating])
   
   
   const handleDelete = async (reportType: any) => {
@@ -123,6 +136,10 @@ export default function ReportTypesPage() {
       }
     );
   };
+
+  const handleEdit = async (reportType: any) => {
+    router.push(`/report-types/define-relationships/${reportType?.id}`);
+  }
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -457,7 +474,9 @@ export default function ReportTypesPage() {
                                 <DropdownMenuContent align="end">
                                   <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                   <DropdownMenuSeparator />
-                                  <DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => handleEdit(reportType)}
+                                  >
                                     <Edit2 className="h-4 w-4 mr-2" />
                                     Edit
                                   </DropdownMenuItem>

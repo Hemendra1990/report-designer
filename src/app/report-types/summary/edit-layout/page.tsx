@@ -31,10 +31,10 @@ interface RelatedObject {
 }
 
 export default function EditLayout() {
-  const searchParams = useSearchParams();
-  const primaryObjectId = searchParams.get("object") || "accounts";
-  const displayLabel = searchParams.get("label") || "Custom Report";
   const { reportType } = useReportTypeFormContext();
+  const primaryObjectId = reportType?.primaryTable;
+  const displayLabel = reportType?.label
+  
   
   // Initialize selectedTab with a fallback value in case reportType is not immediately available
   const [selectedTab, setSelectedTab] = useState<string>("");

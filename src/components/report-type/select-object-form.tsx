@@ -77,15 +77,17 @@ export default function SelectObjectForm(props: SelectObjectFormProps) {
             const selectedTable = availableTables.find(table => table.tableName === selectedObject);
             if (selectedTable) {
                 setSelectedSchema(selectedTable.schema);
-                setReportType({
+                setReportType((prev) => {
+                    return {
                         label: selectedTable.displayName + " Report Type",
                         name: selectedTable.tableName.toLowerCase() + "_report_type",
                         description: `Report type for ${selectedTable.displayName} objects`,
-                        typeGroup: reportTypeGroup,
+                        typeGroup: prev.typeGroup || reportTypeGroup,
                         primaryTable: selectedTable.tableName,
                         primaryTableDisplayName: selectedTable.displayName,
                         primaryTableId: selectedTable.id,
                         configList: [],
+                }
                 });
             }
         } else {
