@@ -7,28 +7,32 @@ id: "tabular",
 name: "Tabular",
 description: "Simple list of records with optional grouping. Best for creating a straightforward list of records.",
 icon: "/file.svg",
-color: "#1E88E5" // Blue
+color: "#1E88E5", // Blue
+type: "tabular"
 },
 {
 id: "summary",
 name: "Summary",
 description: "Grouped report records with subtotals and grand totals. Perfect for analyzing data across different categories.",
 icon: "/file.svg",
-color: "#43A047" // Green
+color: "#43A047", // Green
+type: "summary"
 },
 {
 id: "matrix",
 name: "Matrix",
 description: "Show data in rows and columns with grand summaries. Ideal for comparing related data points in a grid layout.",
 icon: "/file.svg",
-color: "#E53935" // Red
+color: "#E53935", // Red
+type: "matrix"
 },
 {
 id: "joined",
 name: "Joined",
 description: "Combine data from multiple related objects. Great for creating reports that span across different data entities.",
 icon: "/file.svg",
-color: "#FB8C00" // Orange
+color: "#FB8C00", // Orange
+type: "joined"
 }
 ];
 
@@ -88,28 +92,32 @@ id: "tabular-report",
 name: "Tabular Report",
 description: "Simple list view of records with columns",
 icon: "📋",
-color: "#4299e1"
+color: "#4299e1",
+type: "tabular"
 },
 {
 id: "summary-report",
 name: "Summary Report",
 description: "Grouped data with subtotals and grand totals",
 icon: "📊",
-color: "#38a169"
+color: "#38a169",
+type: "summary"
 },
 {
 id: "matrix-report",
 name: "Matrix Report",
 description: "Data summarized in a grid format with row and column groupings",
 icon: "🔢",
-color: "#805ad5"
+color: "#805ad5",
+type: "matrix"
 },
 {
 id: "joined-report",
 name: "Joined Report",
 description: "Multiple report blocks showing data from different objects",
 icon: "🔗",
-color: "#dd6b20"
+color: "#dd6b20",
+type: "joined"
 }
 ];
 

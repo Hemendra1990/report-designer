@@ -8,6 +8,7 @@ import {
 } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ReportTypesProvider } from "./context/ReportTypesContext";
 
 // Import our icon components
 
@@ -84,7 +85,9 @@ const queryClient = new QueryClient({
 export default function ReportBuilderWithQueryClient() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ReportBuilderPage />
+      <ReportTypesProvider>
+        <ReportBuilderPage />
+      </ReportTypesProvider>
     </QueryClientProvider>
   );
 }
@@ -145,6 +148,7 @@ function ReportBuilderPage() {
   const [selectedReportType, setSelectedReportType] = useState<ReportTypeTemplate | null>(null);
 
   const handleReportTypeSelect = (reportType: ReportTypeTemplate) => {
+    console.log("Selected report type:", reportType);
     setSelectedReportType(reportType);
     setShowReportTypeModal(false);
   };
@@ -278,9 +282,9 @@ function ReportBuilderPage() {
   };
 
   // Handle adding a column to the report
-  const addColumn = (field: typeof accountFields[0]) => {
+  const addColumn = (field: { id: string; name: string; type: string; category: string; icon: string; isFormula?: boolean; isSummaryFormula?: boolean; formula?: string; }) => {
     if (!selectedColumns.some(col => col.id === field.id)) {
-      // Ensure the field being added has the proper FieldType
+      // Ensure the field being added has the proper structure
       const newColumn: Field = {
         id: field.id,
         name: field.name,
@@ -288,6 +292,14 @@ function ReportBuilderPage() {
         category: field.category,
         icon: field.icon
       };
+      
+      // Add formula properties if needed
+      if (field.isFormula) {
+        newColumn.isFormula = true;
+        if (field.formula) newColumn.formula = field.formula;
+        if (field.isSummaryFormula) newColumn.isSummaryFormula = field.isSummaryFormula;
+      }
+      
       setSelectedColumns(prevColumns => [...prevColumns, newColumn]);
       if (autoUpdatePreview) {
         fetchData();
@@ -1097,6 +1109,7 @@ function ReportBuilderPage() {
 
   return (
     <>
+      {/* Report Type Selection Modal */}
       <ReportTypeSelectionModal
         isOpen={showReportTypeModal}
         onClose={handleModalClose}

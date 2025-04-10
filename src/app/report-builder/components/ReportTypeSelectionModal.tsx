@@ -7,12 +7,26 @@ import {
 import { Search, ChevronDown, X, FileText, Clock, ListChecks, BarChart4, Users, PieChart, ExternalLink, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { RecentReportType, ReportTypeTemplate } from "../model/ReportType";
-import { mockFieldList, recentReportTypes, reportTypes } from "../model/fake-data";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import { getReportTypeById, getReportTypeFields, getReportTypes } from "../services/reportTypeService";
+import { FieldsSkeletonList, ReportTypesSkeletonList } from "./ReportTypeSkeleton";
+import { groupFieldsByTable, mapColumnTypeToFieldType } from "../utils/fieldUtils";
+import { AxiosError } from 'axios';
+import { Field, FieldType } from "../model/Field";
+import { ApiReportField } from "../services/api-types";
+
+// Define an extended Field type that includes ApiReportField properties
+interface ExtendedField extends Field {
+    tableName: string;
+    columnName: string;
+    columnDisplayName: string;
+    columnType: string;
+}
 
 export function ReportTypeSelectionModal({
     isOpen,
@@ -23,107 +37,148 @@ export function ReportTypeSelectionModal({
     onClose: () => void;
     onSelect: (reportType: ReportTypeTemplate) => void;
 }) {
+    // Log the component props when the component renders
+    console.log("ReportTypeSelectionModal rendering with props:", { isOpen, onClose, onSelect });
+    
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [selectedReport, setSelectedReport] = useState<RecentReportType | null>(null);
     const [activeTab, setActiveTab] = useState<"details" | "fields">("details");
-    const [fieldsData, setFieldsData] = useState<Array<{
-        id: string;
-        name: string;
-        type: string;
-        label: string;
-        category: string;
-        isCustom?: boolean;
-    }>>([]);
-    const [fieldsLoading, setFieldsLoading] = useState(false);
-    const [fieldsError, setFieldsError] = useState<string | null>(null);
     const [fieldSearchTerm, setFieldSearchTerm] = useState("");
-
-    // Mocked fields data (in a real app, this would be fetched from the server)
-    const mockFields = useMemo(() => [...mockFieldList], []);
-
-    // Group fields by category for better organization
-    const fieldsByCategory = useMemo(() => {
-        if (!fieldsData.length) return {};
-
-        const filtered = fieldsData.filter(field =>
-            !fieldSearchTerm ||
-            field.label.toLowerCase().includes(fieldSearchTerm.toLowerCase()) ||
-            field.name.toLowerCase().includes(fieldSearchTerm.toLowerCase())
-        );
-
-        return filtered.reduce((acc, field) => {
-            if (!acc[field.category]) {
-                acc[field.category] = [];
-            }
-            acc[field.category].push(field);
-            return acc;
-        }, {} as Record<string, typeof fieldsData>);
-    }, [fieldsData, fieldSearchTerm]);
-
-    // Fetch fields data when tab changes to "fields" or when selected report changes
-    useEffect(() => {
-        if (activeTab === "fields" && selectedReport) {
-            const fetchFields = async () => {
-                setFieldsLoading(true);
-                setFieldsError(null);
-
-                try {
-                    // Simulate API call with setTimeout
-                    await new Promise(resolve => setTimeout(resolve, 800));
-                    setFieldsData(mockFields);
-                } catch (error) {
-                    console.error("Error fetching fields:", error);
-                    setFieldsError("Failed to load fields. Please try again.");
-                } finally {
-                    setFieldsLoading(false);
-                }
-            };
-
-            fetchFields();
-        }
-    }, [activeTab, selectedReport, mockFields]);
-
-    const categories = Array.from(new Set(recentReportTypes.map(report => report.category)));
-
-    const filteredReports = recentReportTypes.filter(report => {
-        const matchesSearch = report.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            report.description.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesCategory = !selectedCategory || report.category === selectedCategory;
-        return matchesSearch && matchesCategory;
+    
+    // Fetch report types
+    const { 
+        data: reportTypes = [],
+        isLoading: isReportTypesLoading,
+        error: reportTypesError,
+        refetch: refetchReportTypes
+    } = useQuery<RecentReportType[], AxiosError>({
+        queryKey: ['reportTypes'],
+        queryFn: getReportTypes,
+        enabled: isOpen, // Only fetch when modal is open
+        retry: 2, // Retry failed requests twice
+        staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
     });
+    
+    // Fetch fields for the selected report type
+    const {
+        data: reportFields = [],
+        isLoading: isFieldsLoading,
+        error: fieldsError,
+        refetch: refetchFields
+    } = useQuery<ExtendedField[], AxiosError>({
+        queryKey: ['reportFields', selectedReport?.name],
+        queryFn: async () => {
+            if (!selectedReport) return Promise.resolve([]);
+            // Use the report ID if available, otherwise use the name
+            const reportTypeId = selectedReport?.name;
+            // Get API fields and convert them to the Field type format
+            const apiFields = await getReportTypeFields(reportTypeId);
+            console.log('API Fields from service:', apiFields);
+            
+            const mappedFields = apiFields.map(apiField => ({
+                id: apiField.id,
+                name: apiField.columnDisplayName,
+                type: mapColumnTypeToFieldType(apiField.columnType) as FieldType,
+                category: apiField.tableName,
+                // Keep original properties needed by groupFieldsByTable
+                tableName: apiField.tableName,
+                columnName: apiField.columnName,
+                columnDisplayName: apiField.columnDisplayName,
+                columnType: apiField.columnType,
+                tableId: apiField.tableId,
+                active: apiField.active
+            } as ExtendedField));
+            
+            console.log('Mapped fields:', mappedFields);
+            return mappedFields;
+        },
+        enabled: !!selectedReport && activeTab === "fields",
+        retry: 2,
+    });
+
+    // Extract unique categories from report types
+    const categories = useMemo(() => {
+        return Array.from(new Set(reportTypes.map(report => report.category)));
+    }, [reportTypes]);
+
+    // Group fields by table name for better organization
+    const fieldsByCategory = useMemo(() => {
+        if (!reportFields.length) return {};
+
+        console.log('Report fields before filtering:', reportFields);
+        
+        const filtered = reportFields.filter(field =>
+            !fieldSearchTerm ||
+            (field.name || field.columnDisplayName || '').toLowerCase().includes(fieldSearchTerm.toLowerCase()) ||
+            (field.columnName || '').toLowerCase().includes(fieldSearchTerm.toLowerCase())
+        );
+        
+        console.log('Filtered fields before grouping:', filtered);
+        
+        const result = groupFieldsByTable(filtered as unknown as ApiReportField[]);
+        console.log('Grouped fields result:', result);
+        return result;
+    }, [reportFields, fieldSearchTerm]);
+
+    // Filter report types based on search and category
+    const filteredReports = useMemo(() => {
+        return reportTypes.filter(report => {
+            const matchesSearch = report.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                report.description.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesCategory = !selectedCategory || report.category === selectedCategory;
+            return matchesSearch && matchesCategory;
+        });
+    }, [reportTypes, searchTerm, selectedCategory]);
+
+    // When selecting a report, reset to details tab
+    const handleReportSelect = (report: RecentReportType) => {
+        setSelectedReport(report);
+        setActiveTab("details"); // Reset to details tab when selecting a new report
+    };
+
+    // Handle starting a report
+    const handleStartReport = async () => {
+        console.log("Start Report clicked", selectedReport);
+        if (selectedReport) {
+            try {
+                // Find the report type ID from the selected report
+                const reportTypeId = selectedReport.type;
+                console.log("Creating report template with type:", reportTypeId);
+                
+                // Create a ReportTypeTemplate from the selected report
+                const reportTemplate: ReportTypeTemplate = {
+                    id: reportTypeId,
+                    name: selectedReport.name,
+                    description: selectedReport.description,
+                    icon: selectedReport.objects?.[0]?.icon || "/file.svg",
+                    color: selectedReport.objects?.[0]?.color || "#4299e1",
+                    type: selectedReport.type
+                };
+                
+                console.log("Calling onSelect with template:", reportTemplate);
+                // Pass the template to the onSelect callback
+                onSelect(reportTemplate);
+            } catch (error) {
+                console.error("Error starting report:", error);
+            }
+        }
+    };
 
     // Helper function to get field icon based on type
     const getFieldTypeIcon = (type: string) => {
         switch (type) {
+            case 'varchar':
             case 'text':
                 return <span className="text-blue-600">Aa</span>;
-            case 'textarea':
-                return <span className="text-blue-600">¶</span>;
-            case 'number':
+            case 'int8':
+            case 'bigserial':
                 return <span className="text-purple-600">#</span>;
-            case 'currency':
-                return <span className="text-green-600">$</span>;
-            case 'percent':
-                return <span className="text-orange-600">%</span>;
-            case 'date':
-            case 'datetime':
+            case 'timestamptz(6)':
+            case 'timestamp':
                 return <Clock className="h-3 w-3" />;
-            case 'picklist':
-            case 'multipicklist':
-                return <ListChecks className="h-3 w-3" />;
-            case 'reference':
-                return <ExternalLink className="h-3 w-3" />;
-            case 'id':
-                return <span className="text-gray-600">ID</span>;
-            case 'checkbox':
+            case 'bool':
                 return <span className="text-green-600">✓</span>;
-            case 'email':
-                return <span className="text-blue-600">@</span>;
-            case 'url':
-                return <span className="text-blue-600">🔗</span>;
-            case 'phone':
-                return <span className="text-blue-600">📞</span>;
             default:
                 return <span className="text-gray-600">•</span>;
         }
@@ -135,23 +190,19 @@ export function ReportTypeSelectionModal({
             case 'Analytics': return <BarChart4 className="h-3.5 w-3.5" />;
             case 'Customer': return <Users className="h-3.5 w-3.5" />;
             case 'Custom': return <Sparkles className="h-3.5 w-3.5" />;
+            case 'Sales': return <PieChart className="h-3.5 w-3.5" />;
             default: return <PieChart className="h-3.5 w-3.5" />;
         }
     };
 
-    const handleReportSelect = (report: RecentReportType) => {
-        setSelectedReport(report);
-        setActiveTab("details"); // Reset to details tab when selecting a new report
-    };
+    // Display error messages if needed
+    if (reportTypesError) {
+        console.error('Error loading report types:', reportTypesError);
+    }
 
-    const handleStartReport = () => {
-        if (selectedReport) {
-            const reportTemplate = reportTypes.find(rt => rt.id === selectedReport.type);
-            if (reportTemplate) {
-                onSelect(reportTemplate);
-            }
-        }
-    };
+    if (fieldsError) {
+        console.error('Error loading report fields:', fieldsError);
+    }
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -172,21 +223,34 @@ export function ReportTypeSelectionModal({
                             <PieChart className={cn("h-3.5 w-3.5", !selectedCategory ? "text-white" : "text-slate-500")} />
                             All Reports
                         </button>
-                        {categories.map((category) => (
-                            <button
-                                key={category}
-                                onClick={() => setSelectedCategory(category)}
-                                className={cn(
-                                    "w-full text-left px-2.5 py-1.5 text-xs rounded-md flex items-center gap-2 transition-all",
-                                    selectedCategory === category 
-                                        ? "bg-primary/10 text-primary font-medium" 
-                                        : "hover:bg-slate-100 text-slate-700"
-                                )}
-                            >
-                                {getCategoryIcon(category)}
-                                {category}
-                            </button>
-                        ))}
+                        
+                        {/* Show loading skeleton for categories or actual categories */}
+                        {isReportTypesLoading ? (
+                            // Category loading skeletons
+                            Array(4).fill(0).map((_, idx) => (
+                                <div key={idx} className="w-full px-2.5 py-1.5 flex items-center gap-2">
+                                    <div className="h-3.5 w-3.5 bg-slate-200 rounded-full animate-pulse"></div>
+                                    <div className="h-3 w-20 bg-slate-200 rounded animate-pulse"></div>
+                                </div>
+                            ))
+                        ) : (
+                            // Actual categories when loaded
+                            categories.map((category) => (
+                                <button
+                                    key={category}
+                                    onClick={() => setSelectedCategory(category)}
+                                    className={cn(
+                                        "w-full text-left px-2.5 py-1.5 text-xs rounded-md flex items-center gap-2 transition-all",
+                                        selectedCategory === category 
+                                            ? "bg-primary/10 text-primary font-medium" 
+                                            : "hover:bg-slate-100 text-slate-700"
+                                    )}
+                                >
+                                    {getCategoryIcon(category)}
+                                    {category}
+                                </button>
+                            ))
+                        )}
                     </div>
                 </div>
 
@@ -211,10 +275,21 @@ export function ReportTypeSelectionModal({
                             />
                         </div>
 
-                        <h3 className="text-sm font-medium mb-2.5 text-slate-700">Recently Used Report Types</h3>
+                        <h3 className="text-sm font-medium mb-2.5 text-slate-700">Available Report Types</h3>
 
                         <div className="space-y-2 overflow-y-auto flex-1 pr-1">
-                            {filteredReports.length > 0 ? (
+                            {isReportTypesLoading ? (
+                                // Show skeletons when loading
+                                <ReportTypesSkeletonList />
+                            ) : reportTypesError ? (
+                                // Show error state
+                                <div className="p-6 text-center bg-slate-50 rounded-md border border-dashed border-slate-200">
+                                    <X className="h-8 w-8 mx-auto mb-2 text-red-400" />
+                                    <p className="text-slate-500 font-medium text-sm">Failed to load report types</p>
+                                    <p className="text-xs text-slate-400 mt-1">Please try refreshing the page</p>
+                                </div>
+                            ) : filteredReports.length > 0 ? (
+                                // Show actual report types when loaded
                                 filteredReports.map((report, index) => (
                                     <div
                                         key={index}
@@ -298,6 +373,7 @@ export function ReportTypeSelectionModal({
                                     </div>
                                 ))
                             ) : (
+                                // Show empty state when no results
                                 <div className="p-6 text-center bg-slate-50 rounded-md border border-dashed border-slate-200">
                                     <Search className="h-8 w-8 mx-auto mb-2 text-slate-300" />
                                     <p className="text-slate-500 font-medium text-sm">No matching report types</p>
@@ -416,14 +492,16 @@ export function ReportTypeSelectionModal({
                                             />
                                         </div>
 
-                                        {fieldsLoading ? (
-                                            <div className="flex-1 flex items-center justify-center">
-                                                <div className="animate-spin h-6 w-6 border-t-2 border-b-2 border-primary rounded-full"></div>
-                                            </div>
+                                        {isFieldsLoading ? (
+                                            // Loading skeleton for fields
+                                            <ScrollArea className="flex-1 pr-3 -mr-3">
+                                                <FieldsSkeletonList />
+                                            </ScrollArea>
                                         ) : fieldsError ? (
+                                            // Error state for fields
                                             <div className="flex-1 flex items-center justify-center">
                                                 <div className="text-center">
-                                                    <p className="text-red-500 text-xs mb-2">{fieldsError}</p>
+                                                    <p className="text-red-500 text-xs mb-2">Failed to load fields</p>
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
@@ -435,6 +513,7 @@ export function ReportTypeSelectionModal({
                                                 </div>
                                             </div>
                                         ) : Object.keys(fieldsByCategory).length === 0 ? (
+                                            // Empty state for fields
                                             <div className="flex-1 flex items-center justify-center">
                                                 <div className="text-center">
                                                     <ListChecks className="h-10 w-10 mx-auto mb-2 text-slate-300" />
@@ -442,6 +521,7 @@ export function ReportTypeSelectionModal({
                                                 </div>
                                             </div>
                                         ) : (
+                                            // Display fields grouped by table
                                             <ScrollArea className="flex-1 pr-3 -mr-3">
                                                 <div className="space-y-4">
                                                     {Object.entries(fieldsByCategory).map(([category, fields]) => (
@@ -454,20 +534,16 @@ export function ReportTypeSelectionModal({
                                                                         className="flex items-center justify-between py-1 px-1.5 hover:bg-slate-50 rounded text-xs group"
                                                                     >
                                                                         <div className="flex items-center gap-1.5">
-                                                                            <div className={`w-5 h-5 rounded flex items-center justify-center text-[0.65rem] ${
-                                                                                field.isCustom
-                                                                                    ? 'bg-purple-100 text-purple-600'
-                                                                                    : 'bg-blue-100 text-blue-600'
-                                                                            }`}>
-                                                                                {getFieldTypeIcon(field.type)}
+                                                                            <div className="w-5 h-5 rounded flex items-center justify-center text-[0.65rem] bg-blue-100 text-blue-600">
+                                                                                {getFieldTypeIcon(field.columnType)}
                                                                             </div>
                                                                             <div>
-                                                                                <div className="font-medium text-slate-800">{field.label}</div>
-                                                                                <div className="text-[0.65rem] text-slate-500">{field.name}</div>
+                                                                                <div className="font-medium text-slate-800">{field.columnDisplayName}</div>
+                                                                                <div className="text-[0.65rem] text-slate-500">{field.columnName}</div>
                                                                             </div>
                                                                         </div>
                                                                         <div className="opacity-0 group-hover:opacity-100 text-[0.65rem] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-sm">
-                                                                            {field.type}
+                                                                            {field.columnType}
                                                                         </div>
                                                                     </div>
                                                                 ))}
