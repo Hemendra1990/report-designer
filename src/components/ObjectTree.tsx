@@ -646,15 +646,6 @@ const ObjectTree: React.FC<ObjectTreeProps> = ({
           </div>
         </div>
       )}
-      {
-        <>
-        <hr></hr>
-        {JSON.stringify(relatedObjects)}
-        <hr></hr>
-        {JSON.stringify(reportType)}
-        </>
-        
-      }
     </div>
   );
 };

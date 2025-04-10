@@ -47,12 +47,14 @@ export const useInvalidateAllReportTypes = () => {
 
 export const useCreatereportType = () => {
     return useMutation({
-        mutationFn: ({ payload }: { payload: ReportType }) => {
+        mutationFn: ({ payload, onSuccess, onError }: { payload: ReportType, onSuccess?: () => void, onError?: () => void }) => {
             return createReportType(payload);
         },
         onSuccess: () => {
+
         },
         onError: () => {
+            
         },
     });
 };

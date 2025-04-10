@@ -42,9 +42,22 @@ public class ReportTypeService {
     public ReportTypeDTO saveOrUpdate(ReportTypeDTO reportTypeDTO) throws ValidationException {
         try {
             ReportType reportType = prepareAndValidateReportType(reportTypeDTO);
+            List<ReportTypeLayout> layoutList = reportType.getLayoutList();
+            List<ReportTypeConfig> configList = reportType.getConfigList();
+
+            reportType.setLayoutList(List.of());
+            reportType.setConfigList(List.of());
+
             ReportType savedReportType = reportTypeRepository.save(reportType);
+
+            configList.forEach(c -> c.setReportType(savedReportType));
+            layoutList.forEach(c -> c.setReportType(savedReportType));
+
+            reportType.setLayoutList(reportTypeLayoutRepository.saveAll(layoutList));
+            reportType.setConfigList(reportTypeConfigRepository.saveAll(configList));
             return reportTypeMapper.toDto(savedReportType);
         } catch (Exception ex) {
+            ex.printStackTrace();
             throw new ValidationException(ex.getMessage(), ErrorCode.ERR_PROCESSING, "ReportTypeService.saveOrUpdate");
         }
     }
@@ -94,26 +107,26 @@ public class ReportTypeService {
         dtoConfigList.sort(Comparator.comparingInt(ReportTypeConfigDTO::getSortOrder));
 
         StringBuilder cteBuilder = new StringBuilder();
-        cteBuilder.append("WITH ").append(name).append(" AS (\n"); //TODO naming cov check
+        cteBuilder.append("WITH ").append(name).append(" AS ("); //TODO naming cov check
 
         // SELECT clause
         cteBuilder.append("SELECT ");
         String selectClause = layoutList.stream()
                 .map(layout -> layout.getTableName() + "." + layout.getColumnName())
                 .collect(Collectors.joining(", "));
-        cteBuilder.append(selectClause).append("\n");
+        cteBuilder.append(selectClause).append(" ");
 
         // FROM and JOINs
-        cteBuilder.append("FROM ").append(primaryTableName).append(" ").append(primaryTableName).append("\n");
+        cteBuilder.append("FROM ").append(primaryTableName).append(" ").append(primaryTableName).append(" ");
 
         dtoConfigList.forEach(config ->
-                cteBuilder.append(config.getJoinType()).append(" ")
+                cteBuilder.append(config.getJoinType()).append(" ").append("join").append(" ")
                         .append(config.getJoinTableName()).append(" ").append(config.getJoinTableName()).append(" ON ")
                         .append(config.getPrimaryTableName()).append(".").append(config.getFromColumn())
-                        .append(" = ").append(config.getJoinTableName()).append(".").append(config.getReferColumn()).append("\n")
+                        .append(" = ").append(config.getJoinTableName()).append(".").append(config.getReferColumn()).append(" ")
         );
 
-        cteBuilder.append(")\n");
+        cteBuilder.append(") ");
 
         return cteBuilder.toString();
     }

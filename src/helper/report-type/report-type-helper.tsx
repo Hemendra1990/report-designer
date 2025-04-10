@@ -72,6 +72,13 @@ export const useReportTypeConfigGeneration = () => {
 
     const handleObjectRemove = (tableName: string) => {
         // While removing a entity from object tree, remove the corresponding report type config and layout
+        setReportType((prev) => {
+            return {
+                ...prev,
+                configList: prev.configList?.filter((config) => config.joinTableName != tableName),
+                layoutList: prev.layoutList?.filter((layout) => layout.tableName != tableName)
+            }
+        })
     }
 
     return { reportTypeConfigGeneration, handleObjectRemove }; 

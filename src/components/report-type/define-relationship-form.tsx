@@ -13,6 +13,7 @@ import { getRelatedData } from "@/services/crm/metadata-service";
 import { useReportTypeFormContext } from "@/contexts/report-type-form-context";
 import { iTableMetaData } from "../model/table-metadata";
 import { useReportTypeConfigGeneration } from "@/helper/report-type/report-type-helper";
+import { useCreatereportType } from "@/hooks/report-type-hook";
 
 // Define letters for objects
 const letters = ["A", "B", "C", "D", "E", "F", "G", "H"];
@@ -65,7 +66,7 @@ export default function DefineRelationships(props: DefineRelationshipsProps) {
 //   const apiName = searchParams.get("api") || "";
 //   const description = searchParams.get("desc") || "";
 
-  const { reportType } = useReportTypeFormContext();
+  const { reportType, setReportType } = useReportTypeFormContext();
   
   const [primaryObject, setPrimaryObject] = useState<AvailableObject | null>(null);
   const [relatedObjects, setRelatedObjects] = useState<RelatedObject[]>([]);
@@ -75,7 +76,8 @@ export default function DefineRelationships(props: DefineRelationshipsProps) {
   const [isLoadingRelated, setIsLoadingRelated] = useState(false);
   const [isLoadingAvailableObjects, setIsLoadingAvailableObjects] = useState(false);
   const { data: allTableMetaData, isLoading } = useAllTableMetadata();
-  const { reportTypeConfigGeneration } = useReportTypeConfigGeneration();
+  const { reportTypeConfigGeneration, handleObjectRemove } = useReportTypeConfigGeneration();
+  const createReportTypeMutation = useCreatereportType();
   
   // Fetch available objects and initialize primary object
   useEffect(() => {
@@ -230,8 +232,7 @@ export default function DefineRelationships(props: DefineRelationshipsProps) {
   // Handle removing related object
   const handleRemoveRelatedObject = (index: number) => {
     const updatedObjects = [...relatedObjects];
-    console.log('Removing object:', updatedObjects[index]);
-    debugger
+    handleObjectRemove(updatedObjects[index].objectId);
     updatedObjects.splice(index, 1);
     setRelatedObjects(updatedObjects);
   };
@@ -248,17 +249,18 @@ export default function DefineRelationships(props: DefineRelationshipsProps) {
     fetchAvailableObjectsForParent(parentId);
   };
 
+  const handleOnError = () => {}
+
+  const handleOnSuccess = () => {
+    setShowSuccessMessage(true);
+    window.location.href = `/report-types/summary?type=${reportType}&object=${reportType?.primaryTable}&label=${reportType?.label}&api=${reportType?.name}&desc=${reportType?.description}`;
+  }
+
   // Handle form submission
   const handleSubmit = () => {
+    // use Save mutation here
+    createReportTypeMutation.mutate({payload: reportType});
     // In a real app, this would submit to the server
-    setShowSuccessMessage(true);
-    
-    // Navigate to summary page after a short delay
-    setTimeout(() => {
-      // Redirect to summary page with relevant params
-    //   window.location.href = `/report-types/summary?type=${reportType}&object=${primaryObjectId}&label=${displayLabel}&api=${apiName}&desc=${description}`;
-      window.location.href = `/report-types/summary?type=${reportType}&object=${reportType?.primaryTable}&label=${reportType?.label}&api=${reportType?.name}&desc=${reportType?.description}`;
-    }, 1500);
   };
 
   // Prepare data for VennDiagram component

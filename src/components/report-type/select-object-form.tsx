@@ -27,7 +27,7 @@ export default function SelectObjectForm(props: SelectObjectFormProps) {
     const { reportTypeId } = props;
     const { setReportTypeId, reportType, setReportType } = useReportTypeFormContext();
 
-    const [selectedObject, setSelectedObject] = useState<string>("");
+    const [selectedObject, setSelectedObject] = useState<string>(reportType.primaryTable || "");
     const { data: selectedTableColumns } = useAllColumnMetadataByTableName(selectedObject);
     const [selectedSchema, setSelectedSchema] = useState<string>("");
 
