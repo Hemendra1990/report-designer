@@ -6,6 +6,9 @@ import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useReportTypeFormContext } from "@/contexts/report-type-form-context";
+import { useDeleteReportType } from "@/hooks/report-type-hook";
+import ToastMessage from "./summary-helper";
 
 // Sample list of available objects for reference (same as in other pages)
 const availableObjects = [
@@ -181,11 +184,14 @@ interface RelatedObject {
 
 export default function ReportTypeSummary() {
   const searchParams = useSearchParams();
-  const reportType = searchParams.get("type") || "tabular";
+  const reportTypes = searchParams.get("type") || "tabular";
   const primaryObjectId = searchParams.get("object") || "account";
   const displayLabel = searchParams.get("label") || "Custom Report";
   const apiName = searchParams.get("api") || "Custom_Report__c";
   const description = searchParams.get("desc") || "Custom report type for data analysis";
+  const { reportType } = useReportTypeFormContext();
+  const deleteReportType = useDeleteReportType();
+  const [showDeleteToast, setShowDeleteToast] = useState(false);
   
   const [reportId, setReportId] = useState<string>("");
   const [createdDate, setCreatedDate] = useState<string>("");
@@ -271,6 +277,22 @@ export default function ReportTypeSummary() {
     
     return result;
   };
+
+
+  const handleDelete = () => {
+    deleteReportType.mutate(
+      { reportTypeId: reportType?.id as string },
+      {
+        onSuccess: () => {
+          setShowDeleteToast(true);
+          setTimeout(() => setShowDeleteToast(false), 3000);
+        },
+        onError: (error) => {
+          console.error("Error during deletion:", error);
+        },
+      }
+    );
+  };
   
   const relatedObjectsDetails = getObjectDetails();
   
@@ -279,30 +301,6 @@ export default function ReportTypeSummary() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Navigation Bar */}
-      {/* <nav className="bg-primary text-primary-foreground py-4 px-6 shadow-md">
-        <div className="container mx-auto flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <Image 
-              src="/next.svg" 
-              alt="Report Designer Logo" 
-              width={80} 
-              height={20}
-              className="dark:invert" 
-            />
-            <span className="font-bold text-lg">Report Designer</span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link href="/">
-              <Button variant="ghost">Home</Button>
-            </Link>
-            <Link href="/reports">
-              <Button variant="ghost">Reports</Button>
-            </Link>
-          </div>
-        </div>
-      </nav> */}
-
       {/* Main Content */}
       <main className="container mx-auto py-8 px-4">
         {/* Page Header */}
@@ -344,6 +342,10 @@ export default function ReportTypeSummary() {
             <span className="font-medium">Report Type Created Successfully</span>
           </div>
         </div>
+
+        {showDeleteToast && (
+          <ToastMessage type="success" message="Report Type Deleted Successfully" />
+        )}
 
         <div className="grid md:grid-cols-[2fr_1fr] gap-8">
           {/* Main Information */}
@@ -452,7 +454,7 @@ export default function ReportTypeSummary() {
                 <div className="space-y-4">
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-muted-foreground">Report Type Format</p>
-                    <p className="capitalize">{reportType}</p>
+                    <p className="capitalize">{reportTypes}</p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-muted-foreground">Primary Object</p>
@@ -504,7 +506,7 @@ export default function ReportTypeSummary() {
                     </svg>
                     Clone
                   </Button>
-                  <Button className="w-full justify-start" variant="outline">
+                  <Button className="w-full justify-start" variant="outline" onClick={handleDelete}>
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
                       <path d="M3 6h18" />
                       <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
