@@ -53,13 +53,13 @@ const fieldsByCategory = accountFields.reduce((acc, field) => {
 // Replace the static initialSelectedColumns with a more dynamic approach
 // Sample selected columns for the report - will be replaced with actual report fields
 const initialSampleColumns: Field[] = [
-  { id: "last_activity", name: "Last Activity", type: "datetime" },
-  { id: "account_owner", name: "Account Owner", type: "user" },
-  { id: "account_name", name: "Account Name", type: "text" },
-  { id: "billing_state", name: "Billing State/Province", type: "text" },
-  { id: "type", name: "Type", type: "picklist" },
-  { id: "rating", name: "Rating", type: "picklist" },
-  { id: "last_modified_date", name: "Last Modified Date", type: "datetime" },
+  { id: "last_activity", name: "Last Activity", type: "datetime", columnName: "last_activity", columnDisplayName: "Last Activity", duckDBColumnName: "last_activity", duckDBColumnDisplayName: "Last Activity", columnType: "datetime", tableName: "account", tableId: "account", active: true   },
+  { id: "account_owner", name: "Account Owner", type: "user", columnName: "account_owner", columnDisplayName: "Account Owner", duckDBColumnName: "account_owner", duckDBColumnDisplayName: "Account Owner", columnType: "user", tableName: "account", tableId: "account", active: true },
+  { id: "account_name", name: "Account Name", type: "text", columnName: "account_name", columnDisplayName: "Account Name", duckDBColumnName: "account_name", duckDBColumnDisplayName: "Account Name", columnType: "text", tableName: "account", tableId: "account", active: true },
+  { id: "billing_state", name: "Billing State/Province", type: "text", columnName: "billing_state", columnDisplayName: "Billing State/Province", duckDBColumnName: "billing_state", duckDBColumnDisplayName: "Billing State/Province", columnType: "text", tableName: "account", tableId: "account", active: true },
+  { id: "type", name: "Type", type: "picklist", columnName: "type", columnDisplayName: "Type", duckDBColumnName: "type", duckDBColumnDisplayName: "Type", columnType: "picklist", tableName: "account", tableId: "account", active: true },
+  { id: "rating", name: "Rating", type: "picklist", columnName: "rating", columnDisplayName: "Rating", duckDBColumnName: "rating", duckDBColumnDisplayName: "Rating", columnType: "picklist", tableName: "account", tableId: "account", active: true },
+  { id: "last_modified_date", name: "Last Modified Date", type: "datetime", columnName: "last_modified_date", columnDisplayName: "Last Modified Date", duckDBColumnName: "last_modified_date", duckDBColumnDisplayName: "Last Modified Date", columnType: "datetime", tableName: "account", tableId: "account", active: true },
 ];
 
 // Drag and drop helper function

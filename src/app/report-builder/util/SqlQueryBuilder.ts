@@ -53,6 +53,7 @@ export function buildSqlQuery(options: SqlQueryOptions): string {
     ]));
     
     // SELECT clause for base data
+    console.log('allNeededColumns', allNeededColumns);
     sql += '  SELECT\n';
     allNeededColumns.forEach((id, index) => {
       const column = selectedColumns.find(col => col.id === id);

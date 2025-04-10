@@ -15,6 +15,16 @@ export interface Field {
   description?: string;
   alias?: string;
   isSummaryFormula?: boolean;
+
+  // Additional fields from the JSON
+  columnName?: string;
+  columnDisplayName?: string;
+  duckDBColumnName?: string;
+  duckDBColumnDisplayName?: string;
+  columnType?: string;
+  tableName?: string;
+  tableId?: string;
+  active?: boolean;
 }
 
 // Formula column interface that extends Field
