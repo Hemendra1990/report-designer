@@ -9,6 +9,7 @@ import {
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ReportTypesProvider, useReportTypes } from "./context/ReportTypesContext";
+import { mapColumnTypeToFieldType, getFieldTypeIcon } from "./utils/fieldUtils";
 
 // Import our icon components
 
@@ -49,8 +50,9 @@ const fieldsByCategory = accountFields.reduce((acc, field) => {
   return acc;
 }, {} as Record<string, typeof accountFields>);
 
-// Sample selected columns for the report
-const initialSelectedColumns: Field[] = [
+// Replace the static initialSelectedColumns with a more dynamic approach
+// Sample selected columns for the report - will be replaced with actual report fields
+const initialSampleColumns: Field[] = [
   { id: "last_activity", name: "Last Activity", type: "datetime" },
   { id: "account_owner", name: "Account Owner", type: "user" },
   { id: "account_name", name: "Account Name", type: "text" },
@@ -144,14 +146,44 @@ async function fetchTableData(options: FetchDataOptions): Promise<ServerResponse
 // Main component
 function ReportBuilderPage() {
   const router = useRouter();
-  const { setSelectedReportTypeId } = useReportTypes();
+  const { setSelectedReportTypeId, reportFields, isFieldsLoading } = useReportTypes();
   const [showReportTypeModal, setShowReportTypeModal] = useState(true);
   const [selectedReportType, setSelectedReportType] = useState<ReportTypeTemplate | null>(null);
+
+  // Initialize with sample columns, will be updated when report type is selected
+  const [selectedColumns, setSelectedColumns] = useState<(Field | FormulaColumn)[]>(initialSampleColumns);
+
+  // Effect to update selectedColumns when reportFields change
+  useEffect(() => {
+    if (reportFields && reportFields.length > 0) {
+      console.log('Setting initial columns from report fields:', reportFields);
+      
+      // Take the first 5-7 fields to initialize columns (or fewer if not enough fields)
+      const fieldsToShow = Math.min(7, reportFields.length);
+      /* const initialColumns = reportFields.slice(0, fieldsToShow).map(field => ({
+        id: field.id || field.columnName,
+        name: field.columnDisplayName || field.name,
+        type: field.type || mapColumnTypeToFieldType(field.columnType) as FieldType,
+        category: field.category || field.tableName
+      })); */
+      const initialColumns = [...reportFields]
+          .sort(() => Math.random() - 0.5) // shuffle the array
+          .slice(0, fieldsToShow) // pick random `n` fields
+          .map(field => ({
+            id: field.id || field.columnName,
+            name: field.columnDisplayName || field.name,
+            type: field.type || mapColumnTypeToFieldType(field.columnType) as FieldType,
+            category: field.category || field.tableName
+          }));
+      
+      setSelectedColumns(initialColumns);
+    }
+  }, [reportFields]);
 
   const handleReportTypeSelect = (reportType: ReportTypeTemplate) => {
     console.log("Selected report type:", reportType);
     setSelectedReportType(reportType);
-    setSelectedReportTypeId(reportType.id);
+    setSelectedReportTypeId(reportType.id); // Set the selected report type ID in context
     setShowReportTypeModal(false);
   };
 
@@ -164,12 +196,44 @@ function ReportBuilderPage() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [formulaSearchTerm, setFormulaSearchTerm] = useState("");
-  const [selectedColumns, setSelectedColumns] = useState<(Field | FormulaColumn)[]>(initialSelectedColumns);
-  const [expandedCategories, setExpandedCategories] = useState({
-    general: true,
-    address: false,
-    system: false,
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>(() => {
+    // Default categories to expand
+    const defaults = {
+      general: true,
+      address: false,
+      system: false,
+      asset: true,
+      order: true
+    };
+    
+    return defaults;
   });
+
+  // Add an effect to update expandedCategories when report fields change
+  useEffect(() => {
+    if (reportFields && reportFields.length > 0) {
+      // Extract unique table names from report fields
+      const tables = new Set(reportFields.map(field => 
+        (field.tableName || '').toLowerCase()
+      ).filter(Boolean));
+      
+      // Update expandedCategories to include these tables
+      if (tables.size > 0) {
+        setExpandedCategories(prev => {
+          const updated = {...prev};
+          // Set first table to expanded, rest to collapsed
+          let isFirst = true;
+          tables.forEach(table => {
+            if (table) {
+              updated[table] = isFirst || (prev[table] === true);  // Keep expanded if it was already
+              isFirst = false;
+            }
+          });
+          return updated;
+        });
+      }
+    }
+  }, [reportFields]);
 
   // Context menu state
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -1109,6 +1173,18 @@ function ReportBuilderPage() {
     }
   }, [isPivotActive, autoUpdatePreview, generatePivotSQL, fetchData]);
 
+  // Inside ReportBuilderPage component, near the return statement
+  // Update to pass reportFields into ReportBuilderPanel
+  const fieldsForPanel = reportFields && reportFields.length > 0 ? 
+    reportFields.map(field => ({
+      id: field.id || field.columnName, 
+      name: field.columnDisplayName || field.name,
+      type: field.type || mapColumnTypeToFieldType(field.columnType),
+      category: field.category || field.tableName, 
+      icon: getFieldTypeIcon(field.columnType) || '•'
+    })) : 
+    accountFields;
+
   return (
     <>
       {/* Report Type Selection Modal */}
@@ -1204,7 +1280,7 @@ function ReportBuilderPage() {
             setFilterLogic={setFilterLogic}
             customFormula={customFormula}
             setCustomFormula={setCustomFormula}
-            accountFields={accountFields}
+            accountFields={fieldsForPanel}
             addFilter={addFilter}
             removeFilter={removeFilter}
             updateFilter={updateFilter}
