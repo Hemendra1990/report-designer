@@ -23,7 +23,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import Image from "next/image";
-import { useAllReportTypes } from "@/hooks/report-type-hook";
+import { useAllReportTypes, useDeleteReportType, useInvalidateAllReportTypes } from "@/hooks/report-type-hook";
+import ToastMessage from "./summary/summary-helper";
 
 // Report Types with additional details
 interface BaseReportType {
@@ -87,31 +88,40 @@ export default function ReportTypesPage() {
   const [loading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const {allReportTypeResponse}  = useAllReportTypes();
+  const deleteReportType = useDeleteReportType();
+  const [showDeleteToast, setShowDeleteToast] = useState(false);
+  const {invalidateAllReportTypes} = useInvalidateAllReportTypes();
 
   useEffect(() => {
-    if (allReportTypeResponse?.data?.length) {
+    if (Array.isArray(allReportTypeResponse?.data)) {
       const transformed = allReportTypeResponse.data.map((item): ExistingReportType => ({
         id: item?.id || '',
         name: item?.label || item.name,
         description: item?.description || '',
         icon: '/file.svg',
         color: '#888888',
-        createdAt: new Date().toISOString(),
+        createdAt:new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       }));
-      setExistingReportTypes((prev) => [...transformed]);
+      setExistingReportTypes(transformed);
     }
-  }, [allReportTypeResponse?.data]);
+  }, [allReportTypeResponse?.data]); // ✅ clean, no stringify
+  
   
   const handleDelete = async (reportType: any) => {
-    if (window.confirm(`Are you sure you want to delete ${reportType.name}?`)) {
-      try {
-        // TODO: Implement actual API call
-        // setReportTypes(reportTypes.filter(rt => rt.id !== reportType.id));
-      } catch (error) {
-        setError("Failed to delete report type");
+    deleteReportType.mutate(
+      { reportTypeId: reportType?.id as string },
+      {
+        onSuccess: () => {
+          invalidateAllReportTypes();
+          setShowDeleteToast(true);
+          setTimeout(() => setShowDeleteToast(false), 3000);
+        },
+        onError: (error) => {
+          console.error("Error during deletion:", error);
+        },
       }
-    }
+    );
   };
 
   const formatDate = (dateString: string) => {
@@ -185,33 +195,6 @@ export default function ReportTypesPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      {/* Navigation Bar */}
-      {/* <nav className="bg-primary text-primary-foreground py-4 px-6 shadow-md">
-        <div className="container mx-auto flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <Image 
-              src="/next.svg" 
-              alt="Report Designer Logo" 
-              width={80} 
-              height={20}
-              className="dark:invert" 
-            />
-            <span className="font-bold text-lg">Report Designer</span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link href="/">
-              <Button variant="ghost">Home</Button>
-            </Link>
-            <Link href="/reports">
-              <Button variant="ghost">Reports</Button>
-            </Link>
-            <Link href="/report-builder">
-              <Button variant="ghost">Report Builder</Button>
-            </Link>
-          </div>
-        </div>
-      </nav> */}
-
       {/* Main Content */}
       <div className="flex-1 p-6 md:p-10">
         <div className="max-w-6xl mx-auto space-y-10">
@@ -235,7 +218,6 @@ export default function ReportTypesPage() {
                   className="pl-12 h-11 text-base rounded-md border border-input focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 />
               </div>
-
               {/* Report Types as Cards with Radio Selection */}
               <RadioGroup value={selectedReportType} onValueChange={setSelectedReportType}>
                 <div className="grid md:grid-cols-2 gap-6">
@@ -333,7 +315,9 @@ export default function ReportTypesPage() {
                   New Report Type
                 </Button>
               </div>
-
+              {showDeleteToast && (
+                <ToastMessage type="success" message="Report Type Deleted Successfully" />
+              )}
               {/* Stats Section */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
                 <Card className="p-3">
@@ -464,9 +448,6 @@ export default function ReportTypesPage() {
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Button variant="outline" size="sm" asChild>
-                                <Link href={`/reports/create?type=${reportType.id}`}>Create</Link>
-                              </Button>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <Button variant="ghost" size="icon">
