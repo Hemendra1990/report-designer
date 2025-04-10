@@ -34,7 +34,6 @@ public class ReportTypeConfig extends BaseEntity {
 
     @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "report_type_id")
-    @JsonBackReference
     private ReportType reportType;
 
 }

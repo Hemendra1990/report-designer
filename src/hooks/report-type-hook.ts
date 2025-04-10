@@ -1,6 +1,6 @@
 import { QueryKeys } from "@/components/enum/query-keys";
-import { ReportType, ReportTypeLayout } from "@/components/model/report-type";
-import { createReportType, deleteReportTypeById, getAllReportTypes, getReportTypeById, updateReportTypeLayoutStatus } from "@/services/report-type/report-type-service";
+import { ReportType, ReportTypeLayout, ReportTypeSummary } from "@/components/model/report-type";
+import { createReportType, deleteReportTypeById, getAllReportTypes, getAllReportTypeSummary, getReportTypeById, layoutColumnListByReportId, updateReportTypeLayoutStatus } from "@/services/report-type/report-type-service";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { on } from "process";
@@ -91,3 +91,45 @@ export const useDeleteReportType = () => {
         },
     });
 };
+
+
+export const useLayoutColumnListByReportId = (reportTypeId: string) => {
+    const layoutColumnByReportId = () => {
+        return layoutColumnListByReportId(reportTypeId).then((res) => res?.data?.data);
+    };
+
+    const layoutColumnByReportIdResponse = useQuery({
+        queryKey: [QueryKeys.LAYOUT_COLUMN_LIST_BY_REPORT_ID, reportTypeId],
+        enabled: !!reportTypeId,
+        queryFn: layoutColumnByReportId,
+    });
+
+    return { layoutColumnByReportIdResponse };
+};
+
+export const useInvalidateLayoutColumnByReportid= () => {
+    const queryClient = useQueryClient();
+    const invalidateLayoutColumnByReportId = () => {
+        queryClient.invalidateQueries({ queryKey: [QueryKeys.LAYOUT_COLUMN_LIST_BY_REPORT_ID] });
+    }
+    return { invalidateLayoutColumnByReportId };
+}
+
+export const useAllReportTypeSummary = () => {
+    const allReportTypeSummary = () => {
+        return getAllReportTypeSummary().then((res) => res?.data?.data);
+    };
+    const allReportTypeSummaryResponse = useQuery<ReportTypeSummary[]>({
+        queryKey: [QueryKeys.ALL_REPORTY_TYPE_SUMMARY],
+        queryFn: allReportTypeSummary,
+    });
+    return { allReportTypeSummaryResponse };
+};
+
+export const useInvalidateAllReportTypeSummary = () => {
+    const queryClient = useQueryClient();
+    const invalidateAllReportTypeSummary = () => {
+        queryClient.invalidateQueries({ queryKey: [QueryKeys.ALL_REPORTY_TYPE_SUMMARY] });
+    }
+    return { invalidateAllReportTypeSummary };
+}

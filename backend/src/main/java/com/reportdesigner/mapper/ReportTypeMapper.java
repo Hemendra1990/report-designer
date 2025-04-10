@@ -1,6 +1,8 @@
 package com.reportdesigner.mapper;
 
 import com.reportdesigner.dto.ReportTypeDTO;
+import com.reportdesigner.dto.ReportTypeLayoutDTO;
+import com.reportdesigner.dto.ReportTypeSummaryDTO;
 import com.reportdesigner.model.ReportType;
 import com.reportdesigner.model.ReportTypeConfig;
 import com.reportdesigner.model.ReportTypeLayout;
@@ -29,6 +31,8 @@ public class ReportTypeMapper implements BaseMapper<ReportTypeDTO, ReportType> {
                 .cteQuery(entity.getCteQuery())
                 .usedTables(entity.getUsedTables())
                 .typeGroup(entity.getTypeGroup())
+                .createdOn(entity.getCreatedOn())
+                .updatedOn(entity.getUpdatedOn())
                 .configList(reportTypeConfigMapper.toDtoList(entity.getConfigList()))
                 .layoutList(reportTypeLayoutMapper.toDtoList(entity.getLayoutList()))
                 .build();
@@ -71,6 +75,31 @@ public class ReportTypeMapper implements BaseMapper<ReportTypeDTO, ReportType> {
                 .primaryTable(entity.getPrimaryTable())
                 .primaryTableDisplayName(entity.getPrimaryTableDisplayName())
                 .usedTables(entity.getUsedTables())
+                .createdOn(entity.getCreatedOn())
+                .build();
+    }
+
+    public ReportTypeLayoutDTO toLayoutDto(ReportTypeLayout layout) {
+        return ReportTypeLayoutDTO.builder()
+                .id(layout.getId())
+                .columnName(layout.getColumnName())
+                .columnDisplayName(layout.getColumnDisplayName())
+                .columnType(layout.getColumnType())
+                .tableName(layout.getTableName())
+                .tableId(layout.getTableId())
+                .active(layout.getActive())
+                .build();
+    }
+
+    public ReportTypeSummaryDTO toSummaryDto(ReportType reportType) {
+        return ReportTypeSummaryDTO.builder()
+                .id(reportType.getId())
+                .name(reportType.getName())
+                .description(reportType.getDescription())
+                .createdBy(reportType.getCreatedBy())
+                .createdOn(reportType.getCreatedOn())
+                .usedTables(reportType.getUsedTables())
+                .columnCount(reportType.getLayoutList() != null ? reportType.getLayoutList().size() : 0)
                 .build();
     }
 }

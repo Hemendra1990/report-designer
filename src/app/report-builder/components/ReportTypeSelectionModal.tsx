@@ -7,12 +7,13 @@ import {
 import { Search, ChevronDown, X, FileText, Clock, ListChecks, BarChart4, Users, PieChart, ExternalLink, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { RecentReportType, ReportTypeTemplate } from "../model/ReportType";
-import { mockFieldList, recentReportTypes, reportTypes } from "../model/fake-data";
+import { mockFieldList, reportTypes } from "../model/fake-data";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useAllReportTypeSummary, useLayoutColumnListByReportId } from "@/hooks/report-type-hook";
 
 export function ReportTypeSelectionModal({
     isOpen,
@@ -38,9 +39,24 @@ export function ReportTypeSelectionModal({
     const [fieldsLoading, setFieldsLoading] = useState(false);
     const [fieldsError, setFieldsError] = useState<string | null>(null);
     const [fieldSearchTerm, setFieldSearchTerm] = useState("");
-
+    const { allReportTypeSummaryResponse } = useAllReportTypeSummary();
+    const layoutColumnByReportIdResponse = useLayoutColumnListByReportId(selectedReport?.id as string);
+    
     // Mocked fields data (in a real app, this would be fetched from the server)
-    const mockFields = useMemo(() => [...mockFieldList], []);
+    const layoutData = layoutColumnByReportIdResponse?.layoutColumnByReportIdResponse?.data || [];
+
+    const mockFields = useMemo(() => {
+      return layoutData.map((field) => ({
+        id: field.columnName, // or generate a unique ID if needed
+        name: field.columnName,
+        type: field.columnType,
+        label: field.columnDisplayName,
+        category: "Default", // or derive from table/column info if needed
+        isCustom: false, // or derive if you have logic
+        tableName: field.tableName,
+        tableId: field.tableId
+      }));
+    }, [layoutData]);
 
     // Group fields by category for better organization
     const fieldsByCategory = useMemo(() => {
@@ -69,6 +85,7 @@ export function ReportTypeSelectionModal({
                 setFieldsError(null);
 
                 try {
+                    debugger
                     // Simulate API call with setTimeout
                     await new Promise(resolve => setTimeout(resolve, 800));
                     setFieldsData(mockFields);
@@ -82,10 +99,28 @@ export function ReportTypeSelectionModal({
 
             fetchFields();
         }
-    }, [activeTab, selectedReport, mockFields]);
+    }, [activeTab, selectedReport, layoutData]);
 
+
+    const recentReportTypes = allReportTypeSummaryResponse?.data?.map((report) => ({
+        id:report.id,
+        name: report.name,
+        category: "Custom",
+        lastUsed: "",
+        status: "Active",
+        description: report.description,
+        type: "tabular",
+        createdBy: report.createdBy || "Unknown",
+        objects: report.usedTables.map((table) => ({
+            name: table,
+            icon: "📄",
+            color: "#3182ce",
+            relatedObjects: []
+        })),
+        fieldsCount: report.columnCount
+    })) || [];
+    
     const categories = Array.from(new Set(recentReportTypes.map(report => report.category)));
-
     const filteredReports = recentReportTypes.filter(report => {
         const matchesSearch = report.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             report.description.toLowerCase().includes(searchTerm.toLowerCase());
@@ -98,25 +133,35 @@ export function ReportTypeSelectionModal({
         switch (type) {
             case 'text':
                 return <span className="text-blue-600">Aa</span>;
-            case 'textarea':
-                return <span className="text-blue-600">¶</span>;
-            case 'number':
+            case 'TEXT':
+                return <span className="text-blue-600">Aa</span>;
+            case 'varchar':
+                return <span className="text-blue-600">Aa</span>;
+            case 'VARCHAR':
+                return <span className="text-blue-600">Aa</span>;
+            case 'VARCHAR(50)':
+                return <span className="text-blue-600">Aa</span>;
+            case 'VARCHAR(255)':
+                return <span className="text-blue-600">Aa</span>;
+            case 'int8':
                 return <span className="text-purple-600">#</span>;
             case 'currency':
                 return <span className="text-green-600">$</span>;
             case 'percent':
                 return <span className="text-orange-600">%</span>;
             case 'date':
-            case 'datetime':
+            case 'timestamptz(6)':
                 return <Clock className="h-3 w-3" />;
             case 'picklist':
             case 'multipicklist':
                 return <ListChecks className="h-3 w-3" />;
-            case 'reference':
+            case 'bool':
                 return <ExternalLink className="h-3 w-3" />;
             case 'id':
                 return <span className="text-gray-600">ID</span>;
             case 'checkbox':
+                return <span className="text-green-600">✓</span>;
+            case 'BOOLEAN':
                 return <span className="text-green-600">✓</span>;
             case 'email':
                 return <span className="text-blue-600">@</span>;
@@ -448,9 +493,9 @@ export function ReportTypeSelectionModal({
                                                         <div key={category}>
                                                             <h4 className="font-medium text-[0.65rem] text-slate-500 mb-1 uppercase tracking-wider">{category}</h4>
                                                             <div className="space-y-0.5">
-                                                                {fields.map((field) => (
+                                                                {fields.map((field,index) => (
                                                                     <div
-                                                                        key={field.id}
+                                                                        key={index}
                                                                         className="flex items-center justify-between py-1 px-1.5 hover:bg-slate-50 rounded text-xs group"
                                                                     >
                                                                         <div className="flex items-center gap-1.5">

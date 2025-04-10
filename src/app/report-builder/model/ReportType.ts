@@ -10,6 +10,7 @@ export interface ReportTypeTemplate {
 
   // Update the RecentReportType interface to include additional fields
 export interface RecentReportType {
+    id?:string;
     name: string;
     category: string;
     lastUsed: string;

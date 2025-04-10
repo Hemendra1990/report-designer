@@ -5,6 +5,7 @@ import com.reportdesigner.constant.ErrorCode;
 import com.reportdesigner.dto.ReportTypeConfigDTO;
 import com.reportdesigner.dto.ReportTypeDTO;
 import com.reportdesigner.dto.ReportTypeLayoutDTO;
+import com.reportdesigner.dto.ReportTypeSummaryDTO;
 import com.reportdesigner.exception.ValidationException;
 import com.reportdesigner.mapper.ReportTypeConfigMapper;
 import com.reportdesigner.mapper.ReportTypeLayoutMapper;
@@ -51,12 +52,12 @@ public class ReportTypeService {
             reportType.setConfigList(List.of());
 
             ReportType savedReportType = reportTypeRepository.save(reportType);
-
-            configList.forEach(c -> c.setReportType(savedReportType));
+            if(!CollectionUtils.isEmpty(configList)){
+                configList.forEach(c -> c.setReportType(savedReportType));
+                reportType.setConfigList(reportTypeConfigRepository.saveAll(configList));
+            }
             layoutList.forEach(c -> c.setReportType(savedReportType));
-
             reportType.setLayoutList(reportTypeLayoutRepository.saveAll(layoutList));
-            reportType.setConfigList(reportTypeConfigRepository.saveAll(configList));
             String cteQuery = generateCTEQuery(reportTypeDTO.getName(), reportTypeDTO.getPrimaryTable(),
                     reportTypeConfigMapper.toDtoList(reportType.getConfigList()), reportTypeLayoutMapper.toDtoList(reportType.getLayoutList()));
             savedReportType.setCteQuery(cteQuery);
@@ -81,7 +82,6 @@ public class ReportTypeService {
         }
         Preconditions.checkArgument(StringUtils.isNotBlank(reportTypeDTO.getPrimaryTable()), "At-least one table needs to be selected");
         List<ReportTypeConfigDTO> dtoConfigList = reportTypeDTO.getConfigList();
-        Preconditions.checkArgument(!CollectionUtils.isEmpty(dtoConfigList), "At-least one configuration needs to be set");
 
         Set<String> usedTables = new HashSet<>();
         dtoConfigList.forEach(config -> {
@@ -169,4 +169,27 @@ public class ReportTypeService {
 
         result.forEach((key, value) -> reportTypeLayoutRepository.updateLayoutColumnStatus(value, key));
     }
+
+    @Transactional
+    public List<ReportTypeLayoutDTO> getLayoutListByReportTypeId(String reportTypeId) throws ValidationException {
+        try {
+            ReportType reportType = reportTypeRepository.findById(reportTypeId)
+                    .orElseThrow(() -> new ValidationException("Report type not found", ErrorCode.ERR_PROCESSING, "getLayoutListByReportTypeId"));
+            return reportType.getLayoutList()
+                    .stream()
+                    .map(reportTypeMapper::toLayoutDto)
+                    .collect(Collectors.toList());
+        } catch (Exception ex) {
+            throw new ValidationException(ex.getMessage(), ErrorCode.ERR_PROCESSING, "getLayoutListByReportTypeId");
+        }
+    }
+
+    @Transactional
+    public List<ReportTypeSummaryDTO> getAllReportTypeSummaries() {
+        List<ReportType> reportTypeSummary = reportTypeRepository.findAll();
+        return reportTypeSummary.stream()
+                .map(reportTypeMapper::toSummaryDto)
+                .collect(Collectors.toList());
+    }
+
 }

@@ -43,10 +43,8 @@ public class ReportType extends BaseEntity {
     private List<String> usedTables;
 
     @OneToMany(mappedBy = "reportType", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JsonManagedReference
     private List<ReportTypeConfig> configList;
 
     @OneToMany(mappedBy = "reportType", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JsonManagedReference
     private List<ReportTypeLayout> layoutList;
 }

@@ -3,7 +3,9 @@ package com.reportdesigner.controller;
 import com.reportdesigner.dto.ApiResponse;
 import com.reportdesigner.dto.ReportTypeDTO;
 import com.reportdesigner.dto.ReportTypeLayoutDTO;
+import com.reportdesigner.dto.ReportTypeSummaryDTO;
 import com.reportdesigner.exception.ValidationException;
+import com.reportdesigner.model.ReportTypeLayout;
 import com.reportdesigner.service.ReportTypeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -65,4 +67,22 @@ public class ReportTypeController {
                 .build();
     }
 
+    @GetMapping("/{reportTypeId}/fields")
+    public ApiResponse layoutColumnListByReportId(@PathVariable String reportTypeId) throws ValidationException {
+        List<ReportTypeLayoutDTO> layoutList = reportTypeService.getLayoutListByReportTypeId(reportTypeId);
+        return ApiResponse.builder()
+                .status(HttpStatus.OK.toString())
+                .message("Layout columns fetched successfully")
+                .data(layoutList)
+                .build();
+    }
+    @GetMapping("/reportSummary")
+    public ApiResponse getAllReportTypes() {
+        List<ReportTypeSummaryDTO> summaries = reportTypeService.getAllReportTypeSummaries();
+        return ApiResponse.builder()
+                .status(HttpStatus.OK.toString())
+                .message("All report types fetched successfully")
+                .data(summaries)
+                .build();
+    }
 }

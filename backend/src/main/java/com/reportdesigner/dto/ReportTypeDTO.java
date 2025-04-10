@@ -3,6 +3,7 @@ package com.reportdesigner.dto;
 import lombok.*;
 
 import java.security.PrivateKey;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 @Getter
@@ -20,6 +21,8 @@ public class ReportTypeDTO {
     private String primaryTableDisplayName;
     private String cteQuery;
     private String typeGroup;
+    private OffsetDateTime createdOn;
+    private OffsetDateTime updatedOn;
     private List<String> usedTables;
     private List<ReportTypeConfigDTO> configList;
     private List<ReportTypeLayoutDTO> layoutList;

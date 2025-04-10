@@ -44,3 +44,13 @@ export interface ReportTypeLayout {
     tableId: string;
     active: boolean;
 }
+
+export interface ReportTypeSummary {
+    id: string;
+    name: string;
+    description: string;
+    createdBy: string;
+    createdOn: string;
+    usedTables: string[];
+    columnCount: number;
+}
