@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import VennDiagram from "@/components/VennDiagram";
@@ -14,6 +14,8 @@ import { useReportTypeFormContext } from "@/contexts/report-type-form-context";
 import { iTableMetaData } from "../model/table-metadata";
 import { useReportTypeConfigGeneration } from "@/helper/report-type/report-type-helper";
 import { useCreatereportType } from "@/hooks/report-type-hook";
+import ToastMessage from "@/app/report-types/summary/summary-helper";
+import { AxiosError } from "axios";
 
 // Define letters for objects
 const letters = ["A", "B", "C", "D", "E", "F", "G", "H"];
@@ -78,6 +80,8 @@ export default function DefineRelationships(props: DefineRelationshipsProps) {
   const { data: allTableMetaData, isLoading } = useAllTableMetadata();
   const { reportTypeConfigGeneration, handleObjectRemove } = useReportTypeConfigGeneration();
   const createReportTypeMutation = useCreatereportType();
+  const router = useRouter();
+  const [showErrorToast, setShowErrorToast] = useState<string>('');
   
   // Fetch available objects and initialize primary object
   useEffect(() => {
@@ -249,17 +253,21 @@ export default function DefineRelationships(props: DefineRelationshipsProps) {
     fetchAvailableObjectsForParent(parentId);
   };
 
-  const handleOnError = () => {}
+  const handleOnError = (err: any) => {
+    setShowErrorToast(err?.response?.data?.message || 'Something went wrong. Please try again.');
+    setTimeout(() => setShowErrorToast(''), 3000);
+  }
 
-  const handleOnSuccess = () => {
+  const handleOnSuccess = (data: any) => {
     setShowSuccessMessage(true);
-    window.location.href = `/report-types/summary?type=${reportType}&object=${reportType?.primaryTable}&label=${reportType?.label}&api=${reportType?.name}&desc=${reportType?.description}`;
+    router.push(`/report-types/summary/${data?.data?.data?.id}`);
+    // window.location.href = `/report-types/summary?type=${reportType}&object=${reportType?.primaryTable}&label=${reportType?.label}&api=${reportType?.name}&desc=${reportType?.description}`;
   }
 
   // Handle form submission
   const handleSubmit = () => {
     // use Save mutation here
-    createReportTypeMutation.mutate({payload: reportType});
+    createReportTypeMutation.mutate({payload: reportType, onSuccess: handleOnSuccess, onError: handleOnError});
     // In a real app, this would submit to the server
   };
 
@@ -452,6 +460,17 @@ export default function DefineRelationships(props: DefineRelationshipsProps) {
           </div>
         </div>
 
+        {
+          // Error Toaster
+          <>
+            {
+              showErrorToast && (
+                <ToastMessage type="error" message={showErrorToast} />
+              )
+            }
+          </>
+        }
+
         {/* Action Buttons */}
         <div className="mt-8 flex justify-between">
           <Link href={`/report-types/select-object?type=${reportType}`}>
@@ -461,7 +480,7 @@ export default function DefineRelationships(props: DefineRelationshipsProps) {
             <Link href="/report-types">
               <Button variant="outline">Cancel</Button>
             </Link>
-            <Button onClick={handleSubmit}>
+            <Button disabled={createReportTypeMutation.isPending} onClick={handleSubmit}>
               Save and Continue
             </Button>
           </div>

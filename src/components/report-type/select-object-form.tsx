@@ -327,7 +327,7 @@ export default function SelectObjectForm(props: SelectObjectFormProps) {
                                                     </p>
                                                     <div className="mt-2">
                                                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                                                            {allColumnMetaData?.columns?.length} columns
+                                                            {allColumnMetaData?.columns?.length} Columns
                                                         </span>
                                                     </div>
                                                 </div>

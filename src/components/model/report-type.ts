@@ -14,6 +14,8 @@ export interface ReportType {
 
     schema?: string;
     objectTree?: string;
+    createdOn?: string;
+    updatedOn?: string;
 }
 
 export interface ReportTypeConfig {

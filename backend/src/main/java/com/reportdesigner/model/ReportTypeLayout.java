@@ -4,6 +4,9 @@ import com.fasterxml.jackson.annotation.JsonBackReference;
 import io.hypersistence.utils.hibernate.id.Tsid;
 import jakarta.persistence.*;
 import lombok.*;
+import org.apache.commons.lang3.StringUtils;
+
+import java.util.Locale;
 
 @Entity
 @Table(name = "rd_report_type_layout")
@@ -21,6 +24,8 @@ public class ReportTypeLayout {
 
     private String columnName;
     private String columnDisplayName;
+    private String duckDBColumnName;
+    private String duckDBColumnDisplayName;
     private String columnType;
 
     private String tableName;
@@ -31,5 +36,11 @@ public class ReportTypeLayout {
     @JoinColumn(name = "report_type_id")
     @JsonBackReference
     private ReportType reportType;
+
+    @PrePersist
+    public void updateDuckDBColumnNames() {
+        this.duckDBColumnName = String.format("%s_%s", tableName, columnName).toLowerCase();
+        this.duckDBColumnDisplayName = StringUtils.capitalize(String.format("%s %s", tableName, columnDisplayName));
+    }
 
 }

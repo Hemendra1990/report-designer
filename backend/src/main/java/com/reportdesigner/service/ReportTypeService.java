@@ -7,6 +7,7 @@ import com.reportdesigner.dto.ReportTypeDTO;
 import com.reportdesigner.dto.ReportTypeLayoutDTO;
 import com.reportdesigner.exception.ValidationException;
 import com.reportdesigner.mapper.ReportTypeConfigMapper;
+import com.reportdesigner.mapper.ReportTypeLayoutMapper;
 import com.reportdesigner.mapper.ReportTypeMapper;
 import com.reportdesigner.model.ReportType;
 import com.reportdesigner.model.ReportTypeConfig;
@@ -35,6 +36,7 @@ public class ReportTypeService {
 
     private final ReportTypeMapper reportTypeMapper;
     private final ReportTypeConfigMapper reportTypeConfigMapper;
+    private final ReportTypeLayoutMapper reportTypeLayoutMapper;
 
     private final ReportUtil reportUtil;
 
@@ -55,6 +57,10 @@ public class ReportTypeService {
 
             reportType.setLayoutList(reportTypeLayoutRepository.saveAll(layoutList));
             reportType.setConfigList(reportTypeConfigRepository.saveAll(configList));
+            String cteQuery = generateCTEQuery(reportTypeDTO.getName(), reportTypeDTO.getPrimaryTable(),
+                    reportTypeConfigMapper.toDtoList(reportType.getConfigList()), reportTypeLayoutMapper.toDtoList(reportType.getLayoutList()));
+            savedReportType.setCteQuery(cteQuery);
+            reportTypeRepository.save(savedReportType);
             return reportTypeMapper.toDto(savedReportType);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -97,8 +103,6 @@ public class ReportTypeService {
             reportTypeConfigRepository.deleteByReportTypeId(reportTypeId);
         }
         reportTypeDTO.setUsedTables(new ArrayList<>(usedTables));
-        String cteQuery = generateCTEQuery(reportTypeDTO.getName(), reportTypeDTO.getPrimaryTable(), dtoConfigList, reportTypeDTO.getLayoutList());
-        reportTypeDTO.setCteQuery(cteQuery);
         return reportTypeMapper.toEntity(reportTypeDTO);
     }
 
@@ -112,7 +116,7 @@ public class ReportTypeService {
         // SELECT clause
         cteBuilder.append("SELECT ");
         String selectClause = layoutList.stream()
-                .map(layout -> layout.getTableName() + "." + layout.getColumnName())
+                .map(layout ->  String.format("%s.%s AS %s", layout.getTableName(), layout.getColumnName(), layout.getDuckDBColumnName()))
                 .collect(Collectors.joining(", "));
         cteBuilder.append(selectClause).append(" ");
 

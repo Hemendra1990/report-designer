@@ -2,178 +2,15 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useReportTypeFormContext } from "@/contexts/report-type-form-context";
-import { useDeleteReportType } from "@/hooks/report-type-hook";
-import ToastMessage from "./summary-helper";
+import { useDeleteReportType, useReportTypeById } from "@/hooks/report-type-hook";
+import { useAllTableMetadata } from "@/hooks/metadata-hook";
+import { ReportTypeConfig } from "@/components/model/report-type";
+import ToastMessage from "@/app/report-types/summary/summary-helper";
 
 // Sample list of available objects for reference (same as in other pages)
-const availableObjects = [
-  {
-    id: "account",
-    name: "Account",
-    letter: "A",
-    description: "Represents a customer, prospect, or other organization",
-    icon: "/icons/account.svg",
-    color: "#1E88E5", // Blue
-    fields: [
-      { name: "Name", type: "Text", label: "Account Name" },
-      { name: "Site", type: "Text", label: "Account Site" },
-      { name: "Type", type: "Picklist", label: "Account Type" },
-      { name: "Industry", type: "Picklist", label: "Industry" },
-      { name: "AnnualRevenue", type: "Currency", label: "Annual Revenue" },
-      { name: "Phone", type: "Phone", label: "Phone" },
-      { name: "Website", type: "URL", label: "Website" },
-      { name: "BillingAddress", type: "Address", label: "Billing Address" },
-      { name: "ShippingAddress", type: "Address", label: "Shipping Address" },
-      { name: "Description", type: "Text Area", label: "Description" },
-    ]
-  },
-  {
-    id: "contact",
-    name: "Contact",
-    letter: "B",
-    description: "Represents a person associated with an account",
-    icon: "/icons/contact.svg",
-    color: "#43A047", // Green
-    fields: [
-      { name: "FirstName", type: "Text", label: "First Name" },
-      { name: "LastName", type: "Text", label: "Last Name" },
-      { name: "Email", type: "Email", label: "Email" },
-      { name: "Phone", type: "Phone", label: "Phone" },
-      { name: "Title", type: "Text", label: "Title" },
-      { name: "Department", type: "Text", label: "Department" },
-      { name: "MailingAddress", type: "Address", label: "Mailing Address" },
-      { name: "LeadSource", type: "Picklist", label: "Lead Source" },
-      { name: "Birthdate", type: "Date", label: "Birthdate" },
-      { name: "ReportsTo", type: "Lookup", label: "Reports To" },
-      { name: "AccountId", type: "Lookup", label: "Account ID" },
-    ]
-  },
-  {
-    id: "opportunity",
-    name: "Opportunity",
-    letter: "C",
-    description: "Represents a potential sale or deal",
-    icon: "/icons/opportunity.svg",
-    color: "#E53935", // Red
-    fields: [
-      { name: "Name", type: "Text", label: "Opportunity Name" },
-      { name: "Amount", type: "Currency", label: "Amount" },
-      { name: "CloseDate", type: "Date", label: "Close Date" },
-      { name: "Stage", type: "Picklist", label: "Stage" },
-      { name: "Type", type: "Picklist", label: "Type" },
-      { name: "LeadSource", type: "Picklist", label: "Lead Source" },
-      { name: "ExpectedRevenue", type: "Currency", label: "Expected Revenue" },
-      { name: "Probability", type: "Percent", label: "Probability" },
-      { name: "CampaignId", type: "Lookup", label: "Campaign ID" },
-      { name: "AccountId", type: "Lookup", label: "Account ID" }
-    ]
-  },
-  {
-    id: "case",
-    name: "Case",
-    letter: "D",
-    description: "Represents a customer issue or question",
-    icon: "/icons/account.svg",
-    color: "#FB8C00", // Orange
-    fields: [
-      { name: "CaseNumber", type: "Auto Number", label: "Case Number" },
-      { name: "Subject", type: "Text", label: "Subject" },
-      { name: "Status", type: "Picklist", label: "Status" },
-      { name: "Priority", type: "Picklist", label: "Priority" },
-      { name: "Description", type: "Text Area", label: "Description" },
-      { name: "Origin", type: "Picklist", label: "Case Origin" },
-      { name: "Type", type: "Picklist", label: "Case Type" },
-      { name: "Reason", type: "Picklist", label: "Case Reason" },
-      { name: "ContactId", type: "Lookup", label: "Contact ID" },
-      { name: "AccountId", type: "Lookup", label: "Account ID" }
-    ]
-  },
-  {
-    id: "campaign",
-    name: "Campaign",
-    letter: "E",
-    description: "Represents a marketing campaign",
-    icon: "/icons/account.svg", 
-    color: "#8E24AA", // Purple
-    fields: [
-      { name: "Name", type: "Text", label: "Campaign Name" },
-      { name: "Type", type: "Picklist", label: "Type" },
-      { name: "Status", type: "Picklist", label: "Status" },
-      { name: "StartDate", type: "Date", label: "Start Date" },
-      { name: "EndDate", type: "Date", label: "End Date" },
-      { name: "ExpectedRevenue", type: "Currency", label: "Expected Revenue" },
-      { name: "BudgetedCost", type: "Currency", label: "Budgeted Cost" },
-      { name: "ActualCost", type: "Currency", label: "Actual Cost" },
-      { name: "Description", type: "Text Area", label: "Description" },
-      { name: "ParentId", type: "Lookup", label: "Parent Campaign" }
-    ]
-  },
-  {
-    id: "lead",
-    name: "Lead",
-    letter: "F",
-    description: "Represents a potential customer",
-    icon: "/icons/account.svg",
-    color: "#00ACC1", // Cyan
-    fields: [
-      { name: "FirstName", type: "Text", label: "First Name" },
-      { name: "LastName", type: "Text", label: "Last Name" },
-      { name: "Company", type: "Text", label: "Company" },
-      { name: "Email", type: "Email", label: "Email" },
-      { name: "Phone", type: "Phone", label: "Phone" },
-      { name: "Status", type: "Picklist", label: "Lead Status" },
-      { name: "Industry", type: "Picklist", label: "Industry" },
-      { name: "Rating", type: "Picklist", label: "Rating" },
-      { name: "Address", type: "Address", label: "Address" },
-      { name: "LeadSource", type: "Picklist", label: "Lead Source" }
-    ]
-  },
-  {
-    id: "product",
-    name: "Product",
-    letter: "G",
-    description: "Represents items sold by your company",
-    icon: "/icons/account.svg",
-    color: "#F9A825", // Yellow
-    fields: [
-      { name: "Name", type: "Text", label: "Product Name" },
-      { name: "ProductCode", type: "Text", label: "Product Code" },
-      { name: "Description", type: "Text Area", label: "Product Description" },
-      { name: "IsActive", type: "Checkbox", label: "Active" },
-      { name: "Family", type: "Picklist", label: "Product Family" },
-      { name: "StockKeepingUnit", type: "Text", label: "Stock Keeping Unit" },
-      { name: "QuantityUnitOfMeasure", type: "Picklist", label: "Quantity Unit of Measure" },
-      { name: "DisplayUrl", type: "URL", label: "Display URL" },
-      { name: "ExternalId", type: "Text", label: "External ID" },
-      { name: "ExternalDataSourceId", type: "Lookup", label: "External Data Source" }
-    ]
-  },
-  {
-    id: "order",
-    name: "Order",
-    letter: "H",
-    description: "Represents a purchase made by a customer",
-    icon: "/icons/account.svg",
-    color: "#5E35B1", // Deep Purple
-    fields: [
-      { name: "OrderNumber", type: "Auto Number", label: "Order Number" },
-      { name: "Status", type: "Picklist", label: "Status" },
-      { name: "EffectiveDate", type: "Date", label: "Effective Date" },
-      { name: "Type", type: "Picklist", label: "Order Type" },
-      { name: "EndDate", type: "Date", label: "End Date" },
-      { name: "TotalAmount", type: "Currency", label: "Order Amount" },
-      { name: "ShippingAddress", type: "Address", label: "Shipping Address" },
-      { name: "BillingAddress", type: "Address", label: "Billing Address" },
-      { name: "AccountId", type: "Lookup", label: "Account ID" },
-      { name: "OpportunityId", type: "Lookup", label: "Opportunity ID" }
-    ]
-  }
-];
 
 // Define interface for related objects
 interface RelatedObject {
@@ -182,95 +19,48 @@ interface RelatedObject {
   parentId: string | null;
 }
 
-export default function ReportTypeSummary() {
-  const searchParams = useSearchParams();
-  const reportTypes = searchParams.get("type") || "tabular";
-  const primaryObjectId = searchParams.get("object") || "account";
-  const displayLabel = searchParams.get("label") || "Custom Report";
-  const apiName = searchParams.get("api") || "Custom_Report__c";
-  const description = searchParams.get("desc") || "Custom report type for data analysis";
-  const { reportType } = useReportTypeFormContext();
+interface ReportTypeSummaryPageProps {
+    reportTypeId: string
+}
+
+export default function ReportTypeSummaryPage(props: ReportTypeSummaryPageProps) {
+  const { reportTypeId } = props;
+  const { reportTypeResponse: { data: reportType } } = useReportTypeById(reportTypeId);
+  const { data: availableObjects } = useAllTableMetadata();
   const deleteReportType = useDeleteReportType();
   const [showDeleteToast, setShowDeleteToast] = useState(false);
-  
-  const [reportId, setReportId] = useState<string>("");
-  const [createdDate, setCreatedDate] = useState<string>("");
-  const [relatedObjects, setRelatedObjects] = useState<RelatedObject[]>([]);
-  const [primaryObject, setPrimaryObject] = useState<any>(null);
-  
-  useEffect(() => {
-    // Generate a unique report ID
-    setReportId(`RT-${Math.floor(Math.random() * 100000)}`);
-    
-    // Set current date
-    const now = new Date();
-    setCreatedDate(now.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }));
-    
-    // Find primary object details
-    const foundPrimary = availableObjects.find(obj => obj.id === primaryObjectId);
-    if (foundPrimary) {
-      setPrimaryObject(foundPrimary);
-    }
-    
-    // In a real app, this would load related objects from storage or API
-    // For demo purposes, let's create some sample related objects
-    setRelatedObjects([
-      {
-        objectId: "contact",
-        relationshipType: "inner",
-        parentId: null
-      },
-      {
-        objectId: "opportunity",
-        relationshipType: "left",
-        parentId: null
-      },
-      {
-        objectId: "case",
-        relationshipType: "left",
-        parentId: "contact"
-      }
-    ]);
-  }, [primaryObjectId]);
   
   // Get related object details with field counts
   const getObjectDetails = () => {
     const result = [];
+    debugger
     
     // Add primary object first
-    if (primaryObject) {
+    if (reportType?.primaryTable) {
       result.push({
-        id: primaryObject.id,
-        name: primaryObject.name,
-        color: primaryObject.color,
-        fieldCount: primaryObject.fields?.length || 0,
+        id: reportType?.primaryTable,
+        name: reportType?.name,
+        color: '#5C6BC0',
+        fieldCount: reportType?.layoutList?.filter(l => l.tableName === reportType?.primaryTable).length || 0,
         relationshipType: "primary"
       });
     }
     
     // Add related objects
-    relatedObjects.forEach(relObj => {
-      const objDetails = availableObjects.find(obj => obj.id === relObj.objectId);
+    (reportType?.configList || []).forEach(relObj => {
+      const objDetails = (availableObjects || []).find(obj => obj.tableName === relObj.joinTableName);
       if (!objDetails) return;
       
-      const parentObject = relObj.parentId 
-        ? availableObjects.find(obj => obj.id === relObj.parentId)
-        : primaryObject;
+      const parentObject = (availableObjects || []).find(obj => obj.id === relObj.primaryTableName);
       
-      const parentName = parentObject?.name || "Unknown";
+      const parentName = parentObject?.displayName || "Unknown";
       
       result.push({
         id: objDetails.id,
-        name: objDetails.name,
-        color: objDetails.color,
-        fieldCount: objDetails.fields?.length || 0,
-        relationshipType: relObj.relationshipType,
+        name: objDetails.displayName,
+        color: '#5C6BC0',
+        fieldCount: reportType?.layoutList?.filter(l => l.tableName === objDetails.tableName).length || 0,
+        relationshipType: relObj.joinType,
         parentName: parentName
       });
     });
@@ -307,8 +97,8 @@ export default function ReportTypeSummary() {
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
             <div>
-              <h1 className="text-3xl font-bold mb-2">{displayLabel}</h1>
-              <p className="text-muted-foreground">{description}</p>
+              <h1 className="text-3xl font-bold mb-2">{reportType?.name}</h1>
+              <p className="text-muted-foreground">{reportType?.description}</p>
             </div>
             <div className="flex gap-3">
               <Link href="/report-types/summary/preview-layout">
@@ -359,24 +149,24 @@ export default function ReportTypeSummary() {
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-muted-foreground">Display Label</p>
-                    <p>{displayLabel}</p>
+                    <p>{reportType?.label}</p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-muted-foreground">Report Type ID</p>
-                    <p>{reportId}</p>
+                    <p>{reportType?.id}</p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-muted-foreground">API Name</p>
-                    <p>{apiName}</p>
+                    <p>{reportType?.name}</p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-muted-foreground">Created Date</p>
-                    <p>{createdDate}</p>
+                    <p>{reportType?.createdOn}</p>
                   </div>
-                  <div className="space-y-1">
+                  {/* <div className="space-y-1">
                     <p className="text-sm font-medium text-muted-foreground">Created By</p>
                     <p>Current User</p>
-                  </div>
+                  </div> */}
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-muted-foreground">Status</p>
                     <div className="flex items-center gap-2">
@@ -388,7 +178,7 @@ export default function ReportTypeSummary() {
                 
                 <div className="mt-4 pt-4 border-t">
                   <p className="text-sm font-medium text-muted-foreground mb-2">Description</p>
-                  <p className="text-sm">{description}</p>
+                  <p className="text-sm">{reportType?.description}</p>
                 </div>
               </CardContent>
             </Card>
@@ -427,7 +217,7 @@ export default function ReportTypeSummary() {
                           {obj.relationshipType === "primary" ? "-" : obj.relationshipType + " join"}
                         </td>
                         <td className="py-3">
-                          {obj.relationshipType === "primary" ? "-" : obj.parentName}
+                          {obj.relationshipType === "primary" ? "-" : obj.name}
                         </td>
                         <td className="py-3 text-right">{obj.fieldCount}</td>
                       </tr>
@@ -454,23 +244,23 @@ export default function ReportTypeSummary() {
                 <div className="space-y-4">
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-muted-foreground">Report Type Format</p>
-                    <p className="capitalize">{reportTypes}</p>
+                    <p className="capitalize">{reportType?.typeGroup}</p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-muted-foreground">Primary Object</p>
-                    <p>{primaryObject?.name || "Unknown"}</p>
+                    <p>{reportType?.primaryTableDisplayName || "Unknown"}</p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-muted-foreground">Related Objects</p>
-                    <p>{relatedObjects.length}</p>
+                    <p>{reportType?.usedTables?.length}</p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-muted-foreground">Total Fields Available</p>
-                    <p>{totalFieldCount}</p>
+                    <p>{reportType?.layoutList?.length}</p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-muted-foreground">Last Modified</p>
-                    <p>{createdDate}</p>
+                    <p>{reportType?.updatedOn}</p>
                   </div>
                 </div>
               </CardContent>
