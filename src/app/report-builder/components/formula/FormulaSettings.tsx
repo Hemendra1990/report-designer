@@ -6,6 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 interface FormulaSettingsProps {
   formulaName: string;
   setFormulaName: (value: string) => void;
+  formulaAlias: string;
+  setFormulaAlias: (value: string) => void;
   formulaDescription: string;
   setFormulaDescription: (value: string) => void;
   formulaOutputType: string;
@@ -17,6 +19,8 @@ interface FormulaSettingsProps {
 const FormulaSettings: React.FC<FormulaSettingsProps> = ({
   formulaName,
   setFormulaName,
+  formulaAlias,
+  setFormulaAlias,
   formulaDescription,
   setFormulaDescription,
   formulaOutputType,
@@ -41,6 +45,22 @@ const FormulaSettings: React.FC<FormulaSettingsProps> = ({
           />
         </div>
         <div>
+          <Label htmlFor="formula-alias" className="flex items-center text-xs font-medium">
+            SQL Alias
+            <span className="text-red-500 ml-1">*</span>
+          </Label>
+          <Input
+            id="formula-alias"
+            value={formulaAlias}
+            onChange={(e) => setFormulaAlias(e.target.value)}
+            placeholder="Column alias in SQL"
+            className="mt-1 text-xs h-8"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
           <Label htmlFor="formula-description" className="text-xs font-medium">
             Description
           </Label>
@@ -52,9 +72,6 @@ const FormulaSettings: React.FC<FormulaSettingsProps> = ({
             className="mt-1 text-xs h-8"
           />
         </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
         <div>
           <Label htmlFor="output-type" className="text-xs font-medium">
             Formula Output Type
@@ -76,7 +93,10 @@ const FormulaSettings: React.FC<FormulaSettingsProps> = ({
             </SelectContent>
           </Select>
         </div>
-        {(formulaOutputType === 'number' || formulaOutputType === 'currency' || formulaOutputType === 'percent') && (
+      </div>
+
+      {(formulaOutputType === 'number' || formulaOutputType === 'currency' || formulaOutputType === 'percent') && (
+        <div className="grid grid-cols-2 gap-3">
           <div>
             <Label htmlFor="decimal-points" className="text-xs font-medium">
               Decimal Points
@@ -98,8 +118,8 @@ const FormulaSettings: React.FC<FormulaSettingsProps> = ({
               </SelectContent>
             </Select>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </>
   );
 };

@@ -21,6 +21,11 @@ interface TopHeaderBarProps {
   filters: Filter[];
   filterLogic: 'and' | 'or' | 'custom';
   customFilterFormula: string;
+  // Pivot-related properties
+  isPivotActive?: boolean;
+  pivotColumnIds?: string[];
+  pivotValues?: string[];
+  selectedAggregations?: Record<string, string>;
   onSaveReport?: (sql: string, reportName: string) => void;
 }
 
@@ -36,6 +41,11 @@ const TopHeaderBar: React.FC<TopHeaderBarProps> = ({
   filters,
   filterLogic,
   customFilterFormula,
+  // Pivot-related properties
+  isPivotActive = false,
+  pivotColumnIds = [],
+  pivotValues = [],
+  selectedAggregations = {},
   onSaveReport,
 }) => {
   const [saveModalOpen, setSaveModalOpen] = useState(false);
@@ -49,7 +59,11 @@ const TopHeaderBar: React.FC<TopHeaderBarProps> = ({
       groupByFields,
       filters,
       filterLogic,
-      customFilterFormula
+      customFilterFormula,
+      isPivotActive,
+      pivotColumnIds,
+      pivotValues,
+      selectedAggregations
     });
     
     setGeneratedSql(sql);

@@ -1,6 +1,8 @@
 import React, { RefObject } from 'react';
 import { Input } from "@/components/ui/input";
-import { SearchIcon, CrossIcon } from "@/components/icons";
+import { Button } from "@/components/ui/button";
+import { SearchIcon, CrossIcon, PlusIcon } from "@/components/icons";
+import { FormulaIcon } from "@/components/icons/ReportIcons";
 import { GroupingState } from "@tanstack/react-table";
 
 interface GroupsSectionProps {
@@ -17,6 +19,8 @@ interface GroupsSectionProps {
   handleGroupBy: (fieldId: string) => void;
   grouping: GroupingState;
   groupSearchRef: React.MutableRefObject<HTMLDivElement | null>;
+  addSummaryFormulaColumn?: () => void;
+  editSummaryFormulaColumn?: (column: any) => void;
 }
 
 const GroupsSection: React.FC<GroupsSectionProps> = ({
@@ -28,11 +32,34 @@ const GroupsSection: React.FC<GroupsSectionProps> = ({
   setSelectedGroup,
   handleGroupBy,
   grouping,
-  groupSearchRef
+  groupSearchRef,
+  addSummaryFormulaColumn,
+  editSummaryFormulaColumn
 }) => {
+  // The "Add Summary Formula" button should only be enabled when there are grouped columns
+  const isSummaryFormulaEnabled = grouping.length > 0;
+
   return (
     <div className="border-b border-gray-200 p-4">
-      <div className="text-xs font-semibold text-muted-foreground mb-2">GROUP ROWS</div>
+      <div className="flex justify-between items-center mb-2">
+        <div className="text-xs font-semibold text-muted-foreground">GROUP ROWS</div>
+        {/* Add Summary Formula Button */}
+        {addSummaryFormulaColumn && (
+          <button
+            className={`text-xs flex items-center ${isSummaryFormulaEnabled ? 'text-purple-600' : 'text-gray-400 cursor-not-allowed'}`}
+            onClick={() => {
+              if (isSummaryFormulaEnabled && addSummaryFormulaColumn) {
+                addSummaryFormulaColumn();
+              }
+            }}
+            disabled={!isSummaryFormulaEnabled}
+            title={isSummaryFormulaEnabled ? "Add Summary Formula" : "Group columns first to enable summary formulas"}
+          >
+            <FormulaIcon className="mr-0.5 size-3.5" />
+            Add Summary Formula
+          </button>
+        )}
+      </div>
       <div className="relative" ref={groupSearchRef}>
         <Input
           className="pl-8 text-sm bg-background"
