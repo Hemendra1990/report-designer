@@ -69,7 +69,7 @@ export const useUpdateReportTypeLayoutStatus = () => {
     });
 };
 
-export const useMassDelete = () => {
+export const useDeleteReportType = () => {
     return useMutation({
         mutationFn: ({ reportTypeId }: { reportTypeId: string }) => {
             return deleteReportTypeById(reportTypeId);
