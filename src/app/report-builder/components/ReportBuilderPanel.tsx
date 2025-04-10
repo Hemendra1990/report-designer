@@ -233,7 +233,7 @@ const ReportBuilderPanel: React.FC<ReportBuilderPanelProps> = ({
 
           <TabsContent value="outline" className="m-0 data-[state=active]:p-4 flex-1 overflow-auto">
             <div>
-              <h3 className="text-lg font-medium mb-3">Groups</h3>
+              {/* <h3 className="text-lg font-medium mb-3">Groups</h3> */}
               <GroupsSection
                 groupSearchTerm={groupSearchTerm}
                 setGroupSearchTerm={setGroupSearchTerm}

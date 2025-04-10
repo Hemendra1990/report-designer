@@ -16,16 +16,9 @@ import FormulaFunctionsPanel from './formula/FormulaFunctionsPanel';
 import FormulaEditor from './formula/FormulaEditor';
 import FormulaSettings from './formula/FormulaSettings';
 import SqlPreview from './formula/SqlPreview';
+import { FieldsPanelField } from './FieldsPanel';
 
-// Define the types needed
-type Field = {
-  id: string;
-  name: string;
-  type: string;
-  category: string;
-  icon: React.ReactNode;
-};
-
+// Define the types needed for functions
 type Function = {
   name: string;
   description: string;
@@ -48,7 +41,7 @@ interface FormulaBuilderProps {
     alias: string;
     isFormula: boolean;
   }) => void;
-  fieldsByCategory: Record<string, Field[]>;
+  fieldsByCategory: Record<string, FieldsPanelField[]>;
   formulaFunctions: FunctionCategory[];
   expandedCategories: Record<string, boolean>;
   toggleCategory: (category: string) => void;
@@ -113,7 +106,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
 
   // Get all fields as a flat array
   const getAllFields = () => {
-    const fields: Field[] = [];
+    const fields: FieldsPanelField[] = [];
     Object.values(fieldsByCategory).forEach(categoryFields => {
       fields.push(...categoryFields);
     });
@@ -250,185 +243,169 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     } else {
       setSqlPreview("");
     }
-  }, [formulaEditorValue, fieldsByCategory, formulaAlias, isSummaryFormula]);
+  }, [formulaEditorValue, fieldsByCategory, isSummaryFormula, formulaAlias]);
+
+  // Add a field name or function to the formula editor
+  const addToFormula = (text: string) => {
+    setFormulaEditorValue(prev => prev + text);
+  };
 
   if (!isOpen) return null;
 
-  // Filter formula functions based on search term
-  const filteredFunctions = formulaSearchTerm.trim() === ""
-    ? formulaFunctions
-    : formulaFunctions.map(category => ({
-      category: category.category,
-      functions: category.functions.filter(func =>
-        func.name.toLowerCase().includes(formulaSearchTerm.toLowerCase()) ||
-        func.description.toLowerCase().includes(formulaSearchTerm.toLowerCase())
-      )
-    })).filter(category => category.functions.length > 0);
-
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
-        <div className="bg-background border-b px-4 py-3 flex justify-between items-center">
-          <h2 className="font-semibold">{title}</h2>
-          <button onClick={handleClose} className="text-muted-foreground hover:text-foreground">
-            <CrossIcon className="size-4" />
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+          <h2 className="text-xl font-semibold">{title}</h2>
+          <button
+            onClick={handleClose}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <CrossIcon size={20} />
           </button>
         </div>
-        
-        <div className="flex-1 overflow-auto p-4">
-          <div className="grid md:grid-cols-3 gap-4 h-full">
-            {/* Left Section: Fields and Functions */}
-            <div>
-              <div className="mb-3">
-                <div className="flex space-x-0.5 mb-2 border-b">
-                  <button
-                    className={`px-3 py-1.5 text-xs font-medium ${formulaDialogTab === "fields" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-500 hover:text-gray-900"}`}
-                    onClick={() => setFormulaDialogTab("fields")}
-                  >
-                    Fields
-                  </button>
-                  <button
-                    className={`px-3 py-1.5 text-xs font-medium ${formulaDialogTab === "functions" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-500 hover:text-gray-900"}`}
-                    onClick={() => setFormulaDialogTab("functions")}
-                  >
-                    Functions
-                  </button>
-                </div>
-                {formulaDialogTab === "functions" && (
-                  <div className="mb-2 relative">
-                    <input
-                      type="text"
-                      className="w-full px-2.5 pl-7 py-1.5 text-xs border border-gray-300 rounded"
-                      placeholder="Search functions..."
-                      value={formulaSearchTerm}
-                      onChange={(e) => onFormulaSearchTermChange(e.target.value)}
-                    />
-                    <SearchIcon className="absolute left-2 top-1.5 size-3.5 text-gray-400" />
-                  </div>
-                )}
-              </div>
-              
-              {/* Sidebar content */}
-              <div className="overflow-y-auto max-h-full">
-                {formulaDialogTab === "fields" ? (
-                  <FormulaFieldsPanel 
-                    fieldsByCategory={fieldsByCategory}
-                    expandedCategories={expandedCategories}
-                    toggleCategory={toggleCategory}
-                    searchTerm={searchTerm}
-                    onFieldSelect={(field) => {
-                      // Insert field at the current cursor position
-                      setFormulaEditorValue(prev => {
-                        return prev + field.id;
-                      });
-                    }}
-                  />
-                ) : (
-                  <FormulaFunctionsPanel 
-                    filteredFunctions={filteredFunctions}
-                    onFunctionSelect={(funcName) => {
-                      // Insert function at the current cursor position
-                      setFormulaEditorValue(prev => {
-                        return prev + `${funcName}()`;
-                      });
-                    }}
-                  />
-                )}
+
+        <div className="flex-1 flex overflow-hidden">
+          {/* Left panel: Fields and Functions */}
+          <div className="w-1/4 border-r border-gray-200 flex flex-col">
+            <div className="p-3 border-b border-gray-200">
+              <div className="flex space-x-2">
+                <button
+                  className={`py-1.5 px-3 text-sm rounded-md ${
+                    formulaDialogTab === "fields"
+                      ? "bg-primary text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                  onClick={() => setFormulaDialogTab("fields")}
+                >
+                  Fields
+                </button>
+                <button
+                  className={`py-1.5 px-3 text-sm rounded-md ${
+                    formulaDialogTab === "functions"
+                      ? "bg-primary text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                  onClick={() => setFormulaDialogTab("functions")}
+                >
+                  Functions
+                </button>
               </div>
             </div>
 
-            {/* Right Section: Formula Builder */}
-            <div className="md:col-span-2">
-              <div className="space-y-3">
-                <FormulaSettings
-                  formulaName={formulaName}
-                  setFormulaName={setFormulaName}
-                  formulaAlias={formulaAlias}
-                  setFormulaAlias={setFormulaAlias}
-                  formulaDescription={formulaDescription}
-                  setFormulaDescription={setFormulaDescription}
-                  formulaOutputType={formulaOutputType}
-                  setFormulaOutputType={setFormulaOutputType}
-                  decimalPoints={decimalPoints}
-                  setDecimalPoints={setDecimalPoints}
+            <div className="flex-1 overflow-y-auto">
+              {formulaDialogTab === "fields" ? (
+                <FormulaFieldsPanel
+                  fieldsByCategory={fieldsByCategory}
+                  expandedCategories={expandedCategories}
+                  toggleCategory={toggleCategory}
+                  searchTerm={searchTerm}
+                  onSearchTermChange={onSearchTermChange}
+                  addToFormula={(field) => addToFormula(field.id)}
                 />
-
-                <FormulaEditor
-                  value={formulaEditorValue}
-                  onChange={setFormulaEditorValue}
-                  fields={getAllFields()}
-                  functions={formulaFunctions.flatMap(cat => cat.functions)}
+              ) : (
+                <FormulaFunctionsPanel
+                  functionCategories={formulaFunctions}
+                  searchTerm={formulaSearchTerm}
+                  onSearchTermChange={onFormulaSearchTermChange}
+                  addToFormula={(func) => addToFormula(`${func.name}()`)}
                 />
+              )}
+            </div>
+          </div>
 
-                <div className="flex justify-end mt-2 space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 text-xs px-2.5"
-                    onClick={() => setShowSqlPreview(!showSqlPreview)}
-                  >
-                    {showSqlPreview ? "Hide SQL" : "Preview SQL"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 text-xs px-2.5"
-                    disabled={!formulaEditorValue.trim()}
-                    onClick={validateFormula}
-                  >
-                    Validate Formula
-                  </Button>
+          {/* Center panel: Formula editor */}
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="p-4 border-b border-gray-200">
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="formula-name">Formula Name</Label>
+                  <Input
+                    id="formula-name"
+                    value={formulaName}
+                    onChange={(e) => setFormulaName(e.target.value)}
+                    placeholder="Enter a name for your formula"
+                    className="mt-1"
+                  />
                 </div>
 
-                {/* SQL Preview section */}
-                {showSqlPreview && formulaEditorValue.trim() && (
-                  <SqlPreview sqlPreview={sqlPreview} />
-                )}
-
-                <div className="flex items-start gap-2 p-2 bg-blue-50 rounded-md border border-blue-100 text-xs text-blue-700 mt-3">
-                  <InfoIcon className="mt-0.5 w-3.5 h-3.5" />
-                  <div>
-                    <strong>Tips for creating formulas:</strong>
-                    <ul className="list-disc ml-4 mt-0.5 text-[11px]">
-                      <li>Use field names directly in formulas, e.g.: Amount * 0.10</li>
-                      <li>Numeric operations: +, -, *, /, ^ (exponentiation)</li>
-                      <li>Use functions like SUM(), MAX(), IF() for advanced calculations</li>
-                      <li>Validate your formula before applying it</li>
-                    </ul>
+                <div>
+                  <div className="flex justify-between">
+                    <Label htmlFor="formula-editor">Formula</Label>
+                    {validationResult && (
+                      <div
+                        className={`text-xs flex items-center ${
+                          validationResult.success
+                            ? "text-green-600"
+                            : "text-red-600"
+                        }`}
+                      >
+                        <InfoIcon className="mr-1" size={12} />
+                        {validationResult.message}
+                      </div>
+                    )}
                   </div>
+                  <FormulaEditor
+                    value={formulaEditorValue}
+                    onChange={setFormulaEditorValue}
+                    onValidate={validateFormula}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4">
+              <div className="space-y-6">
+                <FormulaSettings
+                  formulaOutputType={formulaOutputType}
+                  setFormulaOutputType={setFormulaOutputType}
+                  formulaDescription={formulaDescription}
+                  setFormulaDescription={setFormulaDescription}
+                  formulaAlias={formulaAlias}
+                  setFormulaAlias={setFormulaAlias}
+                  decimalPoints={decimalPoints}
+                  setDecimalPoints={setDecimalPoints}
+                  isSummaryFormula={isSummaryFormula}
+                />
+
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label>SQL Preview</Label>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowSqlPreview(!showSqlPreview)}
+                    >
+                      {showSqlPreview ? "Hide" : "Show"} SQL
+                    </Button>
+                  </div>
+                  
+                  {showSqlPreview && (
+                    <SqlPreview 
+                      sql={sqlPreview}
+                      success={validationResult?.success || false}
+                    />
+                  )}
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="p-3 border-t border-gray-200 flex justify-between items-center">
-          {validationResult && (
-            <div className={`text-xs px-2.5 py-1 rounded-md ${
-              validationResult.success 
-                ? 'bg-green-50 text-green-700 border border-green-200' 
-                : 'bg-red-50 text-red-700 border border-red-200'
-            }`}>
-              {validationResult.message}
-            </div>
-          )}
-          
-          <div className="flex justify-end space-x-2">
-            <Button
-              variant="outline"
-              className="h-8 text-xs"
-              onClick={handleClose}
-            >
-              Cancel
-            </Button>
-            <Button
-              className="h-8 text-xs"
-              onClick={handleSubmit}
-              disabled={!formulaName.trim() || !formulaEditorValue.trim() || (validationResult !== null && !validationResult.success)}
-            >
-              Apply
-            </Button>
-          </div>
+        <div className="p-4 border-t border-gray-200 flex justify-end">
+          <Button
+            onClick={handleClose}
+            variant="outline"
+            className="mr-2"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={!formulaName || !formulaEditorValue}
+          >
+            Save Formula
+          </Button>
         </div>
       </div>
     </div>

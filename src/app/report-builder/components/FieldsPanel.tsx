@@ -3,19 +3,28 @@ import { Input } from "@/components/ui/input";
 import { ChevronDownIcon, ChevronLeftIcon, PlusIcon, SearchIcon } from "@/components/icons";
 import { FormulaIcon } from "@/components/icons/ReportIcons";
 
-// Match the field type to the one in accountFields
-interface Field {
-  id: string;
-  name: string;
-  type: string;
-  category: string;
-  icon: string;
+// Field interface compatible with both application and API field types
+export interface FieldsPanelField {
+  id: string | null;
+  name?: string;
+  type?: string;
+  category?: string;
+  label?: string;
+  isCustom?: boolean;
   isFormula?: boolean;
   isSummaryFormula?: boolean;
+  icon?: string;
+  // New properties from the API response
+  columnName?: string;
+  columnDisplayName?: string;
+  columnType?: string;
+  tableName?: string;
+  tableId?: string;
+  active?: boolean;
 }
 
 interface FieldsByCategory {
-  [category: string]: Field[];
+  [category: string]: FieldsPanelField[];
 }
 
 interface FieldsPanelProps {
@@ -26,8 +35,9 @@ interface FieldsPanelProps {
   fieldsByCategory: FieldsByCategory;
   expandedCategories: Record<string, boolean>;
   toggleCategory: (category: string) => void;
-  addColumn: (field: Field) => void;
+  addColumn: (field: FieldsPanelField) => void;
   showShortcuts: boolean;
+  isLoading?: boolean;
 }
 
 const FieldsPanel: React.FC<FieldsPanelProps> = ({
@@ -39,8 +49,106 @@ const FieldsPanel: React.FC<FieldsPanelProps> = ({
   expandedCategories,
   toggleCategory,
   addColumn,
-  showShortcuts
+  showShortcuts,
+  isLoading = false
 }) => {
+  // Helper function to get display name for a field
+  const getFieldDisplayName = (field: FieldsPanelField): string => {
+    return field.columnDisplayName || field.label || field.name || field.columnName || 'Unnamed Field';
+  };
+
+  // Helper function to get field type
+  const getFieldType = (field: FieldsPanelField): string => {
+    return field.columnType || field.type || 'text';
+  };
+
+  // Helper function to get field icon based on type
+  const getFieldTypeIcon = (field: FieldsPanelField): React.ReactNode => {
+    // If field already has an icon, use it
+    if (field.icon) {
+      return field.icon;
+    }
+    
+    // Get the field type
+    const fieldType = getFieldType(field).toLowerCase();
+    
+    // Otherwise, determine icon based on field type
+    switch (fieldType) {
+      case 'text':
+      case 'varchar':
+      case 'char':
+      case 'string':
+        return 'T';
+      case 'textarea':
+      case 'text[]':
+        return '¶';
+      case 'number':
+      case 'integer':
+      case 'int':
+      case 'float':
+      case 'double':
+      case 'numeric':
+      case 'bigint':
+        return '#';
+      case 'currency':
+      case 'money':
+        return '$';
+      case 'percent':
+        return '%';
+      case 'date':
+        return '📅';
+      case 'datetime':
+      case 'timestamp':
+      case 'timestamptz':
+        return '⏰';
+      case 'picklist':
+      case 'enum':
+        return '▼';
+      case 'multipicklist':
+        return '▼▼';
+      case 'reference':
+      case 'fk':
+      case 'foreign key':
+        return '→';
+      case 'id':
+      case 'uuid':
+      case 'primary key':
+        return 'ID';
+      case 'checkbox':
+      case 'boolean':
+      case 'bool':
+        return '✓';
+      case 'email':
+        return '@';
+      case 'url':
+        return '🔗';
+      case 'phone':
+        return '📞';
+      default:
+        return '•';
+    }
+  };
+
+  // Group fields by table name for display in the UI
+  const fieldsByTable: Record<string, FieldsPanelField[]> = {};
+  
+  Object.entries(fieldsByCategory).forEach(([category, fields]) => {
+    fields.forEach(field => {
+      // Handle formula fields specially
+      if (field.isFormula) {
+        const formulaCat = 'Formula Fields';
+        fieldsByTable[formulaCat] = fieldsByTable[formulaCat] || [];
+        fieldsByTable[formulaCat].push(field);
+        return;
+      }
+      
+      // For regular fields, group by tableName
+      const tableName = field.tableName || category || 'Other Fields';
+      fieldsByTable[tableName] = fieldsByTable[tableName] || [];
+      fieldsByTable[tableName].push(field);
+    });
+  });
+
   return (
     <div className={`${leftPanelCollapsed ? 'w-12' : 'w-64'} bg-card border-r border-border flex flex-col overflow-hidden transition-all duration-300 shrink-0`}>
       {/* Collapse Control */}
@@ -73,97 +181,128 @@ const FieldsPanel: React.FC<FieldsPanelProps> = ({
           </div>
 
           <div className="overflow-y-auto flex-1">
-            {/* Summary Formulas Section */}
-            <div className="p-2 border-b border-gray-200 flex justify-between items-center">
-              <div className="text-xs font-semibold text-gray-500">
-                SUMMARY FORMULAS ({Object.entries(fieldsByCategory)
-                  .filter(([category]) => category === 'formula')
-                  .map(([_, fields]) => fields)
-                  .flat()
-                  .filter(field => field.isSummaryFormula)
-                  .length || 0})
-              </div>
-              <button 
-                className="text-purple-600 text-xs"
-                onClick={() => {/* Add summary formula action if needed */}}
-              >
-                Add
-              </button>
-            </div>
-
-            {/* All Fields Categories */}
-            {Object.entries(fieldsByCategory).map(([category, fields]) => (
-              <div key={category} className="border-b border-gray-200">
-                <div
-                  className="p-2 flex justify-between items-center cursor-pointer hover:bg-gray-50"
-                  onClick={() => toggleCategory(category)}
-                >
-                  <div className="text-xs font-semibold text-gray-500 uppercase">
-                    {category === 'formula' ? 'FORMULA' : category} FIELDS ({fields.length})
-                  </div>
-                  <ChevronDownIcon 
-                    className={`transition-transform ${expandedCategories[category as keyof typeof expandedCategories] ? 'rotate-180' : ''}`} 
-                  />
+            {/* Loading state */}
+            {isLoading ? (
+              <div className="p-4 text-center text-gray-500">
+                <div className="animate-pulse space-y-2">
+                  <div className="h-4 bg-gray-200 rounded"></div>
+                  <div className="h-4 bg-gray-200 rounded w-5/6 mx-auto"></div>
+                  <div className="h-4 bg-gray-200 rounded"></div>
+                  <div className="h-4 bg-gray-200 rounded w-4/6 mx-auto"></div>
                 </div>
-
-                {expandedCategories[category as keyof typeof expandedCategories] && (
-                  <div className="pl-2">
-                    {fields
-                      .filter(field =>
-                        !searchTerm.trim() ||
-                        field.name.toLowerCase().includes(searchTerm.toLowerCase())
-                      )
-                      .map(field => (
-                        <div
-                          key={field.id}
-                          className={`pl-2 pr-3 py-1.5 text-sm flex items-center justify-between cursor-pointer group
-                            ${field.isFormula 
-                              ? field.isSummaryFormula 
-                                ? 'hover:bg-purple-50' 
-                                : 'hover:bg-blue-50'
-                              : 'hover:bg-blue-50'
-                            }`}
-                          onClick={() => addColumn(field)}
-                          draggable
-                          onDragStart={() => {/* Handle field drag if needed */ }}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className={`w-4 h-4 flex items-center justify-center rounded-sm text-xs 
-                              ${field.isFormula 
-                                ? field.isSummaryFormula 
-                                  ? 'bg-purple-100 text-purple-700' 
-                                  : 'bg-blue-100 text-blue-700'
-                                : field.type === 'number' || field.type === 'currency' 
-                                  ? 'bg-purple-100 text-purple-700' 
-                                  : 'bg-indigo-100 text-indigo-700'
-                              }`}>
-                              {field.isFormula ? 
-                                <FormulaIcon className={`size-3 ${field.isSummaryFormula ? 'text-purple-700' : 'text-blue-700'}`} /> 
-                                : field.icon}
-                            </span>
-                            <span>{field.name}</span>
-                          </div>
-                          <PlusIcon
-                            className={`opacity-0 group-hover:opacity-100
-                              ${field.isFormula 
-                                ? field.isSummaryFormula 
-                                  ? 'text-purple-600' 
-                                  : 'text-blue-600'
-                                : 'text-blue-600'
-                              }`}
-                          />
-                        </div>
-                      ))}
-                    {fields.filter(field =>
-                      !searchTerm.trim() ||
-                      field.name.toLowerCase().includes(searchTerm.toLowerCase())
-                    ).length === 0 && searchTerm.trim() !== "" && (
-                        <div className="p-2 text-sm text-gray-500">No matching fields found</div>
-                      )}
+                <div className="mt-3 text-sm">Loading fields...</div>
+              </div>
+            ) : (
+              <>
+                {/* Summary Formulas Section */}
+                {fieldsByTable['Formula Fields'] && (
+                  <div className="p-2 border-b border-gray-200 flex justify-between items-center">
+                    <div className="text-xs font-semibold text-gray-700">
+                      Summary Formulas ({
+                        fieldsByTable['Formula Fields']
+                          .filter(field => field.isSummaryFormula)
+                          .length || 0
+                      })
+                    </div>
+                    <button 
+                      className="text-purple-600 text-xs"
+                      onClick={() => {/* Add summary formula action if needed */}}
+                    >
+                      Add
+                    </button>
                   </div>
                 )}
-              </div>
-            ))}
+
+                {/* All Tables/Categories */}
+                {Object.entries(fieldsByTable).map(([tableName, fields]) => (
+                  <div key={tableName} className="border-b border-gray-200">
+                    <div
+                      className="p-2 flex justify-between items-center cursor-pointer hover:bg-gray-50"
+                      onClick={() => toggleCategory(tableName)}
+                    >
+                      <div className="text-xs font-semibold text-gray-700">
+                        {tableName === 'Formula Fields' ? tableName : `${tableName} Fields`} ({fields.length})
+                      </div>
+                      <ChevronDownIcon 
+                        className={`transition-transform ${expandedCategories[tableName] ? 'rotate-180' : ''}`} 
+                      />
+                    </div>
+
+                    {expandedCategories[tableName] && (
+                      <div className="pl-2">
+                        {fields
+                          .filter(field => {
+                            if (!searchTerm.trim()) return true;
+                            const displayName = getFieldDisplayName(field).toLowerCase();
+                            const searchLower = searchTerm.toLowerCase();
+                            return displayName.includes(searchLower);
+                          })
+                          .map(field => (
+                            <div
+                              key={field.id || field.columnName}
+                              className={`pl-2 pr-3 py-1.5 text-sm flex items-center justify-between cursor-pointer group
+                                ${field.isFormula 
+                                  ? field.isSummaryFormula 
+                                    ? 'hover:bg-purple-50' 
+                                    : 'hover:bg-blue-50'
+                                  : 'hover:bg-blue-50'
+                                }`}
+                              onClick={() => addColumn(field)}
+                              draggable
+                              onDragStart={() => {/* Handle field drag if needed */ }}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className={`w-4 h-4 flex items-center justify-center rounded-sm text-xs 
+                                  ${field.isFormula 
+                                    ? field.isSummaryFormula 
+                                      ? 'bg-purple-100 text-purple-700' 
+                                      : 'bg-blue-100 text-blue-700'
+                                    : getFieldType(field).toLowerCase() === 'number' || 
+                                      getFieldType(field).toLowerCase() === 'integer' ||
+                                      getFieldType(field).toLowerCase() === 'currency'
+                                      ? 'bg-purple-100 text-purple-700' 
+                                      : 'bg-indigo-100 text-indigo-700'
+                                  }`}>
+                                  {field.isFormula ? 
+                                    <FormulaIcon className={`size-3 ${field.isSummaryFormula ? 'text-purple-700' : 'text-blue-700'}`} /> 
+                                    : getFieldTypeIcon(field)}
+                                </span>
+                                <span title={field.tableId ? `${tableName}.${getFieldDisplayName(field)}` : getFieldDisplayName(field)}>
+                                  {getFieldDisplayName(field)}
+                                </span>
+                              </div>
+                              <PlusIcon
+                                className={`opacity-0 group-hover:opacity-100
+                                  ${field.isFormula 
+                                    ? field.isSummaryFormula 
+                                      ? 'text-purple-600' 
+                                      : 'text-blue-600'
+                                    : 'text-blue-600'
+                                  }`}
+                              />
+                            </div>
+                          ))}
+                        {fields.filter(field => {
+                          if (!searchTerm.trim()) return true;
+                          const displayName = getFieldDisplayName(field).toLowerCase();
+                          const searchLower = searchTerm.toLowerCase();
+                          return displayName.includes(searchLower);
+                        }).length === 0 && searchTerm.trim() !== "" && (
+                          <div className="p-2 text-sm text-gray-500">No matching fields found</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {/* Empty state when no fields are available */}
+                {Object.keys(fieldsByTable).length === 0 && (
+                  <div className="p-4 text-center text-gray-500">
+                    <div className="mt-3 text-sm">No fields available for this report type</div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </>
       ) : (
@@ -174,20 +313,20 @@ const FieldsPanel: React.FC<FieldsPanelProps> = ({
           </div>
           
           {/* Conditionally render category shortcuts based on state */}
-          {showShortcuts && (
+          {showShortcuts && !isLoading && (
             <>
-              {Object.entries(fieldsByCategory).map(([category]) => (
+              {Object.entries(fieldsByTable).map(([tableName]) => (
                 <div
-                  key={category}
+                  key={tableName}
                   className="p-2 cursor-pointer hover:bg-accent rounded-md"
-                  title={`${category.toUpperCase()} fields`}
+                  title={`${tableName === 'Formula Fields' ? tableName : `${tableName} Fields`}`}
                   onClick={() => {
                     setLeftPanelCollapsed(false);
-                    setTimeout(() => toggleCategory(category), 300);
+                    setTimeout(() => toggleCategory(tableName), 300);
                   }}
                 >
                   <div className="size-8 bg-gray-100 text-gray-600 rounded-md flex items-center justify-center text-sm font-medium">
-                    {category.charAt(0).toUpperCase()}
+                    {tableName === 'Formula Fields' ? 'F' : tableName.charAt(0).toUpperCase()}
                   </div>
                 </div>
               ))}

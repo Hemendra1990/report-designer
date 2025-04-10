@@ -8,9 +8,21 @@ import {
 } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ReportQueryProvider } from "./QueryProvider";
 
 // Import our icon components
+import { useReportTypeFields, useFilteredFields } from "@/hooks/useReportTypes";
+import { Field as APIField } from "@/services/reportTypes.service";
 
+// Extended APIField interface to include the new properties
+interface ReportAPIField extends APIField {
+  columnName?: string;
+  columnDisplayName?: string;
+  columnType?: string;
+  tableName?: string;
+  tableId?: string;
+  active?: boolean;
+}
 
 // Import TanStack Table
 import {
@@ -22,7 +34,7 @@ import {
   VisibilityState
 } from "@tanstack/react-table";
 import AppliedFiltersBar from "./components/AppliedFiltersBar";
-import FieldsPanel from "./components/FieldsPanel";
+import FieldsPanel, { FieldsPanelField } from "./components/FieldsPanel";
 import FilterFieldSelector from "./components/FilterFieldSelector";
 import FormulaBuilder from "./components/FormulaBuilder";
 import InfoBanner from "./components/InfoBanner";
@@ -39,14 +51,31 @@ import { ReportTypeTemplate } from "./model/ReportType";
 import { FetchDataOptions, ServerResponse } from "./model/ServerReqRes";
 import { formulaFunctions } from "./util/ReportBuilderUtil";
 
+// Convert accountFields to FieldsPanelField format for type compatibility
+const accountFieldsCompatible: FieldsPanelField[] = accountFields.map(field => ({
+  id: field.id,
+  name: field.name,
+  type: field.type,
+  category: field.category,
+  icon: field.icon,
+  isFormula: field.isFormula,
+  isSummaryFormula: field.isSummaryFormula
+}));
+
 // Group fields by category
-const fieldsByCategory = accountFields.reduce((acc, field) => {
+const fieldsByCategory = accountFieldsCompatible.reduce((acc, field) => {
   // Use the field's category, or create a special "Formula Fields" category for formula fields
-  const category = field.isFormula ? 'formula' : field.category;
-  acc[category] = acc[category] || [];
+  const category = field.isFormula ? 'formula' : (field.category || 'Other Fields');
+  
+  // Initialize the category array if it doesn't exist
+  if (!acc[category]) {
+    acc[category] = [];
+  }
+  
+  // Add the field to its category
   acc[category].push(field);
   return acc;
-}, {} as Record<string, typeof accountFields>);
+}, {} as Record<string, FieldsPanelField[]>);
 
 // Sample selected columns for the report
 const initialSelectedColumns: Field[] = [
@@ -81,11 +110,11 @@ const queryClient = new QueryClient({
 });
 
 // Wrapper component to provide the QueryClient
-export default function ReportBuilderWithQueryClient() {
+export default function ReportBuilder() {
   return (
-    <QueryClientProvider client={queryClient}>
+    <ReportQueryProvider>
       <ReportBuilderPage />
-    </QueryClientProvider>
+    </ReportQueryProvider>
   );
 }
 
@@ -144,6 +173,9 @@ function ReportBuilderPage() {
   const [showReportTypeModal, setShowReportTypeModal] = useState(true);
   const [selectedReportType, setSelectedReportType] = useState<ReportTypeTemplate | null>(null);
 
+  // Add state for fields fetching
+  const [searchFieldTerm, setSearchFieldTerm] = useState("");
+
   const handleReportTypeSelect = (reportType: ReportTypeTemplate) => {
     setSelectedReportType(reportType);
     setShowReportTypeModal(false);
@@ -164,6 +196,68 @@ function ReportBuilderPage() {
     address: false,
     system: false,
   });
+
+  // Fetch fields for the selected report type
+  const {
+    data: fieldsData,
+    isLoading: isFieldsLoading,
+    isError: isFieldsError
+  } = useReportTypeFields(
+    selectedReportType?.id || '',
+    { search: searchFieldTerm },
+    {
+      enabled: !!selectedReportType?.id
+    }
+  );
+
+  // Log the API response when data is received
+  useEffect(() => {
+    if (fieldsData) {
+      console.log('ReportType API Response:', fieldsData);
+    }
+  }, [fieldsData]);
+
+  // Process fields into categories
+  const reportFieldsByCategory = useFilteredFields(fieldsData?.fields || [], searchFieldTerm);
+
+  // Log the processed fields by tableName
+  useEffect(() => {
+    if (reportFieldsByCategory && Object.keys(reportFieldsByCategory).length > 0) {
+      console.log('Fields grouped by tableName:', reportFieldsByCategory);
+    }
+  }, [reportFieldsByCategory]);
+
+  // Helper function to convert API fields to application fields
+  const convertApiFieldToAppField = (apiField: ReportAPIField): FieldsPanelField => {
+    // Determine field type safely
+    const fieldType = apiField.type || apiField.columnType || 'text';
+    
+    return {
+      id: apiField.id || apiField.columnName || `field_${Date.now()}`,
+      name: apiField.name || apiField.columnName || '',
+      label: apiField.label || apiField.columnDisplayName || '',
+      type: fieldType,
+      category: apiField.category || '',
+      icon: fieldType ? fieldType.charAt(0).toUpperCase() : 'T', // Default icon if no type
+      isCustom: apiField.isCustom || false,
+      // New properties from the report API
+      columnName: apiField.columnName || '',
+      columnDisplayName: apiField.columnDisplayName || '',
+      columnType: apiField.columnType || '',
+      tableName: apiField.tableName || '',
+      tableId: apiField.tableId || '',
+      active: apiField.active !== undefined ? apiField.active : true
+    };
+  };
+
+  // Convert API fields by category to application fields by category
+  const convertedFieldsByCategory = Object.entries(reportFieldsByCategory).reduce(
+    (acc, [category, fields]) => {
+      acc[category] = fields.map(field => convertApiFieldToAppField(field as ReportAPIField));
+      return acc;
+    },
+    {} as Record<string, FieldsPanelField[]>
+  );
 
   // Context menu state
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -264,9 +358,9 @@ function ReportBuilderPage() {
 
   // Filter fields based on search term
   const filteredFields = searchTerm.trim() === ""
-    ? accountFields
-    : accountFields.filter(field =>
-      field.name.toLowerCase().includes(searchTerm.toLowerCase())
+    ? accountFieldsCompatible
+    : accountFieldsCompatible.filter(field =>
+      field.name && field.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
   // Toggle category expansion
@@ -278,16 +372,32 @@ function ReportBuilderPage() {
   };
 
   // Handle adding a column to the report
-  const addColumn = (field: typeof accountFields[0]) => {
-    if (!selectedColumns.some(col => col.id === field.id)) {
-      // Ensure the field being added has the proper FieldType
+  const addColumn = (field: FieldsPanelField) => {
+    const fieldId = field.id || field.columnName || `field_${Date.now()}`;
+    if (!selectedColumns.some(col => col.id === fieldId)) {
+      // Get field properties with fallbacks
+      const fieldName = field.columnDisplayName || field.label || field.name || field.columnName || fieldId;
+      const fieldType = (field.columnType || field.type || 'text') as FieldType;
+      const fieldCategory = field.tableName || field.category || '';
+      
+      // Determine icon with fallback
+      let fieldIcon = field.icon || '';
+      if (!fieldIcon && (field.columnType || field.type)) {
+        const typeStr = field.columnType || field.type || '';
+        fieldIcon = typeStr.charAt(0).toUpperCase();
+      } else if (!fieldIcon) {
+        fieldIcon = 'T'; // Default icon
+      }
+      
+      // Convert to application Field type
       const newColumn: Field = {
-        id: field.id,
-        name: field.name,
-        type: field.type as unknown as FieldType,
-        category: field.category,
-        icon: field.icon
+        id: fieldId,
+        name: fieldName,
+        type: fieldType,
+        category: fieldCategory,
+        icon: fieldIcon
       };
+
       setSelectedColumns(prevColumns => [...prevColumns, newColumn]);
       if (autoUpdatePreview) {
         fetchData();
@@ -441,11 +551,36 @@ function ReportBuilderPage() {
   const [filterSearchTerm, setFilterSearchTerm] = useState('');
 
   // Function to add a new filter
-  const addFilter = (field: any) => {
+  const addFilter = (field: FieldsPanelField) => {
+    const fieldId = field.id || field.columnName || `field_${Date.now()}`;
+    
+    // Get field properties with fallbacks
+    const fieldName = field.columnDisplayName || field.label || field.name || field.columnName || fieldId;
+    const fieldType = (field.columnType || field.type || 'text') as FieldType;
+    const fieldCategory = field.tableName || field.category || '';
+    
+    // Determine icon with fallback
+    let fieldIcon = field.icon || '';
+    if (!fieldIcon && (field.columnType || field.type)) {
+      const typeStr = field.columnType || field.type || '';
+      fieldIcon = typeStr.charAt(0).toUpperCase();
+    } else if (!fieldIcon) {
+      fieldIcon = 'T'; // Default icon
+    }
+    
+    // Convert to Field type for compatibility with the filter system
+    const fieldForFilter: Field = {
+      id: fieldId,
+      name: fieldName,
+      type: fieldType,
+      category: fieldCategory,
+      icon: fieldIcon
+    };
+
     const newFilter: Filter = {
       id: `filter-${Date.now()}`,
-      field: toField(field),
-      operator: getDefaultOperator(field.type),
+      field: fieldForFilter,
+      operator: getDefaultOperator(fieldForFilter.type),
       value: '',
       rangeStart: '',
       rangeEnd: '',
@@ -1104,8 +1239,8 @@ function ReportBuilderPage() {
       />
       <div className="min-h-screen bg-gray-50 flex flex-col">
         <TopHeaderBar 
-          reportName={selectedReportType?.name || "New Accounts Report"}
-          reportType={selectedReportType?.type || "Accounts"}
+          reportName={selectedReportType?.name || ""}
+          reportType={selectedReportType?.type || ""}
           showShortcuts={showShortcuts}
           onToggleShortcuts={() => setShowShortcuts(!showShortcuts)}
           onRun={() => fetchData()}
@@ -1137,13 +1272,14 @@ function ReportBuilderPage() {
           <FieldsPanel
             leftPanelCollapsed={leftPanelCollapsed}
             setLeftPanelCollapsed={setLeftPanelCollapsed}
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            fieldsByCategory={fieldsByCategory}
+            searchTerm={searchFieldTerm}
+            setSearchTerm={setSearchFieldTerm}
+            fieldsByCategory={selectedReportType ? convertedFieldsByCategory : {}}
             expandedCategories={expandedCategories}
             toggleCategory={toggleCategory}
             addColumn={addColumn}
             showShortcuts={showShortcuts}
+            isLoading={isFieldsLoading}
           />
 
           {/* Center Panel - Report Builder */}
@@ -1189,8 +1325,8 @@ function ReportBuilderPage() {
             setFilterLogic={setFilterLogic}
             customFormula={customFormula}
             setCustomFormula={setCustomFormula}
-            accountFields={accountFields}
-            addFilter={addFilter}
+            accountFields={Object.values(convertedFieldsByCategory).flat() as any}
+            addFilter={addFilter as any}
             removeFilter={removeFilter}
             updateFilter={updateFilter}
             setShowFilterFieldSelector={setShowFilterFieldSelector}
@@ -1250,7 +1386,7 @@ function ReportBuilderPage() {
             setEditingFormulaColumn(null);
           }}
           onSubmit={handleSubmitFormula}
-          fieldsByCategory={fieldsByCategory}
+          fieldsByCategory={selectedReportType ? convertedFieldsByCategory as any : fieldsByCategory as any}
           formulaFunctions={formulaFunctions}
           expandedCategories={expandedCategories}
           toggleCategory={toggleCategory}
@@ -1269,7 +1405,7 @@ function ReportBuilderPage() {
             setEditingSummaryFormula(null);
           }}
           onSubmit={handleSubmitSummaryFormula}
-          fieldsByCategory={fieldsByCategory}
+          fieldsByCategory={selectedReportType ? convertedFieldsByCategory as any : fieldsByCategory as any}
           formulaFunctions={formulaFunctions}
           expandedCategories={expandedCategories}
           toggleCategory={toggleCategory}
@@ -1286,12 +1422,12 @@ function ReportBuilderPage() {
         <FilterFieldSelector 
           isOpen={showFilterFieldSelector}
           onClose={() => setShowFilterFieldSelector(false)}
-          fieldsByCategory={fieldsByCategory}
+          fieldsByCategory={selectedReportType ? convertedFieldsByCategory as any : fieldsByCategory as any}
           expandedCategories={expandedCategories}
           toggleCategory={toggleCategory}
           filterSearchTerm={filterSearchTerm}
           onFilterSearchTermChange={setFilterSearchTerm}
-          addFilter={addFilter}
+          addFilter={addFilter as any}
         />
       </div>
     </>

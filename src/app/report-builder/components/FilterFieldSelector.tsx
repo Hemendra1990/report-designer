@@ -178,10 +178,10 @@ const FilterFieldSelector: React.FC<FilterFieldSelectorProps> = ({
   const handleAddFilter = (field: any) => {
     const typedField: Field = {
       id: field.id,
-      name: field.name,
-      type: field.type as FieldType,
-      category: field.category,
-      icon: field.icon
+      name: (field.label || field.name || "Unnamed Field"),
+      type: typeof field.type === 'string' ? field.type as FieldType : 'text',
+      category: field.category || '',
+      icon: field.icon || (typeof field.type === 'string' ? field.type.charAt(0) : 'A')
     };
     addFilter(typedField);
     onClose();
