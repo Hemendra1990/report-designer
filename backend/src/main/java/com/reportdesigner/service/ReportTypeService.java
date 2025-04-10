@@ -136,6 +136,15 @@ public class ReportTypeService {
             throw new ValidationException(ex.getMessage(), ErrorCode.ERR_PROCESSING, "ReportTypeService.getReportTypeById");
         }
     }
+    @Transactional
+    public void deleteReportTypeById(String reportTypeId) throws ValidationException {
+        try {
+            Preconditions.checkArgument(StringUtils.isNotBlank(reportTypeId), "Report type id can not be empty");
+            reportTypeRepository.deleteById(reportTypeId);
+        } catch (Exception ex) {
+            throw new ValidationException(ex.getMessage(), ErrorCode.ERR_PROCESSING, "ReportTypeService.deleteReportTypeById");
+        }
+    }
 
     public void updateLayoutStatus(List<ReportTypeLayoutDTO> layoutList) {
         Map<Boolean, List<String>> result = layoutList.stream()

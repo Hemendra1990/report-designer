@@ -56,5 +56,13 @@ public class ReportTypeController {
                 .message("Report type layout updated successfully")
                 .build();
     }
+    @DeleteMapping("/{reportTypeId}")
+    public ApiResponse deleteById(@PathVariable String reportTypeId) throws ValidationException {
+        reportTypeService.deleteReportTypeById(reportTypeId);
+        return ApiResponse.builder()
+                .status(HttpStatus.OK.toString())
+                .message("Report type deleted successfully")
+                .build();
+    }
 
 }

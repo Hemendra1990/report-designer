@@ -1,6 +1,6 @@
 import { QueryKeys } from "@/components/enum/query-keys";
 import { ReportType, ReportTypeLayout } from "@/components/model/report-type";
-import { createReportType, getAllReportTypes, getReportTypeById, updateReportTypeLayoutStatus } from "@/services/report-type/report-type-service";
+import { createReportType, deleteReportTypeById, getAllReportTypes, getReportTypeById, updateReportTypeLayoutStatus } from "@/services/report-type/report-type-service";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export const useReportTypeById = (reportTypeId: string) => {
@@ -61,6 +61,18 @@ export const useUpdateReportTypeLayoutStatus = () => {
     return useMutation({
         mutationFn: ({ payload }: { payload: ReportTypeLayout[] }) => {
             return updateReportTypeLayoutStatus(payload);
+        },
+        onSuccess: () => {
+        },
+        onError: () => {
+        },
+    });
+};
+
+export const useMassDelete = () => {
+    return useMutation({
+        mutationFn: ({ reportTypeId }: { reportTypeId: string }) => {
+            return deleteReportTypeById(reportTypeId);
         },
         onSuccess: () => {
         },

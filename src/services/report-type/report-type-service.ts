@@ -11,6 +11,10 @@ export const getReportTypeById = (reportTypeId: string) => {
     return httpClient.get(`${BASE_URL}/${reportTypeId}`);
 }
 
+export const deleteReportTypeById = (reportTypeId: string) => {
+    return httpClient.delete(`${BASE_URL}/${reportTypeId}`);
+}
+
 export const createReportType = (reportType: ReportType) => {
     return httpClient.post(`${BASE_URL}`, reportType);
 }
