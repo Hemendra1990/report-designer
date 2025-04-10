@@ -1,6 +1,6 @@
 export interface ReportType {
-    id: string;
-    type: string;
+    id?: string;
+    typeGroup: string;
     label: string;
     name: string;
     description: string;
@@ -11,10 +11,13 @@ export interface ReportType {
     usedTables?: string[];
     configList?: ReportTypeConfig[];
     layoutList?: ReportTypeLayout[];
+
+    schema?: string;
+    objectTree?: string;
 }
 
 export interface ReportTypeConfig {
-    id: string;
+    id?: string;
     joinType: string;
 
     primaryTableId: string;
@@ -27,6 +30,7 @@ export interface ReportTypeConfig {
     joinTableDisplayName: string;
     referColumn: string;
     sortOrder: number;
+    letter?: string;
 }
 
 export interface ReportTypeLayout {

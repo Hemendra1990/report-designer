@@ -36,6 +36,9 @@ public class ReportType extends BaseEntity {
     private String cteQuery;
 
     @Column(columnDefinition = "TEXT")
+    private String objectTree;
+
+    @Column(columnDefinition = "TEXT")
     @Convert(converter = StringListConverter.class)
     private List<String> usedTables;
 

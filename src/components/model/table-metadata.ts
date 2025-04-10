@@ -1,5 +1,5 @@
 
-  export interface ColumnMetaData {
+  export interface iColumnMetaData {
     id: string;
     columnName: string;
     headerName: string;
@@ -33,7 +33,7 @@
     referenceColumn: string;
   }
   
-  export interface TableMetaData {
+  export interface iTableMetaData {
     id: string;
     tableName: string;
     displayName: string;
@@ -41,6 +41,6 @@
     icon: string;
     listDisplayName: string;
     standardTable: boolean;
-    columns: ColumnMetaData[];
+    columns: iColumnMetaData[];
     relationships: RelationshipMetaData[];
   }
