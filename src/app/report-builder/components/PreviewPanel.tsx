@@ -50,6 +50,11 @@ interface PreviewPanelProps {
   pivotValues?: string[];
 }
 
+const getColumnKey = (column: { id: string; meta?: { duckDBColumnName?: string; columnName?: string; } }) => {
+  const meta = column.meta || {};
+  return meta.duckDBColumnName || meta.columnName || column.id;
+};
+
 const PreviewPanel: React.FC<PreviewPanelProps> = ({
   rowData,
   columns,

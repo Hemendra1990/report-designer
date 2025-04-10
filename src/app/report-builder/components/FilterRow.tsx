@@ -29,6 +29,11 @@ export function FilterRow({
   // Get appropriate operators based on field type
   const operators = getOperatorsForType(field.type);
 
+  // Get the display name with fallbacks
+  const getDisplayName = () => {
+    return field.duckDBColumnName || field.columnName || field.name;
+  };
+
   // Toggle expanded state
   const toggleExpanded = () => {
     setExpanded(!expanded);
@@ -45,7 +50,7 @@ export function FilterRow({
         <span className="flex items-center justify-center bg-blue-100 text-blue-700 rounded-full h-4 w-4 text-[10px] font-medium mr-0.5">
           {index}
         </span>
-        <span className="font-medium text-gray-700 truncate max-w-[100px]">{field.name}</span>
+        <span className="font-medium text-gray-700 truncate max-w-[100px]">{getDisplayName()}</span>
         <span className="text-gray-500 mx-0.5">{operator}</span>
         <span className="text-gray-900 font-medium truncate max-w-[100px]">{value || '...'}</span>
         <button
@@ -99,7 +104,7 @@ export function FilterRow({
               <span className="text-gray-500 text-[11px]">
                 {getFieldIcon(field.type)}
               </span>
-              <span className="text-xs font-medium truncate">{field.name}</span>
+              <span className="text-xs font-medium truncate">{getDisplayName()}</span>
               <button 
                 onClick={(e) => e.preventDefault()} 
                 className="ml-auto text-gray-400 hover:text-gray-600 p-0.5"
