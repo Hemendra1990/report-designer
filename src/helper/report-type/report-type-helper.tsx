@@ -44,7 +44,7 @@ export const useReportTypeConfigGeneration = () => {
     const reportTypeConfigGeneration = (tableName: string, relationshipType: RelationshipType, parentTableName: string, relatedTableInformationMap: Record<string, iTableMetaData[]>, relatedObjects: RelatedObject[] ) => {
         let selectedTableMetadata: iTableMetaData | undefined = relatedTableInformationMap[parentTableName]?.find(e => e.tableName == tableName);
         if (selectedTableMetadata) {
-            let relatedColumn = selectedTableMetadata.columns.find(col => col.referenceAPI == reportType.primaryTable)
+            let relatedColumn = selectedTableMetadata.columns.find(col => col.referenceAPI == parentTableName)
             let parentTable = allTableMetaData?.find((table) => table.tableName == parentTableName);
             
             let reportTypeConfig: ReportTypeConfig = {

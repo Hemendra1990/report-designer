@@ -77,6 +77,7 @@ export default function DefineRelationships(props: DefineRelationshipsProps) {
   const createReportTypeMutation = useCreatereportType();
   const router = useRouter();
   const [showErrorToast, setShowErrorToast] = useState<string>('');
+  const [relatedTableInformationMap, setRelatedTableInformationMap] = useState<Record<string, iTableMetaData[]>>({});
 
   useEffect(() => {
     if (reportTypeId) {
@@ -127,6 +128,12 @@ export default function DefineRelationships(props: DefineRelationshipsProps) {
         setIsLoadingRelated(true);
         try {
           const tables = (await getRelatedData(primaryObject.name)).data.data;
+          setRelatedTableInformationMap((prev) => {
+            return {
+              ...prev,
+              [primaryObject.name]: tables
+            }
+          });
           setRelatedTables(tables);
         } catch (error) {
           console.error("Error fetching related tables:", error);
@@ -165,6 +172,12 @@ export default function DefineRelationships(props: DefineRelationshipsProps) {
       
       if (parentObject && parentObject.schema && parentObject.name) {
         const tables = (await getRelatedData(parentObject.name)).data.data;
+        setRelatedTableInformationMap((prev) => {
+          return {
+            ...prev,
+            [parentObject.name]: tables
+          }
+        });
         const mappedTables = tables.map((table: TableMetadata) => ({
           id: table.tableName,
           name: table.tableName,
@@ -201,7 +214,7 @@ export default function DefineRelationships(props: DefineRelationshipsProps) {
   });
 
   // Handle adding related object
-  const handleAddRelatedObject = (objectId: string, relationshipType: RelationshipType, parentId: string | null, relatedTableInformationMap: Record<string, iTableMetaData[]>, relatedObjects: RelatedObject[]) => {
+  const handleAddRelatedObject = (objectId: string, relationshipType: RelationshipType, parentId: string | null, relatedTableInformation: Record<string, iTableMetaData[]>, relatedObjects: RelatedObject[]) => {
     const objectToAdd = availableObjects.find(obj => obj.id === objectId);
     if (!objectToAdd) return;
     
@@ -228,7 +241,7 @@ export default function DefineRelationships(props: DefineRelationshipsProps) {
       setRelatedObjects(modifiedObjectTree);
 
     // Add ReportTypeConfig to report type payload
-    reportTypeConfigGeneration(objectId, relationshipType, parentId || reportType.primaryTable, relatedTableInformationMap, modifiedObjectTree);
+    reportTypeConfigGeneration(objectId, relationshipType, parentId || reportType.primaryTable, { ...(relatedTableInformationMap || {}), ...(relatedTableInformation || {}) }, modifiedObjectTree);
     
     // Fetch available objects for the newly added object
     fetchAvailableObjectsForParent(objectId);
