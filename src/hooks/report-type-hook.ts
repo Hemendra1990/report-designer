@@ -20,7 +20,7 @@ export const useReportTypeById = (reportTypeId: string) => {
     return { reportTypeResponse };
 };
 
-export const useInvalidateReportTypeById = () => {
+export const useInvalidateReportTypeById = () => { // TODO
     const queryClient = useQueryClient();
     const invalidateReportTypeById = () => {
         queryClient.invalidateQueries({ queryKey: [QueryKeys.GET_REPORT_TYPE_BY_ID] });
@@ -50,6 +50,7 @@ export const useInvalidateAllReportTypes = () => {
 
 export const useCreatereportType = () => {
     const {invalidateAllReportTypes} = useInvalidateAllReportTypes();
+    const {invalidateReportTypeById} = useInvalidateReportTypeById();
     return useMutation({
         mutationFn: ({ payload, onSuccess, onError }: { payload: ReportType, onSuccess?: (data: any) => void, onError?: (err: AxiosError) => void }) => {
             return createReportType(payload);
@@ -58,6 +59,7 @@ export const useCreatereportType = () => {
             if (variables?.onSuccess) {
                 variables.onSuccess(data);
             }
+            // invalidateReportTypeById(data?.id)
             invalidateAllReportTypes();
         },
         onError: (err: AxiosError, variables) => {

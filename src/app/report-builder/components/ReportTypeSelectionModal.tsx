@@ -19,6 +19,8 @@ import { groupFieldsByTable, mapColumnTypeToFieldType } from "../utils/fieldUtil
 import { AxiosError } from 'axios';
 import { Field, FieldType } from "../model/Field";
 import { ApiReportField } from "../services/api-types";
+import { useAllReportTypeSummary, useLayoutColumnListByReportId } from "@/hooks/report-type-hook";
+import { ReportTypeLayout } from "@/components/model/report-type";
 
 // Define an extended Field type that includes ApiReportField properties
 interface ExtendedField extends Field {
@@ -43,22 +45,34 @@ export function ReportTypeSelectionModal({
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [selectedReport, setSelectedReport] = useState<RecentReportType | null>(null);
+    const { layoutColumnByReportIdResponse } = useLayoutColumnListByReportId(selectedReport?.id as string);
     const [activeTab, setActiveTab] = useState<"details" | "fields">("details");
     const [fieldSearchTerm, setFieldSearchTerm] = useState("");
+    const { allReportTypeSummaryResponse } = useAllReportTypeSummary();
+    const [reportTypes, setReportTypes] = useState<RecentReportType[]>([]);
     
-    // Fetch report types
-    const { 
-        data: reportTypes = [],
-        isLoading: isReportTypesLoading,
-        error: reportTypesError,
-        refetch: refetchReportTypes
-    } = useQuery<RecentReportType[], AxiosError>({
-        queryKey: ['reportTypes'],
-        queryFn: getReportTypes,
-        enabled: isOpen, // Only fetch when modal is open
-        retry: 2, // Retry failed requests twice
-        staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
-    });
+    useEffect(() => {
+        if (allReportTypeSummaryResponse?.data) {
+            setReportTypes(allReportTypeSummaryResponse?.data.map(reportType => {
+                const date = new Date(reportType?.createdOn);
+                let type:RecentReportType =  {
+                    id: reportType.id,
+                    name: reportType?.name,
+                    category: '',
+                    description: reportType?.description,
+                    objects: reportType?.usedTables?.map(table => ({name: table})),
+                    lastUsed:`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`,
+                    status: 'Active',
+                    type: reportType?.typeGroup,
+                    createdBy: reportType?.createdBy,
+                    fieldsCount: reportType?.columnCount
+                }
+                return type;
+            }))
+        }
+    }, [allReportTypeSummaryResponse?.data])
+    
+
     
     // Fetch fields for the selected report type
     const {
@@ -97,9 +111,25 @@ export function ReportTypeSelectionModal({
         retry: 2,
     });
 
+    const getFieldCategoryMap = (): Record<string, ReportTypeLayout[]> => {
+        if (allReportTypeSummaryResponse?.data) {
+            const fieldCategoryMap: Record<string, ReportTypeLayout[]> = layoutColumnByReportIdResponse?.data.reduce((acc: any, layout: any) => {
+                const table = layout.tableName;
+                if (!acc[table]) {
+                  acc[table] = [];
+                }
+                acc[table].push(layout);
+                return acc;
+              }, {} as Record<string, ReportTypeLayout[]>);
+              return fieldCategoryMap;
+        } else {
+            return {};
+        }
+    }
+
     // Extract unique categories from report types
     const categories = useMemo(() => {
-        return Array.from(new Set(reportTypes.map(report => report.category)));
+        return Array.from(new Set(reportTypes.map(report => report.type)));
     }, [reportTypes]);
 
     // Group fields by table name for better organization
@@ -196,8 +226,8 @@ export function ReportTypeSelectionModal({
     };
 
     // Display error messages if needed
-    if (reportTypesError) {
-        console.error('Error loading report types:', reportTypesError);
+    if (allReportTypeSummaryResponse?.error) {
+        console.error('Error loading report types:', allReportTypeSummaryResponse?.error);
     }
 
     if (fieldsError) {
@@ -225,7 +255,7 @@ export function ReportTypeSelectionModal({
                         </button>
                         
                         {/* Show loading skeleton for categories or actual categories */}
-                        {isReportTypesLoading ? (
+                        {allReportTypeSummaryResponse?.isLoading ? (
                             // Category loading skeletons
                             Array(4).fill(0).map((_, idx) => (
                                 <div key={idx} className="w-full px-2.5 py-1.5 flex items-center gap-2">
@@ -233,9 +263,9 @@ export function ReportTypeSelectionModal({
                                     <div className="h-3 w-20 bg-slate-200 rounded animate-pulse"></div>
                                 </div>
                             ))
-                        ) : (
+                        ) : (<></>
                             // Actual categories when loaded
-                            categories.map((category) => (
+                            /* categories.map((category) => (
                                 <button
                                     key={category}
                                     onClick={() => setSelectedCategory(category)}
@@ -249,7 +279,7 @@ export function ReportTypeSelectionModal({
                                     {getCategoryIcon(category)}
                                     {category}
                                 </button>
-                            ))
+                            )) */
                         )}
                     </div>
                 </div>
@@ -278,10 +308,10 @@ export function ReportTypeSelectionModal({
                         <h3 className="text-sm font-medium mb-2.5 text-slate-700">Available Report Types</h3>
 
                         <div className="space-y-2 overflow-y-auto flex-1 pr-1">
-                            {isReportTypesLoading ? (
+                            {allReportTypeSummaryResponse?.isLoading ? (
                                 // Show skeletons when loading
                                 <ReportTypesSkeletonList />
-                            ) : reportTypesError ? (
+                            ) : allReportTypeSummaryResponse?.error ? (
                                 // Show error state
                                 <div className="p-6 text-center bg-slate-50 rounded-md border border-dashed border-slate-200">
                                     <X className="h-8 w-8 mx-auto mb-2 text-red-400" />
@@ -311,10 +341,10 @@ export function ReportTypeSelectionModal({
                                                                     '#FFFBEB'}`
                                                     }}
                                                 >
-                                                    {report.type === 'tabular' && <BarChart4 className="h-4 w-4 text-blue-600" />}
-                                                    {report.type === 'summary' && <PieChart className="h-4 w-4 text-emerald-600" />}
-                                                    {report.type === 'matrix' && <Users className="h-4 w-4 text-rose-600" />}
-                                                    {report.type === 'joined' && <Sparkles className="h-4 w-4 text-amber-600" />}
+                                                    {report.type == 'tabular' && <BarChart4 className="h-4 w-4 text-blue-600" />}
+                                                    {report.type == 'summary' && <PieChart className="h-4 w-4 text-emerald-600" />}
+                                                    {report.type == 'matrix' && <Users className="h-4 w-4 text-rose-600" />}
+                                                    {report.type == 'joined' && <Sparkles className="h-4 w-4 text-amber-600" />}
                                                 </div>
 
                                                 <div className="flex-1">
@@ -326,10 +356,7 @@ export function ReportTypeSelectionModal({
                                                     </h4>
 
                                                     <div className="flex items-center mt-0.5 text-xs gap-2">
-                                                        <span className="flex items-center gap-1 text-slate-500">
-                                                            {getCategoryIcon(report.category)}
-                                                            <span>{report.category}</span>
-                                                        </span>
+                                                        
                                                         <span className="text-slate-400 flex items-center">
                                                             <Clock className="h-3 w-3 mr-0.5" />
                                                             <span>{report.lastUsed}</span>
@@ -492,12 +519,12 @@ export function ReportTypeSelectionModal({
                                             />
                                         </div>
 
-                                        {isFieldsLoading ? (
+                                        {layoutColumnByReportIdResponse?.isLoading ? (
                                             // Loading skeleton for fields
                                             <ScrollArea className="flex-1 pr-3 -mr-3">
                                                 <FieldsSkeletonList />
                                             </ScrollArea>
-                                        ) : fieldsError ? (
+                                        ) : layoutColumnByReportIdResponse?.isError ? (
                                             // Error state for fields
                                             <div className="flex-1 flex items-center justify-center">
                                                 <div className="text-center">
@@ -512,7 +539,7 @@ export function ReportTypeSelectionModal({
                                                     </Button>
                                                 </div>
                                             </div>
-                                        ) : Object.keys(fieldsByCategory).length === 0 ? (
+                                        ) : Object.entries(getFieldCategoryMap()).length === 0 ? (
                                             // Empty state for fields
                                             <div className="flex-1 flex items-center justify-center">
                                                 <div className="text-center">
@@ -524,7 +551,7 @@ export function ReportTypeSelectionModal({
                                             // Display fields grouped by table
                                             <ScrollArea className="flex-1 pr-3 -mr-3">
                                                 <div className="space-y-4">
-                                                    {Object.entries(fieldsByCategory).map(([category, fields]) => (
+                                                    {Object.entries(getFieldCategoryMap()).map(([category, fields]) => (
                                                         <div key={category}>
                                                             <h4 className="font-medium text-[0.65rem] text-slate-500 mb-1 uppercase tracking-wider">{category}</h4>
                                                             <div className="space-y-0.5">

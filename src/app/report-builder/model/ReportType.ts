@@ -20,8 +20,8 @@ export interface RecentReportType {
     createdBy?: string;
     objects?: Array<{
     name: string;
-icon: string;
-color: string;
+icon?: string;
+color?: string;
 relatedObjects?: Array<{
         name: string;
         icon: string;

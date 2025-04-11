@@ -53,4 +53,5 @@ export interface ReportTypeSummary {
     createdOn: string;
     usedTables: string[];
     columnCount: number;
+    typeGroup: "tabular" | "summary" | "matrix" | "joined";
 }

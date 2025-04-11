@@ -102,6 +102,7 @@ public class ReportTypeMapper implements BaseMapper<ReportTypeDTO, ReportType> {
                 .createdOn(reportType.getCreatedOn())
                 .usedTables(reportType.getUsedTables())
                 .columnCount(reportType.getLayoutList() != null ? reportType.getLayoutList().size() : 0)
+                .typeGroup(reportType.getTypeGroup())
                 .build();
     }
 }
