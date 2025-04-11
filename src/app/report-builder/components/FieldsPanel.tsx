@@ -27,6 +27,8 @@ interface ExtendedField extends Field {
   tableName?: string;
   tableId?: string;
   active?: boolean;
+  duckDBColumnName?: string;
+  duckDBColumnDisplayName?: string;
 }
 
 interface FieldsPanelProps {
@@ -82,7 +84,9 @@ const FieldsPanel: React.FC<FieldsPanelProps> = ({
         tableId: field.tableId,
         type: field.columnType,
         category: field.tableName,
-        active: field.active
+        active: field.active,
+        duckDBColumnName: field.duckDBColumnName,
+        duckDBColumnDisplayName: field.duckDBColumnDisplayName
       } as ExtendedField);
       
       return acc;

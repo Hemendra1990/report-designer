@@ -43,7 +43,6 @@ export default function SelectRelationshipsForm(props: SelectRelationshipsFormPr
 
   useEffect(() => {
     if (reportType) {
-      debugger
         console.log(reportType);
     }
   }, [reportType])

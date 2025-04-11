@@ -1,5 +1,7 @@
 // API types for the backend service
 
+import { Field } from "../model/Field";
+
 /**
  * Report type as returned from the API
  */
@@ -15,7 +17,7 @@ export interface ApiReportType {
 /**
  * Field as returned from the API
  */
-export interface ApiReportField {
+export interface ApiReportField extends Field {
   id: string;
   columnName: string;
   columnDisplayName: string;

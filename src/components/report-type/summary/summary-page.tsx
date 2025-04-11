@@ -35,7 +35,6 @@ export default function ReportTypeSummaryPage(props: ReportTypeSummaryPageProps)
   // Get related object details with field counts
   const getObjectDetails = () => {
     const result = [];
-    debugger
     
     // Add primary object first
     if (reportType?.primaryTable) {

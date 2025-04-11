@@ -87,6 +87,8 @@ public class ReportTypeMapper implements BaseMapper<ReportTypeDTO, ReportType> {
                 .columnName(layout.getColumnName())
                 .columnDisplayName(layout.getColumnDisplayName())
                 .columnType(layout.getColumnType())
+                .duckDBColumnName(layout.getDuckDBColumnName())
+                .duckDBColumnDisplayName(layout.getDuckDBColumnDisplayName())
                 .tableName(layout.getTableName())
                 .tableId(layout.getTableId())
                 .active(layout.getActive())

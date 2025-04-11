@@ -493,7 +493,6 @@ const ObjectTree: React.FC<ObjectTreeProps> = ({
                 size="sm" 
                 className="h-7 px-2"
                 onClick={() => {
-                  debugger
                   setShowSelector(false);
                   setSearchTerm('');
                 }}

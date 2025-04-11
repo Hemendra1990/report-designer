@@ -40,27 +40,13 @@ import { Filter } from "./model/Filter";
 import { ReportTypeTemplate } from "./model/ReportType";
 import { FetchDataOptions, ServerResponse } from "./model/ServerReqRes";
 import { formulaFunctions } from "./util/ReportBuilderUtil";
+import { useReportTypeById } from "@/hooks/report-type-hook";
+import { executeQuery } from "@/services/crm/dml-service";
 
-// Group fields by category
-const fieldsByCategory = accountFields.reduce((acc, field) => {
-  // Use the field's category, or create a special "Formula Fields" category for formula fields
-  const category = field.isFormula ? 'formula' : field.category;
-  acc[category] = acc[category] || [];
-  acc[category].push(field);
-  return acc;
-}, {} as Record<string, typeof accountFields>);
 
 // Replace the static initialSelectedColumns with a more dynamic approach
 // Sample selected columns for the report - will be replaced with actual report fields
-const initialSampleColumns: Field[] = [
-  { id: "last_activity", name: "Last Activity", type: "datetime", columnName: "last_activity", columnDisplayName: "Last Activity", duckDBColumnName: "last_activity", duckDBColumnDisplayName: "Last Activity", columnType: "datetime", tableName: "account", tableId: "account", active: true   },
-  { id: "account_owner", name: "Account Owner", type: "user", columnName: "account_owner", columnDisplayName: "Account Owner", duckDBColumnName: "account_owner", duckDBColumnDisplayName: "Account Owner", columnType: "user", tableName: "account", tableId: "account", active: true },
-  { id: "account_name", name: "Account Name", type: "text", columnName: "account_name", columnDisplayName: "Account Name", duckDBColumnName: "account_name", duckDBColumnDisplayName: "Account Name", columnType: "text", tableName: "account", tableId: "account", active: true },
-  { id: "billing_state", name: "Billing State/Province", type: "text", columnName: "billing_state", columnDisplayName: "Billing State/Province", duckDBColumnName: "billing_state", duckDBColumnDisplayName: "Billing State/Province", columnType: "text", tableName: "account", tableId: "account", active: true },
-  { id: "type", name: "Type", type: "picklist", columnName: "type", columnDisplayName: "Type", duckDBColumnName: "type", duckDBColumnDisplayName: "Type", columnType: "picklist", tableName: "account", tableId: "account", active: true },
-  { id: "rating", name: "Rating", type: "picklist", columnName: "rating", columnDisplayName: "Rating", duckDBColumnName: "rating", duckDBColumnDisplayName: "Rating", columnType: "picklist", tableName: "account", tableId: "account", active: true },
-  { id: "last_modified_date", name: "Last Modified Date", type: "datetime", columnName: "last_modified_date", columnDisplayName: "Last Modified Date", duckDBColumnName: "last_modified_date", duckDBColumnDisplayName: "Last Modified Date", columnType: "datetime", tableName: "account", tableId: "account", active: true },
-];
+const initialSampleColumns: Field[] = []
 
 // Drag and drop helper function
 const reorder = <T extends unknown>(list: T[], startIndex: number, endIndex: number): T[] => {
@@ -153,7 +139,8 @@ async function fetchTableData(options: FetchDataOptions): Promise<ServerResponse
 // Main component
 function ReportBuilderPage() {
   const router = useRouter();
-  const { setSelectedReportTypeId, reportFields, isFieldsLoading } = useReportTypes();
+  const { setSelectedReportTypeId, reportFields, isFieldsLoading, selectedReportTypeId } = useReportTypes();
+  const { reportTypeResponse } = useReportTypeById(selectedReportTypeId || '');
   const [showReportTypeModal, setShowReportTypeModal] = useState(true);
   const [selectedReportType, setSelectedReportType] = useState<ReportTypeTemplate | null>(null);
 
@@ -178,7 +165,7 @@ function ReportBuilderPage() {
           .slice(0, fieldsToShow) // pick random `n` fields
           .map(field => ({
             id: field.id || field.columnName,
-            name: field.columnDisplayName || field.name,
+            name: field.columnDisplayName,
             type: field.type || mapColumnTypeToFieldType(field.columnType) as FieldType,
             category: field.category || field.tableName,
             columnName: field.columnName,
@@ -312,6 +299,30 @@ function ReportBuilderPage() {
   const [pivotValues, setPivotValues] = useState<string[]>([]);
   const [selectedAggregations, setSelectedAggregations] = useState<Record<string, string>>({});
 
+  const [fieldsByCategory, setfieldsByCategory] = useState<Record<string, Field[]>>({});
+
+  useEffect(() => {
+    if (reportFields) {
+      const grouped = reportFields.reduce((acc, field) => {
+        if (!field.tableName) return acc; // Skip fields without tableName
+  
+        if (!acc[field.tableName]) {
+          acc[field.tableName] = [];
+        }
+        acc[field.tableName].push({
+          "id": field.columnName,
+          "name": field.columnDisplayName,
+          "category": field.tableName,
+          "type": field.type,
+          "icon": field?.tableName?.charAt(0)?.toUpperCase()
+      });
+        return acc;
+      }, {} as Record<string, Field[]>);
+  
+      setfieldsByCategory(grouped);
+    }
+  }, [reportFields])
+
   // Initialize column refs
   useEffect(() => {
     columnRefs.current = columnRefs.current.slice(0, selectedColumns.length);
@@ -382,7 +393,6 @@ function ReportBuilderPage() {
         if (field.formula) newColumn.formula = field.formula;
         if (field.isSummaryFormula) newColumn.isSummaryFormula = field.isSummaryFormula;
       }
-      
       setSelectedColumns(prevColumns => [...prevColumns, newColumn]);
       if (autoUpdatePreview) {
         fetchData();
@@ -587,23 +597,24 @@ function ReportBuilderPage() {
     error
   } = useQuery({
     queryKey: createQueryKey(),
-    queryFn: () => fetchTableData({
+    queryFn: () => executeQuery({"query": `${reportTypeResponse?.data?.cteQuery} ${generateReportSQL()} limit 20`}),
+    /* queryFn: () => fetchTableData({
       pageIndex: pagination.pageIndex,
       pageSize: pagination.pageSize,
       sorting,
       grouping,
       selectedColumns,
       filters,
-    }),
+    }), */
     enabled: autoUpdatePreview && selectedColumns.length > 0,
   });
 
   // Update state when data changes
   useEffect(() => {
     if (queryResult) {
-      setRowData(queryResult.data || []);
-      setPageCount(queryResult.pageCount || 0);
-      setTotalRows(queryResult.totalRows || 0);
+      setRowData(queryResult.data.data || []);
+      setPageCount(0);
+      setTotalRows(queryResult?.data?.data?.length || 0);
     }
   }, [queryResult]);
 
@@ -1120,7 +1131,7 @@ function ReportBuilderPage() {
       sql += `    ${sqlColumnName} as "${displayName}"${index < allSelectedColumns.length - 1 ? ',' : ''}\n`;
     });
     
-    sql += '  FROM tabular\n';
+    sql += `  FROM ${reportTypeResponse?.data?.name}\n`;
     
     // Add filters if any
     if (filters.length > 0) {
@@ -1281,7 +1292,7 @@ function ReportBuilderPage() {
     });
     
     // Add FROM clause
-    sql += 'FROM tabular\n';
+    sql += `FROM ${reportTypeResponse?.data?.name}\n`;
     
     // Add WHERE clause if filters exist
     if (filters.length > 0) {
@@ -1355,7 +1366,7 @@ function ReportBuilderPage() {
     }
     
     return sql;
-  }, [selectedColumns, filters, filterLogic, customFormula, groupByFields, sorting]);
+  }, [selectedColumns, filters, filterLogic, customFormula, groupByFields, sorting, reportTypeResponse?.data]);
 
   return (
     <>

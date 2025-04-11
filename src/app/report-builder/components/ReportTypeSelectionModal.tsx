@@ -173,17 +173,17 @@ export function ReportTypeSelectionModal({
         if (selectedReport) {
             try {
                 // Find the report type ID from the selected report
-                const reportTypeId = selectedReport.type;
+                const reportTypeId = selectedReport.id;
                 console.log("Creating report template with type:", reportTypeId);
                 
                 // Create a ReportTypeTemplate from the selected report
                 const reportTemplate: ReportTypeTemplate = {
-                    id: reportTypeId,
+                    id: reportTypeId || '',
                     name: selectedReport.name,
                     description: selectedReport.description,
                     icon: selectedReport.objects?.[0]?.icon || "/file.svg",
                     color: selectedReport.objects?.[0]?.color || "#4299e1",
-                    type: selectedReport.type
+                    type: reportTypeId || ''
                 };
                 
                 console.log("Calling onSelect with template:", reportTemplate);

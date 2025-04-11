@@ -1,7 +1,7 @@
 import { crmHttpService } from "./http-crm-service";
 
-const BASE_URL = `dml`;
+const BASE_URL = "/dml/v2";
 
-export const getLayout = () => {
-    return crmHttpService.get('/api/layout/0JEC9RMYTZR6G');
-  }
+export const executeQuery = (query: Record<string, string>) => {
+    return crmHttpService.post(`${BASE_URL}/execute-query`, query);
+}
