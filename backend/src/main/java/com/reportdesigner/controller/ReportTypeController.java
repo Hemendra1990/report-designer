@@ -50,9 +50,9 @@ public class ReportTypeController {
                 .build();
     }
 
-    @PutMapping("/layout/update-status")
-    public ApiResponse updateLayoutStatus(@RequestBody List<ReportTypeLayoutDTO> layoutList) {
-        reportTypeService.updateLayoutStatus(layoutList);
+    @PutMapping("/layout/update-status/{reportTypeId}")
+    public ApiResponse updateLayoutStatus(@RequestBody List<ReportTypeLayoutDTO> layoutList, @PathVariable String reportTypeId) {
+        reportTypeService.updateLayoutStatus(layoutList,reportTypeId);
         return ApiResponse.builder()
                 .status(HttpStatus.CREATED.toString())
                 .message("Report type layout updated successfully")

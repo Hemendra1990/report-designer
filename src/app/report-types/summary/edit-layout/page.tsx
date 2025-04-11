@@ -1,291 +1,141 @@
 "use client";
-
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { useAllColumnMetadataByTableName } from "@/hooks/metadata-hook";
-import { useUpdateReportTypeLayoutStatus } from "@/hooks/report-type-hook";
-import { ReportType, ReportTypeLayout } from "@/components/model/report-type";
+import { ReportTypeLayout } from "@/components/model/report-type";
 import { useReportTypeFormContext } from "@/contexts/report-type-form-context";
+import { useCallback } from 'react';
+import { useUpdateReportTypeLayoutStatus } from "@/hooks/report-type-hook";
+import { useRouter } from "next/navigation";
+import ToastMessage from "../summary-helper";
 
-// Define type for a field
-interface Field {
-  name: string;
-  type: string;
-  label: string;
-  selected?: boolean;
-  origin?: string;
-  order?: number;
-}
-
-// Define type for related objects
-interface RelatedObject {
-  objectId: string;
-  relationshipType: 'inner' | 'left' | 'right' | 'outer';
-  parentId: string | null;
-}
 
 export default function EditLayout() {
-  const { reportType } = useReportTypeFormContext();
-  const primaryObjectId = reportType?.primaryTable;
+  const { reportType, setReportType } = useReportTypeFormContext();
   const displayLabel = reportType?.label
-  
-  
+  const router = useRouter();
   // Initialize selectedTab with a fallback value in case reportType is not immediately available
   const [selectedTab, setSelectedTab] = useState<string>("");
-  const [isLoading, setIsLoading] = useState(true);
-  const [relatedObjects, setRelatedObjects] = useState<RelatedObject[]>([]);
   const [primaryObject, setPrimaryObject] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [editableFields, setEditableFields] = useState<{[key: string]: Field[]}>({});
   const [showSuccessMessage, setShowSuccessMessage] = useState<boolean>(false);
-  
-  // Get column details for the selected tab
-  const {data: columnDetails, isLoading: isColumnsLoading} = useAllColumnMetadataByTableName(selectedTab);
   const updateReportTypeLayoutStatus = useUpdateReportTypeLayoutStatus();
+  const [showErrorToast, setShowErrorToast] = useState<string>('');
+  // Get column details for the selected tab
 
-  // Initialize selectedTab once reportType is available
   useEffect(() => {
-    if (reportType?.usedTables?.length) {
-      setSelectedTab(reportType.usedTables[0]);
-    } else if (primaryObjectId) {
-      setSelectedTab(primaryObjectId);
+    if (!selectedTab && reportType?.layoutList?.length && reportType?.layoutList[0].tableName) {
+      let initialTable = reportType?.layoutList[0].tableName;
+      setSelectedTab(initialTable);
+      setPrimaryObject(reportType.primaryTable);
     }
-  }, [reportType, primaryObjectId]);
+  }, [selectedTab, reportType?.layoutList])
 
-  // Debug logging to track state changes
-  useEffect(() => {
-    console.log("selectedTab:", selectedTab);
-    console.log("columnDetails:", columnDetails);
-    console.log("isColumnsLoading:", isColumnsLoading);
-  }, [selectedTab, columnDetails, isColumnsLoading]);
-
-  // Process column details when they become available
-  useEffect(() => {
-    if (selectedTab && columnDetails && columnDetails.columns?.length) {
-      console.log("Processing column details for", selectedTab);
-      setEditableFields(prev => {
-        const updated = { ...prev };
-        const matchingObject = availableObjects.find(obj => obj.id === selectedTab);
-
-        if (matchingObject) {
-          const updatedFields = columnDetails.columns.map((col) => {
-            // Check if the field exists in layoutList and is active
-            const isActive = reportType?.layoutList?.some(
-              (field) =>
-                field.tableName === matchingObject.id &&
-                field.columnName === col.columnName &&
-                field.active === true
-            );
-
-            return {
-              name: col.columnName,
-              type: col.dataType,
-              label: col.headerName,
-              selected: isActive ?? false
-            };
-          });
-
-          updated[matchingObject.id] = updatedFields;
-        }
-        return updated;
-      });
-      
-      // Data is loaded, we can remove loading state
-      setIsLoading(false);
-    }
-  }, [columnDetails, selectedTab, reportType?.layoutList]);
-
-  const availableObjects = useMemo(() => {
-    if (!reportType) return [];
-    const tableMap = new Map();
-    // Collect unique table info
-    const tables = [
-      {
-        id: reportType.primaryTableId,
-        name: reportType.primaryTable,
-        label: reportType.primaryTableDisplayName,
-        sortOrder: 0
-      },
-      ...(reportType.configList ?? []).map((join, i) => ({
-        id: join.joinTableId,
-        name: join.joinTableName,
-        label: join.joinTableDisplayName,
-        sortOrder: join.sortOrder ?? i + 1
-      }))
-    ];
-
-    // Group layout fields by table
-    for (const table of tables) {
-      tableMap.set(table.name, {
-        id: table.name,
-        name: table.label || table.name,
-        letter: table.label?.[0]?.toUpperCase() || table.name?.[0]?.toUpperCase(),
-        description: `Fields from ${table.label || table.name}`,
-        icon: "/icons/default.svg",
-        color: "#90CAF9",
-        fields: []
-      });
-    }
-
-    for (const field of reportType.layoutList ?? []) {
-      const tableName = field.tableName;
-      const object = tableMap.get(tableName);
-      if (object) {
-        object.fields.push({
-          name: field.columnName,
-          type: field.columnType,
-          label: field.columnDisplayName
-        });
-      }
-    }
-    return Array.from(tableMap.values());
-  }, [reportType]);
-  
-  useEffect(() => {
-    // Find primary object details
-    const foundPrimary = availableObjects.find(obj => obj.id === primaryObjectId);
-    if (foundPrimary) {
-      setPrimaryObject(foundPrimary);
-    }
-    
-    // In a real app, this would load related objects from storage or API
-    // For demo purposes, let's create some sample related objects
-    setRelatedObjects([
-      {
-        objectId: "contact",
-        relationshipType: "inner",
-        parentId: null
-      },
-      {
-        objectId: "opportunity",
-        relationshipType: "left",
-        parentId: null
-      },
-      {
-        objectId: "case",
-        relationshipType: "left",
-        parentId: "contact"
-      }
-    ]);
-    
-    // Initialize editable fields
-    const fields: {[key: string]: Field[]} = {};
-    
-    if (foundPrimary && foundPrimary.fields) {
-      fields[foundPrimary.id] = foundPrimary.fields.map((field: Field, index: number) => ({
-        ...field,
-        selected: index < 5, // Select first 5 fields by default
-        origin: 'default',
-        order: index
-      }));
-    }
-    
-    // Add fields from related objects
-    availableObjects.forEach(obj => {
-      if (obj.id !== primaryObjectId && obj.fields) {
-        fields[obj.id] = obj.fields.map((field: Field, index: number) => ({
-          ...field,
-          selected: ['Name', 'Email', 'Amount', 'Subject'].includes(field.name), // Select some common fields
-          origin: 'default',
-          order: index
-        }));
-      }
-    });
-    
-    if (Object.keys(fields).length > 0) {
-      setEditableFields(prev => ({...prev, ...fields}));
-    }
-    
-  }, [primaryObjectId, availableObjects]);
-  
   // Get all objects involved in this report type
   const getAllObjects = () => {
-    const result = [];
-    
-    // Add primary object first
-    if (primaryObject) {
-      result.push(primaryObject);
-    }
-    
-    // Add related objects
-    relatedObjects.forEach(relObj => {
-      const objDetails = availableObjects.find(obj => obj.id === relObj.objectId);
-      if (objDetails) {
-        result.push(objDetails);
-      }
-    });
-    return result;
+    let allTables = reportType?.layoutList?.map((e) => e.tableName);
+    let uniqueTables = new Set(allTables);
+    return Array.from(uniqueTables);
   };
-  
-  // Filter fields based on search term
-  const filterFields = (fields: Field[]) => {
-    if (!searchTerm) return fields;
-    
-    return fields.filter(field => 
-      field.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      field.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      field.type.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  };
-  
+
+  let selectedTabColumns: ReportTypeLayout[] = useMemo(() => {
+    if (!selectedTab || !reportType?.layoutList?.length) return [];
+    debugger
+    return reportType.layoutList
+      .filter(col => col.tableName === selectedTab);
+  }, [selectedTab]);
+
+  selectedTabColumns = selectedTabColumns?.filter(
+    (e) =>
+      e.columnDisplayName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      e.columnType?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   // Toggle field selection
-  const toggleFieldSelection = (objectId: string, fieldName: string) => {
-    setEditableFields(prev => {
-      const objectFields = [...(prev[objectId] || [])];
-      const fieldIndex = objectFields.findIndex(f => f.name === fieldName);
-      
-      if (fieldIndex >= 0) {
-        objectFields[fieldIndex] = {
-          ...objectFields[fieldIndex],
-          selected: !objectFields[fieldIndex].selected
-        };
+  const handleColumnCheck = (objectId: string, fieldName: string, checked: boolean) => {
+    reportType?.layoutList?.forEach((e) => {
+      if (e.tableName === selectedTab && e.id === objectId) {
+        e.active = checked
       }
-      
-      return {
-        ...prev,
-        [objectId]: objectFields
-      };
     });
+    setReportType({ ...reportType });
   };
-  
-  // Get selected field count for an object
-  const getSelectedFieldCount = (objectId: string) => {
-    return (editableFields[objectId] || []).filter(f => f.selected).length;
-  };
-  
+
+  const handleSelectAll = (checked: boolean) => {
+    reportType?.layoutList?.forEach((e) => {
+      if (e.tableName === selectedTab) {
+        e.active = checked
+      }
+    });
+    setReportType({ ...reportType });
+  }
+
+
+  const getSelectedFieldCount = useCallback((name?: string) => {
+    return reportType?.layoutList
+      ?.filter((e) => e.tableName === name && e.active === true)
+      .length || 0;
+  }, [reportType]);
+
+  const handleOnError = (err: any) => {
+    setShowErrorToast(err?.response?.data?.message || 'Something went wrong. Please try again.');
+    setTimeout(() => setShowErrorToast(''), 3000);
+  }
   // Handle save
   const handleSave = () => {
-    const reportTypePyload: ReportTypeLayout[] = [
-      // Implement your save logic here
-    ];
-    updateReportTypeLayoutStatus.mutate({ payload: reportTypePyload });
-    setShowSuccessMessage(true);
-    
-    // Hide after 3 seconds
-    setTimeout(() => {
-      setShowSuccessMessage(false);
-    }, 3000);
+    updateReportTypeLayoutStatus.mutate(
+      { payload: reportType || [] },
+      {
+        onSuccess: () => {
+          setShowSuccessMessage(true);
+          setTimeout(() => {
+            setShowSuccessMessage(false);
+          }, 3000);
+          router.push("/report-types");
+        },
+        onError: (error) => {
+          handleOnError(error);
+        },
+      }
+    );
   };
-  
+
+
   const allObjects = getAllObjects();
-  const totalSelectedFields = Object.keys(editableFields).reduce((count, objId) => 
-    count + editableFields[objId].filter(f => f.selected).length, 0
-  );
+  const totalSelectedFields = reportType?.layoutList?.filter(e => e.active)?.length || 0;
 
   // Handle tab change
   const handleTabChange = (value: string) => {
     setSelectedTab(value);
-    // Request column details for the new tab if not already loaded
-    if (!editableFields[value] || editableFields[value].length === 0) {
-      setIsLoading(true);
-    }
   };
+
+  const getColorByName = (name: string): string => {
+    const colors = [
+      '#FF6B6B', '#6BCB77', '#4D96FF', '#FFD93D',
+      '#845EC2', '#FF9671', '#00C9A7', '#C34A36',
+      '#F9F871', '#0081CF'
+    ];
+
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+
+    const index = Math.abs(hash % colors.length);
+    return colors[index];
+  };
+
+  const formatDisplayText = (str: string) => {
+    if (!str) return "";
+    return str
+      .replace(/_/g, ' ')                         // Replace underscores with space
+      .replace(/\b\w/g, (char) => char.toUpperCase()); // Capitalize first letter of each word
+  };
+
 
   return (
     <div className="min-h-screen bg-muted/40">
@@ -340,52 +190,51 @@ export default function EditLayout() {
             </div>
           </div>
         )}
-
         {/* Tabs and Fields Editor */}
         <div className="bg-background border rounded-lg overflow-hidden">
-          <Tabs 
-            value={selectedTab} 
+          <Tabs
+            value={selectedTab}
             onValueChange={handleTabChange}
-            defaultValue={primaryObject?.id || "account"}
+            defaultValue={primaryObject?.id}
           >
             <div className="px-4">
               <TabsList className="mt-3 gap-3 bg-transparent p-0">
-                {allObjects.map((obj) => (
+                {allObjects.map((obj, index) => (
                   <TabsTrigger
-                    key={obj.id}
-                    value={obj.id}
+                    key={obj}
+                    value={obj}
                     className={`
                       flex items-center gap-3 px-4 py-2
                       border rounded-full transition-all
                       shadow-sm text-sm font-medium
                       h-12
                       data-[state=active]:bg-white
-                      data-[state=active]:border-[${obj.color}]
+                      data-[state=active]:border-[${getColorByName(obj)}]
                       data-[state=active]:shadow-md
                       hover:bg-muted
                     `}
                     style={{
-                      borderColor: selectedTab === obj.id ? obj.color : "transparent",
+                      borderColor: selectedTab === obj ? getColorByName(obj) : "transparent",
                     }}
                   >
                     {/* Colored circle with letter */}
                     <div
                       className="h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold transition-all"
                       style={{
-                        backgroundColor: selectedTab === obj.id
-                          ? obj.color
-                          : `${obj.color}40`,
-                        color: selectedTab === obj.id ? "white" : obj.color,
+                        backgroundColor: selectedTab === obj
+                          ? getColorByName(obj)
+                          : `${getColorByName(obj)}40`,
+                        color: selectedTab === obj ? "white" : getColorByName(obj),
                       }}
                     >
-                      {obj.letter}
+                      {obj.charAt(0).toUpperCase()}
                     </div>
 
                     {/* Name + field count */}
                     <div className="flex flex-col items-start justify-center leading-tight">
-                      <span className="font-medium text-sm">{obj.name}</span>
+                      <span className="font-medium text-sm"> {formatDisplayText(obj)}</span>
                       <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-                        {getSelectedFieldCount(obj.id)} fields
+                        {getSelectedFieldCount(obj)} fields
                       </span>
                     </div>
                   </TabsTrigger>
@@ -421,28 +270,17 @@ export default function EditLayout() {
                   />
                 </div>
               </div>
-
               {/* Select All / Deselect All Controls */}
               <div className="mb-2 flex justify-between items-center">
                 <div className="text-sm font-medium">
-                  {editableFields[selectedTab]?.filter(f => f.selected).length || 0} of {editableFields[selectedTab]?.length || 0} fields selected
+                  {reportType?.layoutList?.filter((e) => e.tableName == selectedTab).length || 0} of {reportType?.layoutList?.filter((e) => e.tableName == selectedTab && e.active === true).length || 0} fields selected
                 </div>
                 <div className="flex gap-3">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      setEditableFields(prev => {
-                        const updatedFields = [...(prev[selectedTab] || [])].map(f => ({
-                          ...f,
-                          selected: true
-                        }));
-
-                        return {
-                          ...prev,
-                          [selectedTab]: updatedFields
-                        };
-                      });
+                      handleSelectAll(true);
                     }}
                   >
                     Select All
@@ -451,142 +289,116 @@ export default function EditLayout() {
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      setEditableFields(prev => {
-                        const updatedFields = [...(prev[selectedTab] || [])].map(f => ({
-                          ...f,
-                          selected: false
-                        }));
-
-                        return {
-                          ...prev,
-                          [selectedTab]: updatedFields
-                        };
-                      });
+                      handleSelectAll(false);
                     }}
                   >
                     Deselect All
                   </Button>
                 </div>
               </div>
-
-              {allObjects.map(obj => (
-                <TabsContent key={obj.id} value={obj.id} className="mt-0">
-                  {isLoading || isColumnsLoading ? (
-                    <div className="rounded-md border p-8 text-center">
-                      <div className="text-muted-foreground text-sm">Loading column data...</div>
-                    </div>
-                  ) : (
-                    <div className="rounded-md border">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="bg-muted/50">
-                            <th className="w-[50px] p-3 text-left"></th>
-                            <th className="p-3 text-left font-medium text-sm">Field Label</th>
-                            <th className="p-3 text-left font-medium text-sm">API Name</th>
-                            <th className="p-3 text-left font-medium text-sm">Type</th>
-                            <th className="w-[120px] p-3 text-right font-medium text-sm">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y">
-                          {(editableFields[obj.id] && filterFields(editableFields[obj.id]).length > 0) ? (
-                            filterFields(editableFields[obj.id]).map((field, idx) => (
-                              <tr key={field.name} className="hover:bg-muted/30">
-                                <td className="p-3 text-center">
-                                  <Checkbox
-                                    id={`${obj.id}-${field.name}`}
-                                    checked={field.selected}
-                                    onCheckedChange={() => toggleFieldSelection(obj.id, field.name)}
-                                  />
-                                </td>
-                                <td className="p-3">
-                                  <Label
-                                    htmlFor={`${obj.id}-${field.name}`}
-                                    className="font-medium text-sm cursor-pointer"
+              {selectedTabColumns.length && (
+                <TabsContent key={selectedTab} value={selectedTab} className="mt-0">
+                  <div className="rounded-md border">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-muted/50">
+                          <th className="w-[50px] p-3 text-left"></th>
+                          <th className="p-3 text-left font-medium text-sm">Field Label</th>
+                          <th className="p-3 text-left font-medium text-sm">API Name</th>
+                          <th className="p-3 text-left font-medium text-sm">Type</th>
+                          <th className="w-[120px] p-3 text-right font-medium text-sm">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {selectedTabColumns.map((field, idx) => (
+                          <tr key={field.columnName} className="hover:bg-muted/30">
+                            <td className="p-3 text-center">
+                              <Checkbox
+                                id={`${field.id}-${field.active}`}
+                                checked={field.active}
+                                onCheckedChange={(checked: boolean) => handleColumnCheck(field.id, field.columnName, checked)}
+                              />
+                            </td>
+                            <td className="p-3">
+                              <Label
+                                htmlFor={`${field.id}-${field.columnDisplayName}`}
+                                className="font-medium text-sm cursor-pointer"
+                              >
+                                {field.columnDisplayName}
+                              </Label>
+                            </td>
+                            <td className="p-3 text-sm text-muted-foreground">{field.columnName}</td>
+                            <td className="p-3">
+                              <span className="text-xs px-2 py-1 rounded bg-muted">
+                                {field.columnType}
+                              </span>
+                            </td>
+                            <td className="p-3 text-right">
+                              {field.active ? (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 text-xs"
+                                  onClick={() => handleColumnCheck(field.id, field.columnName, !field?.active)}
+                                >
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    className="mr-1 text-red-500"
                                   >
-                                    {field.label}
-                                  </Label>
-                                </td>
-                                <td className="p-3 text-sm text-muted-foreground">{field.name}</td>
-                                <td className="p-3">
-                                  <span className="text-xs px-2 py-1 rounded bg-muted">
-                                    {field.type}
-                                  </span>
-                                </td>
-                                <td className="p-3 text-right">
-                                  {field.selected ? (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-7 text-xs"
-                                      onClick={() => toggleFieldSelection(obj.id, field.name)}
-                                    >
-                                      <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        width="14"
-                                        height="14"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        className="mr-1 text-red-500"
-                                      >
-                                        <path d="M18 6 6 18" />
-                                        <path d="m6 6 12 12" />
-                                      </svg>
-                                      Remove
-                                    </Button>
-                                  ) : (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-7 text-xs"
-                                      onClick={() => toggleFieldSelection(obj.id, field.name)}
-                                    >
-                                      <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        width="14"
-                                        height="14"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        className="mr-1 text-green-500"
-                                      >
-                                        <path d="M12 5v14" />
-                                        <path d="M5 12h14" />
-                                      </svg>
-                                      Add
-                                    </Button>
-                                  )}
-                                </td>
-                              </tr>
-                            ))
-                          ) : (
-                            <tr>
-                              <td colSpan={5} className="p-8 text-center">
-                                <div className="text-muted-foreground text-sm">
-                                  {searchTerm ? 
-                                    "No fields match your search. Try a different search term or clear your search." :
-                                    "No fields available for this table."
-                                  }
-                                </div>
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+                                    <path d="M18 6 6 18" />
+                                    <path d="m6 6 12 12" />
+                                  </svg>
+                                  Remove
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 text-xs"
+                                  onClick={() => handleColumnCheck(field.id, field.columnName, !field.active)}
+                                >
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    className="mr-1 text-green-500"
+                                  >
+                                    <path d="M12 5v14" />
+                                    <path d="M5 12h14" />
+                                  </svg>
+                                  Add
+                                </Button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </TabsContent>
-              ))}
+              )}
             </div>
           </Tabs>
         </div>
-
+        {
+          showErrorToast && (
+            <ToastMessage type="error" message={showErrorToast} />
+          )
+        }
         {/* Action Buttons at Bottom */}
         <div className="mt-8 flex justify-between items-center">
           <Link href="/report-types/summary">

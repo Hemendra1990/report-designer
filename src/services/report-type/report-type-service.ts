@@ -19,8 +19,8 @@ export const createReportType = (reportType: ReportType) => {
     return httpClient.post(`${BASE_URL}`, reportType);
 }
 
-export const updateReportTypeLayoutStatus = (reportType: ReportTypeLayout[]) => {
-    return httpClient.put(`${BASE_URL}/layout/update-status`, reportType);
+export const updateReportTypeLayoutStatus = (reportType: ReportTypeLayout[],reportTypeId:string) => {
+    return httpClient.put(`${BASE_URL}/layout/update-status/${reportTypeId}`, reportType);
 }
 
 export const layoutColumnListByReportId = (reportTypeId: string) =>{

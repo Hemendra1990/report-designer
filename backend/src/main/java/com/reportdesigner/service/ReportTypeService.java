@@ -26,6 +26,7 @@ import org.springframework.util.CollectionUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Log4j2
 @Service
@@ -116,6 +117,7 @@ public class ReportTypeService {
         // SELECT clause
         cteBuilder.append("SELECT ");
         String selectClause = layoutList.stream()
+                .filter(ReportTypeLayoutDTO::getActive)
                 .map(layout ->  String.format("%s.%s AS %s", layout.getTableName(), layout.getColumnName(), layout.getDuckDBColumnName()))
                 .collect(Collectors.joining(", "));
         cteBuilder.append(selectClause).append(" ");
@@ -163,11 +165,16 @@ public class ReportTypeService {
         }
     }
 
-    public void updateLayoutStatus(List<ReportTypeLayoutDTO> layoutList) {
+    public void updateLayoutStatus(List<ReportTypeLayoutDTO> layoutList, String reportTypeId) {
         Map<Boolean, List<String>> result = layoutList.stream()
                 .collect(Collectors.groupingBy(ReportTypeLayoutDTO::getActive,Collectors.mapping(ReportTypeLayoutDTO::getId, Collectors.toList())));
 
         result.forEach((key, value) -> reportTypeLayoutRepository.updateLayoutColumnStatus(value, key));
+        Optional<ReportType> reportTypeById = reportTypeRepository.findById(reportTypeId);
+        ReportType reportType = reportTypeById.get();
+        String query = generateCTEQuery(reportType.getName(), reportType.getPrimaryTable(),reportTypeConfigMapper.toDtoList(reportType.getConfigList()),layoutList);
+        reportType.setCteQuery(query);
+        reportTypeRepository.save(reportType);
     }
 
     @Transactional

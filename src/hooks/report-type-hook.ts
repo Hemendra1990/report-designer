@@ -72,8 +72,8 @@ export const useCreatereportType = () => {
 
 export const useUpdateReportTypeLayoutStatus = () => {
     return useMutation({
-        mutationFn: ({ payload }: { payload: ReportTypeLayout[] }) => {
-            return updateReportTypeLayoutStatus(payload);
+        mutationFn: ({ payload }: { payload: ReportType }) => {
+            return updateReportTypeLayoutStatus(payload?.layoutList || [],payload?.id as string);
         },
         onSuccess: () => {
         },
