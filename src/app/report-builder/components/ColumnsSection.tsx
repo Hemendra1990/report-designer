@@ -13,6 +13,8 @@ interface Column {
   name: string;
   type: string;
   formula?: string;
+  isFormula?: boolean;
+  isSummaryFormula?: boolean;
   [key: string]: any;
 }
 
@@ -32,6 +34,8 @@ interface ColumnsSectionProps {
   setIsMenuOpen: (isOpen: boolean) => void;
   setSelectedColumns: (columns: Column[]) => void;
   setDraggedItem: (item: number | null) => void;
+  addSummaryFormulaColumn?: () => void;
+  editSummaryFormulaColumn?: (column: Column) => void;
 }
 
 const ColumnsSection: React.FC<ColumnsSectionProps> = ({
@@ -49,7 +53,9 @@ const ColumnsSection: React.FC<ColumnsSectionProps> = ({
   removeColumn,
   setIsMenuOpen,
   setSelectedColumns,
-  setDraggedItem
+  setDraggedItem,
+  addSummaryFormulaColumn,
+  editSummaryFormulaColumn
 }) => {
   // Handle keyboard navigation in dropdown menu
   const handleKeyDown = (e: KeyboardEvent<HTMLElement>, actionFn?: () => void) => {
@@ -87,11 +93,17 @@ const ColumnsSection: React.FC<ColumnsSectionProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isMenuOpen, menuRef, setIsMenuOpen]);
 
-  // Add a function to handle formula column click
+  // Update function to handle formula column click
   const handleFormulaColumnClick = (column: Column, e: React.MouseEvent) => {
     if ('formula' in column && column.formula) {
       e.stopPropagation(); // Prevent triggering drag or other events
-      editFormulaColumn(column);
+      
+      // Use the appropriate edit function based on formula type
+      if (column.isSummaryFormula && editSummaryFormulaColumn) {
+        editSummaryFormulaColumn(column);
+      } else {
+        editFormulaColumn(column);
+      }
     }
   };
 
@@ -136,22 +148,40 @@ const ColumnsSection: React.FC<ColumnsSectionProps> = ({
                   <span>Add Bucket Column</span>
                 </button>
                 <button
-                  className="px-3 py-1.5 text-xs text-gray-400 w-full text-left flex items-center gap-1.5 cursor-not-allowed"
+                  className="px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none w-full text-left flex items-center gap-1.5 transition-colors"
+                  onClick={() => {
+                    if (addSummaryFormulaColumn) {
+                      addSummaryFormulaColumn();
+                      setIsMenuOpen(false);
+                    }
+                  }}
                   role="menuitem"
-                  aria-disabled="true"
-                  tabIndex={-1}
+                  tabIndex={0}
+                  onKeyDown={(e) => handleKeyDown(e, () => {
+                    if (addSummaryFormulaColumn) {
+                      addSummaryFormulaColumn();
+                      setIsMenuOpen(false);
+                    }
+                  })}
+                  disabled={!addSummaryFormulaColumn}
                 >
-                  <FormulaIcon className="size-3.5" />
+                  <FormulaIcon className="size-3.5 text-purple-600" />
                   <span>Add Summary Formula</span>
                 </button>
                 <button
                   className="px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none w-full text-left flex items-center gap-1.5 transition-colors"
-                  onClick={addFormulaColumn}
+                  onClick={() => {
+                    addFormulaColumn();
+                    setIsMenuOpen(false);
+                  }}
                   role="menuitem"
                   tabIndex={0}
-                  onKeyDown={(e) => handleKeyDown(e, addFormulaColumn)}
+                  onKeyDown={(e) => handleKeyDown(e, () => {
+                    addFormulaColumn();
+                    setIsMenuOpen(false);
+                  })}
                 >
-                  <FormulaIcon className="size-3.5" />
+                  <FormulaIcon className="size-3.5 text-blue-600" />
                   <span>Add Row-Level Formula</span>
                 </button>
                 <div className="border-t border-gray-200 my-0.5" role="separator"></div>
@@ -199,12 +229,16 @@ const ColumnsSection: React.FC<ColumnsSectionProps> = ({
                 <DragHandleIcon className="size-3.5" />
               </span>
               <span className="text-xs">{column.name}</span>
-              {'formula' in column && (
+              {column.isFormula && (
                 <span 
-                  className="ml-0.5 px-1 py-0.5 text-[10px] bg-blue-100 text-blue-800 rounded cursor-pointer hover:bg-blue-200"
+                  className={`ml-0.5 px-1.5 py-0.5 text-[10px] rounded cursor-pointer ${
+                    column.isSummaryFormula 
+                      ? 'bg-purple-100 text-purple-800 hover:bg-purple-200' 
+                      : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                  }`}
                   onClick={(e) => handleFormulaColumnClick(column, e)}
                 >
-                  Formula
+                  {column.isSummaryFormula ? 'Summary' : 'Formula'}
                 </span>
               )}
             </div>

@@ -22,10 +22,10 @@ export const useAuthContext = () => {
 }
 
 export const AuthContextProvider =  ({children}: { children: React.ReactNode }) => {
-    const {data: crmToken} = useCrmTokenHook();
+    const {data: crmToken, isLoading:tokenLoading} = useCrmTokenHook();
     
     useEffect(() => {
-        if (crmToken) {
+        if (crmToken && !tokenLoading) {
             localStorage.setItem('token', crmToken.access_token);
             localStorage.setItem('refresh_token', crmToken.refresh_token);
     
@@ -49,7 +49,7 @@ export const AuthContextProvider =  ({children}: { children: React.ReactNode }) 
     
             return () => clearInterval(interval);
         }
-    }, [crmToken]);
+    }, [crmToken,tokenLoading]);
     
 
     return <AuthContext.Provider value={{ crmToken: crmToken?.access_token, refreshToken: crmToken?.refresh_token }}>{children}</AuthContext.Provider>;

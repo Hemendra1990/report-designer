@@ -1,82 +1,88 @@
 package com.reportdesigner.controller;
 
-import com.reportdesigner.model.ReportType;
+import com.reportdesigner.dto.ApiResponse;
+import com.reportdesigner.dto.ReportTypeDTO;
+import com.reportdesigner.dto.ReportTypeLayoutDTO;
+import com.reportdesigner.dto.ReportTypeSummaryDTO;
+import com.reportdesigner.exception.ValidationException;
+import com.reportdesigner.model.ReportTypeLayout;
 import com.reportdesigner.service.ReportTypeService;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/report-types")
+@RequestMapping("/api/report-type")
+@RequiredArgsConstructor
 public class ReportTypeController {
 
     private final ReportTypeService reportTypeService;
 
-    @Autowired
-    public ReportTypeController(ReportTypeService reportTypeService) {
-        this.reportTypeService = reportTypeService;
-    }
-
     @GetMapping
-    public ResponseEntity<List<ReportType>> getAllReportTypes() {
-        return ResponseEntity.ok(reportTypeService.findAll());
-    }
-
-    @GetMapping("/active")
-    public ResponseEntity<List<ReportType>> getAllActiveReportTypes() {
-        return ResponseEntity.ok(reportTypeService.findAllActive());
-    }
-
-    @GetMapping("/public")
-    public ResponseEntity<List<ReportType>> getAllPublicReportTypes() {
-        return ResponseEntity.ok(reportTypeService.findAllPublic());
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<ReportType> getReportTypeById(@PathVariable UUID id) {
-        return reportTypeService.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    @GetMapping("/name/{name}")
-    public ResponseEntity<ReportType> getReportTypeByName(@PathVariable String name) {
-        return reportTypeService.findByName(name)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ApiResponse findAll() {
+        List<ReportTypeDTO> resp = reportTypeService.getAllReportType();
+        return ApiResponse.builder()
+                .status(HttpStatus.OK.toString())
+                .data(resp)
+                .message("All report type")
+                .build();
     }
 
     @PostMapping
-    public ResponseEntity<ReportType> createReportType(@RequestBody ReportType reportType) {
-        try {
-            ReportType created = reportTypeService.create(reportType);
-            return new ResponseEntity<>(created, HttpStatus.CREATED);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
-        }
+    public ApiResponse create(@RequestBody ReportTypeDTO reportType) throws ValidationException {
+        ReportTypeDTO resp = reportTypeService.saveOrUpdate(reportType);
+        return ApiResponse.builder()
+                .status(HttpStatus.CREATED.toString())
+                .data(resp)
+                .message("Report type created successfully")
+                .build();
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<ReportType> updateReportType(@PathVariable UUID id, @RequestBody ReportType reportType) {
-        try {
-            ReportType updated = reportTypeService.update(id, reportType);
-            return ResponseEntity.ok(updated);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.notFound().build();
-        }
+    @GetMapping("/{reportTypeId}")
+    public ApiResponse getById(@PathVariable String reportTypeId) throws ValidationException {
+        ReportTypeDTO resp = reportTypeService.getReportTypeById(reportTypeId);
+        return ApiResponse.builder()
+                .status(HttpStatus.OK.toString())
+                .data(resp)
+                .message("Report type details")
+                .build();
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteReportType(@PathVariable UUID id) {
-        try {
-            reportTypeService.softDelete(id);
-            return ResponseEntity.noContent().build();
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.notFound().build();
-        }
+    @PutMapping("/layout/update-status/{reportTypeId}")
+    public ApiResponse updateLayoutStatus(@RequestBody List<ReportTypeLayoutDTO> layoutList, @PathVariable String reportTypeId) {
+        reportTypeService.updateLayoutStatus(layoutList,reportTypeId);
+        return ApiResponse.builder()
+                .status(HttpStatus.CREATED.toString())
+                .message("Report type layout updated successfully")
+                .build();
     }
-} 
+    @DeleteMapping("/{reportTypeId}")
+    public ApiResponse deleteById(@PathVariable String reportTypeId) throws ValidationException {
+        reportTypeService.deleteReportTypeById(reportTypeId);
+        return ApiResponse.builder()
+                .status(HttpStatus.OK.toString())
+                .message("Report type deleted successfully")
+                .build();
+    }
+
+    @GetMapping("/{reportTypeId}/fields")
+    public ApiResponse layoutColumnListByReportId(@PathVariable String reportTypeId) throws ValidationException {
+        List<ReportTypeLayoutDTO> layoutList = reportTypeService.getLayoutListByReportTypeId(reportTypeId);
+        return ApiResponse.builder()
+                .status(HttpStatus.OK.toString())
+                .message("Layout columns fetched successfully")
+                .data(layoutList)
+                .build();
+    }
+    @GetMapping("/reportSummary")
+    public ApiResponse getAllReportTypes() {
+        List<ReportTypeSummaryDTO> summaries = reportTypeService.getAllReportTypeSummaries();
+        return ApiResponse.builder()
+                .status(HttpStatus.OK.toString())
+                .message("All report types fetched successfully")
+                .data(summaries)
+                .build();
+    }
+}

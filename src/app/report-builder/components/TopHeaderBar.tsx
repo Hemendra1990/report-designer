@@ -21,6 +21,12 @@ interface TopHeaderBarProps {
   filters: Filter[];
   filterLogic: 'and' | 'or' | 'custom';
   customFilterFormula: string;
+  // Pivot-related properties
+  isPivotActive?: boolean;
+  pivotColumnIds?: string[];
+  pivotValues?: string[];
+  selectedAggregations?: Record<string, string>;
+  generateReportSQL: () => string;
   onSaveReport?: (sql: string, reportName: string) => void;
 }
 
@@ -36,23 +42,36 @@ const TopHeaderBar: React.FC<TopHeaderBarProps> = ({
   filters,
   filterLogic,
   customFilterFormula,
+  // Pivot-related properties
+  isPivotActive = false,
+  pivotColumnIds = [],
+  pivotValues = [],
+  selectedAggregations = {},
+  generateReportSQL,
   onSaveReport,
 }) => {
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [generatedSql, setGeneratedSql] = useState('');
   
   const handleSaveClick = () => {
-    // Generate SQL query
-    const sql = buildSqlQuery({
+    // Use the passed-in function to generate SQL
+    const sql = generateReportSQL();
+    /* const sql = buildSqlQuery({ // Need to be changed by Hemendra (showing id in sql)
       reportType: reportType.toLowerCase().replace(/\s+/g, '_'), // Convert "Report Type" to "report_type"
       selectedColumns,
       groupByFields,
       filters,
       filterLogic,
-      customFilterFormula
-    });
-    
+      customFilterFormula,
+      isPivotActive,
+      pivotColumnIds,
+      pivotValues,
+      selectedAggregations,
+    }); */
+ 
     setGeneratedSql(sql);
+    
+    // Show SQL preview
     setSaveModalOpen(true);
   };
   

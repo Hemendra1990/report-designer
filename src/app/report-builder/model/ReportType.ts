@@ -10,6 +10,7 @@ export interface ReportTypeTemplate {
 
   // Update the RecentReportType interface to include additional fields
 export interface RecentReportType {
+    id?:string;
     name: string;
     category: string;
     lastUsed: string;
@@ -19,8 +20,8 @@ export interface RecentReportType {
     createdBy?: string;
     objects?: Array<{
     name: string;
-icon: string;
-color: string;
+icon?: string;
+color?: string;
 relatedObjects?: Array<{
         name: string;
         icon: string;

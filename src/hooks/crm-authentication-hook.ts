@@ -9,7 +9,7 @@ export const useCrmTokenHook = () => {
         queryFn: () => fetchKeycloakToken().then((res) => {
             return res?.data;
         }),
-        staleTime: 1000
+        // staleTime: 1000
     })
 
     return crmToken;

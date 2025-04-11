@@ -7,6 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { relatedObjectsService } from '@/services/relatedObjectsService';
 import { getRelatedData } from '@/services/crm/metadata-service';
+import { useReportTypeFormContext } from '@/contexts/report-type-form-context';
+import { iTableMetaData } from './model/table-metadata';
 
 interface TableColumn {
   name: string;
@@ -33,6 +35,7 @@ interface ObjectData {
   icon: string;
   schema: string;
   relatedTo?: string[]; // IDs of objects this object can relate to
+  displayName?:string;
 }
 
 interface AvailableObject extends ObjectData {
@@ -50,7 +53,7 @@ interface ObjectTreeProps {
   availableObjects: ObjectData[];
   primaryObject: ObjectData | AvailableObject | null;
   relatedObjects: RelatedObject[];
-  onAddRelatedObject: (objectId: string, relationshipType: RelatedObject['relationshipType'], parentId: string | null) => void;
+  onAddRelatedObject: (objectId: string, relationshipType: RelatedObject['relationshipType'], parentId: string | null, relatedTableInformationMap: Record<string, iTableMetaData[]>, relatedObjects: RelatedObject[]) => void;
   onRemoveRelatedObject: (index: number) => void;
   onChangeRelationshipType: (index: number, type: RelatedObject['relationshipType']) => void;
   onOpenObjectSelector?: (parentId: string | null) => void;
@@ -75,6 +78,8 @@ const ObjectTree: React.FC<ObjectTreeProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filteredObjects, setFilteredObjects] = useState<ObjectData[]>([]);
+  const { reportType } = useReportTypeFormContext();
+  const [relatedTableInformationMap, setRelatedTableInformationMap] = useState<Record<string, iTableMetaData[]>>({});
   
   // Fetch related objects when search term or parent changes
   useEffect(() => {
@@ -97,6 +102,12 @@ const ObjectTree: React.FC<ObjectTreeProps> = ({
         ); */
 
         const apiObjects = (await getRelatedData(parentObject.name)).data.data;
+        setRelatedTableInformationMap((prev) => {
+          return {
+            ...prev,
+            [parentObject.name]: apiObjects
+          }
+        });
         // Map API objects to ObjectData format
         const mappedObjects: ObjectData[] = apiObjects.map((obj: any, index: number) => ({
           id: obj.tableName,
@@ -106,7 +117,8 @@ const ObjectTree: React.FC<ObjectTreeProps> = ({
           color: getColorForIndex(index), // Helper function to generate colors
           icon: "/icons/database.svg",
           schema: obj.schema,
-          relatedTo: obj.columns
+          relatedTo: obj.columns,
+          displayName:obj.displayName
             // .filter(col => col.foreignKey)
             // .map(col => col.referencedTable || '')
             // .filter(table => table !== null)
@@ -233,7 +245,7 @@ const ObjectTree: React.FC<ObjectTreeProps> = ({
                     </div>
                     <div className="flex-1">
                       <div className="font-medium text-sm">
-                        {objectDetails.name}
+                        {objectDetails.displayName}
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {parentLetter} → {relObj.letter} ({getJoinTypeLabel(relObj.relationshipType)})
@@ -325,13 +337,13 @@ const ObjectTree: React.FC<ObjectTreeProps> = ({
                     <div className="flex items-start space-x-2">
                       <RadioGroupItem value="left" id={`left-${relObj.objectId}`} className="mt-1" />
                       <Label htmlFor={`left-${relObj.objectId}`} className="font-normal text-sm">
-                        <span className="font-medium">LEFT JOIN:</span> All {parentDetails?.name} records
+                        <span className="font-medium">LEFT JOIN:</span> All {parentDetails?.displayName} records
                       </Label>
                     </div>
                     <div className="flex items-start space-x-2">
                       <RadioGroupItem value="right" id={`right-${relObj.objectId}`} className="mt-1" />
                       <Label htmlFor={`right-${relObj.objectId}`} className="font-normal text-sm">
-                        <span className="font-medium">RIGHT JOIN:</span> All {objectDetails.name} records
+                        <span className="font-medium">RIGHT JOIN:</span> All {objectDetails.displayName} records
                       </Label>
                     </div>
                     <div className="flex items-start space-x-2">
@@ -418,7 +430,7 @@ const ObjectTree: React.FC<ObjectTreeProps> = ({
                 </div>
                 <div className="flex-1">
                   <div className="font-medium">
-                    {primaryObject.name}
+                    {primaryObject.displayName}
                   </div>
                   <div className="text-xs text-muted-foreground">
                     Primary Object (Root)
@@ -433,7 +445,7 @@ const ObjectTree: React.FC<ObjectTreeProps> = ({
                   size="sm"
                   className="text-xs"
                   onClick={() => {
-                    setCurrentParentId(null);
+                    setCurrentParentId(null); // Ethi reportType.primaryTable dele aau tree dekhauni.
                     setShowSelector(true);
                     if (onOpenObjectSelector) {
                       onOpenObjectSelector(null);
@@ -570,7 +582,7 @@ const ObjectTree: React.FC<ObjectTreeProps> = ({
                       className="flex items-center gap-3 p-3 rounded-md hover:bg-accent cursor-pointer"
                       onClick={async () => {
                         // First add the related object
-                        onAddRelatedObject(obj.id, tempRelationshipType, currentParentId);
+                        onAddRelatedObject(obj.id, tempRelationshipType, currentParentId, relatedTableInformationMap, relatedObjects);
                         // Then notify parent component
                         if (onOpenObjectSelector) {
                           await onOpenObjectSelector(obj.id);
@@ -585,7 +597,7 @@ const ObjectTree: React.FC<ObjectTreeProps> = ({
                         <span className="text-lg font-bold">{obj.letter}</span>
                       </div>
                       <div className="flex-1">
-                        <h3 className="font-medium text-sm">{obj.name}</h3>
+                        <h3 className="font-medium text-sm">{obj?.displayName}</h3>
                         {obj.description && (
                           <p className="text-xs text-muted-foreground">{obj.description}</p>
                         )}
@@ -615,7 +627,7 @@ const ObjectTree: React.FC<ObjectTreeProps> = ({
                   if (filteredObjs.length > 0) {
                     const obj = filteredObjs[0];
                     // First add the related object
-                    onAddRelatedObject(obj.id, tempRelationshipType, currentParentId);
+                    onAddRelatedObject(obj.id, tempRelationshipType, currentParentId, relatedTableInformationMap, relatedObjects);
                     // Then notify parent component
                     if (onOpenObjectSelector) {
                       await onOpenObjectSelector(obj.id);
@@ -633,6 +645,8 @@ const ObjectTree: React.FC<ObjectTreeProps> = ({
           </div>
         </div>
       )}
+      <>
+      </>
     </div>
   );
 };

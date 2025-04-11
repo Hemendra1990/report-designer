@@ -382,7 +382,7 @@ const VennDiagram: React.FC<VennDiagramProps> = ({
         // Get the parent letter
         const parentLetter = parentId === primaryObject.id 
           ? primaryObject.letter 
-          : relatedObjects.find(r => r.object.id === parentId)?.letter || 'X';
+          : relatedObjects.find(r => r.object.id === parentId)?.object.letter || 'X';
         
         // Draw the relationship visualization
         drawRelationship(

@@ -1,48 +1,50 @@
 package com.reportdesigner.model;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.reportdesigner.util.StringListConverter;
+import io.hypersistence.utils.hibernate.id.Tsid;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 import lombok.*;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "report_types")
+@Table(name = "rd_report_type")
 @Getter
 @Setter
-@NoArgsConstructor
 @AllArgsConstructor
+@NoArgsConstructor
 @Builder
-@ToString(callSuper = true)
-@EqualsAndHashCode(callSuper = true)
 public class ReportType extends BaseEntity {
 
-    @NotBlank
-    @Size(max = 100)
-    @Column(nullable = false)
+    @Id
+    @Tsid
+    @Column(length = 50)
+    private String id;
+
+    private String label;
     private String name;
 
-    @Size(max = 500)
+    @Column(columnDefinition = "TEXT")
     private String description;
+    private String primaryTableId;
+    private String primaryTable;
+    private String primaryTableDisplayName;
+    private String typeGroup;
 
-    @Column(nullable = false)
-    private String icon;
+    @Column(columnDefinition = "TEXT")
+    private String cteQuery;
 
-    @Column(nullable = false)
-    private String color;
+    @Column(columnDefinition = "TEXT")
+    private String objectTree;
 
-    @Builder.Default
-    @OneToMany(mappedBy = "reportType", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Report> reports = new ArrayList<>();
+    @Column(columnDefinition = "TEXT")
+    @Convert(converter = StringListConverter.class)
+    private List<String> usedTables;
 
-    @Column(nullable = false)
-    private boolean isPublic = false;
+    @OneToMany(mappedBy = "reportType", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<ReportTypeConfig> configList;
 
-    @Column(nullable = false)
-    private String dataSource;
-
-    @Column(nullable = false)
-    private String visualizationOptions;
-} 
+    @OneToMany(mappedBy = "reportType", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<ReportTypeLayout> layoutList;
+}

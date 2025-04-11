@@ -234,4 +234,75 @@ export const FilterIcon: React.FC<IconProps> = ({
   >
     <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
   </svg>
+);
+
+export const PivotTableIcon: React.FC<IconProps> = ({ 
+  size = 16, 
+  className = "",
+  ...props 
+}) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    {...props}
+  >
+    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+    <line x1="3" y1="9" x2="21" y2="9" />
+    <line x1="3" y1="15" x2="21" y2="15" />
+    <line x1="9" y1="3" x2="9" y2="21" />
+  </svg>
+);
+
+export const AggregateIcon: React.FC<IconProps> = ({ 
+  size = 16, 
+  className = "",
+  ...props 
+}) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    {...props}
+  >
+    <path d="M3 6h18" />
+    <path d="M7 12h10" />
+    <path d="M10 18h4" />
+  </svg>
+);
+
+export const GroupIcon: React.FC<IconProps> = ({
+  size = 16,
+  className = "",
+  ...props
+}) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    {...props}
+  >
+    <path d="M8 3H5a2 2 0 0 0-2 2v3m6-6h3m6 0h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3m-6-6h6m6 6h3a2 2 0 0 0 2-2v-3m0 6h-6" />
+  </svg>
 ); 

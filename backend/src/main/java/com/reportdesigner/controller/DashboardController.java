@@ -1,9 +1,7 @@
 package com.reportdesigner.controller;
 
 import com.reportdesigner.model.Dashboard;
-import com.reportdesigner.model.Report;
 import com.reportdesigner.service.DashboardService;
-import com.reportdesigner.service.ReportService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,12 +15,9 @@ import java.util.UUID;
 public class DashboardController {
 
     private final DashboardService dashboardService;
-    private final ReportService reportService;
 
-    @Autowired
-    public DashboardController(DashboardService dashboardService, ReportService reportService) {
+    public DashboardController(DashboardService dashboardService) {
         this.dashboardService = dashboardService;
-        this.reportService = reportService;
     }
 
     @GetMapping
@@ -40,20 +35,6 @@ public class DashboardController {
         return ResponseEntity.ok(dashboardService.findAllPublished());
     }
 
-    @GetMapping("/report/{reportId}")
-    public ResponseEntity<List<Dashboard>> getDashboardsByReport(@PathVariable UUID reportId) {
-        return reportService.findById(reportId)
-                .map(report -> ResponseEntity.ok(dashboardService.findByReport(report)))
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    @GetMapping("/report/{reportId}/active")
-    public ResponseEntity<List<Dashboard>> getActiveDashboardsByReport(@PathVariable UUID reportId) {
-        return reportService.findById(reportId)
-                .map(report -> ResponseEntity.ok(dashboardService.findByReportAndActive(report, true)))
-                .orElse(ResponseEntity.notFound().build());
-    }
-
     @GetMapping("/publish-url/{publishUrl}")
     public ResponseEntity<Dashboard> getDashboardByPublishUrl(@PathVariable String publishUrl) {
         return dashboardService.findByPublishUrl(publishUrl)
@@ -66,16 +47,6 @@ public class DashboardController {
         return dashboardService.findById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
-    }
-
-    @PostMapping
-    public ResponseEntity<Dashboard> createDashboard(@RequestBody Dashboard dashboard) {
-        try {
-            Dashboard created = dashboardService.create(dashboard);
-            return new ResponseEntity<>(created, HttpStatus.CREATED);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
-        }
     }
 
     @PutMapping("/{id}")

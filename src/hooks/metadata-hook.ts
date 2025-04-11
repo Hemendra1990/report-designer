@@ -1,4 +1,5 @@
 import { METADATA } from "@/components/enum/query-keys";
+import { iTableMetaData } from "@/components/model/table-metadata";
 import { findAllTableMetaData, findColumnMetaDataByTableName, getRelatedData } from "@/services/crm/metadata-service";
 import { TableMetadata } from "@/services/databaseService";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -8,7 +9,7 @@ export const useAllColumnMetadataByTableName = (tableName: string) => {
         return findColumnMetaDataByTableName(tableName).then((res) => res?.data?.data);
     };
 
-    const columnListByTableName = useQuery<TableMetadata>({
+    const columnListByTableName = useQuery<iTableMetaData>({
         queryKey: [METADATA.ALL_COLUMNMETADATA_INFO, tableName],
         enabled: !!tableName,
         queryFn: allColumnMetadataByTableName,
@@ -29,7 +30,7 @@ export const useAllTableMetadata = () => {
     const allTableMetaData = () => {
         return findAllTableMetaData().then((res) => {
             let response =  res?.data?.data.map((table: TableMetadata) => {
-                table.schema = 'bip'; //TODO by Aswini (get from backend / move to env)
+                table.schema = process.env.NEXT_PUBLIC_CRM_CLIENT_ID || '';
                 return table;
             })
             return response;

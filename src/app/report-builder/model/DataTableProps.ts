@@ -20,4 +20,8 @@ export interface DataTableProps<TData extends Record<string, any>> {
     pageCount: number;
     totalRows: number;
     isLoading: boolean;
+    // Pivot-related properties
+    isPivotTable?: boolean;
+    pivotColumns?: string[];
+    pivotValues?: string[];
 }

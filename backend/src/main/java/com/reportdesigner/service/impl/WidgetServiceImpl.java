@@ -1,13 +1,11 @@
 package com.reportdesigner.service.impl;
 
 import com.reportdesigner.model.Dashboard;
-import com.reportdesigner.model.Report;
 import com.reportdesigner.model.Widget;
 import com.reportdesigner.repository.WidgetRepository;
 import com.reportdesigner.service.BaseServiceImpl;
 import com.reportdesigner.service.DashboardService;
 import com.reportdesigner.service.DuckDBService;
-import com.reportdesigner.service.ReportService;
 import com.reportdesigner.service.WidgetService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,7 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -23,13 +20,11 @@ import java.util.UUID;
 public class WidgetServiceImpl extends BaseServiceImpl<Widget, WidgetRepository> implements WidgetService {
 
     private final DashboardService dashboardService;
-    private final ReportService reportService;
     private final DuckDBService duckDBService;
 
-    public WidgetServiceImpl(WidgetRepository repository, DashboardService dashboardService, ReportService reportService, DuckDBService duckDBService) {
+    public WidgetServiceImpl(WidgetRepository repository, DashboardService dashboardService, DuckDBService duckDBService) {
         super(repository);
         this.dashboardService = dashboardService;
-        this.reportService = reportService;
         this.duckDBService = duckDBService;
     }
 
@@ -41,16 +36,6 @@ public class WidgetServiceImpl extends BaseServiceImpl<Widget, WidgetRepository>
     @Override
     public List<Widget> findByDashboardAndActive(Dashboard dashboard, boolean active) {
         return active ? repository.findByDashboardAndActiveTrue(dashboard) : repository.findByDashboard(dashboard);
-    }
-
-    @Override
-    public List<Widget> findByReport(Report report) {
-        return repository.findByReport(report);
-    }
-
-    @Override
-    public List<Widget> findByReportAndActive(Report report, boolean active) {
-        return active ? repository.findByReportAndActiveTrue(report) : repository.findByReport(report);
     }
 
     @Override
@@ -107,20 +92,6 @@ public class WidgetServiceImpl extends BaseServiceImpl<Widget, WidgetRepository>
         }
         
         Widget widget = findById(id).orElseThrow();
-        
-        try {
-            // Execute the widget query using DuckDB
-            List<Map<String, Object>> results = duckDBService.executeQueryAsList(
-                widget.getReport().getDataSource(),
-                widget.getConfiguration(), // Assuming this contains the query
-                null // TODO: Parse and pass parameters from widget.getFilters()
-            );
-            
-            // For now, we're just returning the widget itself
-            // In a real implementation, we would return the query results
-            return List.of(widget);
-        } catch (SQLException e) {
-            throw new RuntimeException("Failed to execute widget: " + e.getMessage(), e);
-        }
+        return null;
     }
 } 
