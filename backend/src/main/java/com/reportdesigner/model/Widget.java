@@ -1,17 +1,27 @@
 package com.reportdesigner.model;
 
+import io.hypersistence.utils.hibernate.id.Tsid;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 @Entity
 @Table(name = "widgets")
 @Getter
 @Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@ToString(callSuper = true)
+@EqualsAndHashCode(callSuper = true)
 public class Widget extends BaseEntity {
+
+    @Id
+    @Tsid
+    @Column(length = 50)
+    private String id;
 
     @NotBlank
     @Size(max = 100)
@@ -25,11 +35,6 @@ public class Widget extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "dashboard_id", nullable = false)
     private Dashboard dashboard;
-
-    @NotNull
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "report_id", nullable = false)
-    private Report report;
 
     @Column(nullable = false)
     private String type;
@@ -47,6 +52,7 @@ public class Widget extends BaseEntity {
     private String refreshInterval;
 
     @Column(nullable = false)
+    @Builder.Default
     private boolean autoRefresh = false;
 
     @Column(nullable = false)
@@ -54,4 +60,6 @@ public class Widget extends BaseEntity {
 
     @Column(nullable = false)
     private String style;
+
+    private Boolean active;
 } 
