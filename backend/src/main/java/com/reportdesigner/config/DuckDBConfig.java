@@ -1,80 +1,107 @@
 package com.reportdesigner.config;
 
-import org.springframework.beans.factory.annotation.Value;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 
-import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.sql.Statement;
 
+@Slf4j
 @Configuration
+@ConfigurationProperties(prefix = "duckdb")
+@Getter
+@Setter
 public class DuckDBConfig {
 
-    @Value("${duckdb.file.path}")
-    private String duckDbFilePath;
+    private String filePath;
+    private boolean inMemory = false;
+    private String initSqlPath = "classpath:duckdb-init.sql";
 
-    private final Map<String, Connection> connectionCache = new ConcurrentHashMap<>();
+    private Connection connection;
+
+    @PostConstruct
+    public void init() {
+        try {
+            // Load DuckDB JDBC driver
+            Class.forName("org.duckdb.DuckDBDriver");
+
+            // Create data directory if it doesn't exist
+            if (!inMemory && filePath != null) {
+                Path dataDir = Paths.get(filePath).getParent();
+                if (dataDir != null && !Files.exists(dataDir)) {
+                    Files.createDirectories(dataDir);
+                    log.info("Created DuckDB data directory: {}", dataDir);
+                }
+            }
+
+            log.info("DuckDB configuration initialized");
+        } catch (Exception e) {
+            log.error("Failed to initialize DuckDB configuration", e);
+            throw new RuntimeException("Failed to initialize DuckDB configuration", e);
+        }
+    }
 
     @Bean
     @Primary
-    public Connection defaultConnection() throws SQLException {
-        return getConnection("default");
-    }
+    public Connection duckDBConnection() throws SQLException {
+        String jdbcUrl;
 
-    public Connection getConnection(String dataSource) throws SQLException {
-        return connectionCache.computeIfAbsent(dataSource, key -> {
+        if (inMemory) {
+            jdbcUrl = "jdbc:duckdb:";
+            log.info("Connecting to in-memory DuckDB instance");
+        } else {
+            jdbcUrl = "jdbc:duckdb:" + filePath;
+            log.info("Connecting to file-based DuckDB instance at: {}", filePath);
+        }
+
+        connection = DriverManager.getConnection(jdbcUrl);
+
+        // Initialize database with SQL script if provided
+        if (initSqlPath != null && !initSqlPath.isEmpty()) {
             try {
-                // Ensure the directory exists
-                File dbFile = new File(duckDbFilePath);
-                dbFile.getParentFile().mkdirs();
+                String initSql = new String(
+                        getClass().getClassLoader().getResourceAsStream(
+                                initSqlPath.replace("classpath:", "")
+                        ).readAllBytes()
+                );
 
-                // Create the connection URL
-                String url = "jdbc:duckdb:" + duckDbFilePath;
-                
-                // Load the DuckDB JDBC driver
-                Class.forName("org.duckdb.DuckDBDriver");
-                
-                // Create the connection
-                Connection conn = DriverManager.getConnection(url);
-                
-                // If this is not the default connection, we need to attach the database
-                if (!"default".equals(key)) {
-                    conn.createStatement().execute("ATTACH DATABASE '" + key + "' AS " + key);
+                try (Statement stmt = connection.createStatement()) {
+                    for (String sql : initSql.split(";")) {
+                        if (!sql.trim().isEmpty()) {
+                            stmt.execute(sql);
+                        }
+                    }
                 }
-                
-                return conn;
-            } catch (SQLException | ClassNotFoundException e) {
-                throw new RuntimeException("Failed to create DuckDB connection for data source: " + key, e);
-            }
-        });
-    }
-
-    public void closeConnection(String dataSource) {
-        Connection conn = connectionCache.remove(dataSource);
-        if (conn != null) {
-            try {
-                conn.close();
-            } catch (SQLException e) {
-                // Log error but don't throw
-                System.err.println("Error closing connection: " + e.getMessage());
+                log.info("Initialized DuckDB with SQL script: {}", initSqlPath);
+            } catch (Exception e) {
+                log.error("Failed to initialize DuckDB with SQL script", e);
             }
         }
+
+        return connection;
     }
 
-    public void closeAllConnections() {
-        for (Map.Entry<String, Connection> entry : connectionCache.entrySet()) {
+    @PreDestroy
+    public void cleanup() {
+        if (connection != null) {
             try {
-                entry.getValue().close();
+                connection.close();
+                log.info("Closed DuckDB connection");
             } catch (SQLException e) {
-                // Log error but don't throw
-                System.err.println("Error closing connection: " + e.getMessage());
+                log.error("Failed to close DuckDB connection", e);
             }
         }
-        connectionCache.clear();
     }
 } 

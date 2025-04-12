@@ -1,7 +1,7 @@
-import { Field } from "../model/Field";
+import {Field, FormulaColumn} from "../model/Field";
 import { Filter } from "../model/Filter";
 import { translateFormulaToDuckDBSQL } from "./FormulaTranslator";
-import { accountFields } from "../model/fake-data";
+import {ReportTypeTemplate} from "@/app/(secure)/report-builder/model/ReportType";
 
 export interface SqlQueryOptions {
   reportType: string;
@@ -16,11 +16,78 @@ export interface SqlQueryOptions {
   selectedAggregations?: Record<string, string>;
 }
 
+function buildPivotSqlQueries(selectedColumns: Field[], groupByFields: string[], pivotColumnIds: string[],
+                              pivotValues: string[], reportType: string, filters: Filter[], filterLogic: "and" | "or" | "custom",
+                              customFilterFormula: string, selectedAggregations: Record<string, string>, cteQuery: string) {
+  // For pivot queries, we need to build the base query first, then add the pivot clause
+
+  // Filter out summary formula fields from the selected columns
+  const filteredColumns = selectedColumns.filter(column =>
+      !('isSummaryFormula' in column && column.isSummaryFormula === true)
+  );
+
+  // Build the base query to use in the WITH clause
+  let sql = 'WITH base_data AS (\n';
+
+  // Calculate all fields needed - from group by, pivot, and value columns
+  const allNeededColumns = Array.from(new Set([
+    ...groupByFields,
+    ...(pivotColumnIds || []),
+    ...(pivotValues || [])
+  ]));
+
+  // SELECT clause for base data
+  console.log('allNeededColumns', allNeededColumns);
+  sql += cteQuery+ '\n'+'  SELECT\n';
+  allNeededColumns.forEach((id, index) => {
+    const column = selectedColumns.find(col => col.id === id);
+    const sqlColumnName = column?.duckDBColumnName || column?.columnName || id;
+    const displayName = column?.duckDBColumnDisplayName || column?.columnDisplayName || column?.name || id;
+    // sql += `    ${column.duckDBColumnName}${index < allNeededColumns.length - 1 ? ',' : ''}\n`;
+    sql += `    ${sqlColumnName} as "${displayName}"${index < allNeededColumns.length - 1 ? ',' : ''}\n`;
+  });
+
+  // FROM clause
+  sql += `  FROM ${reportType}\n`;
+
+  // WHERE clause if needed
+  if (filters.length > 0) {
+    sql += `  WHERE ${generateWhereClause(filters, filterLogic, customFilterFormula)}\n`;
+  }
+
+  // Close the base CTE
+  sql += ')\n\n';
+
+  // Add the pivot clause
+  sql += generatePivotClause({
+    selectedColumns,
+    pivotColumnIds,
+    pivotValues,
+    selectedAggregations,
+    groupByFields
+  });
+  return sql;
+}
+
 /**
  * Builds a valid DuckDB SQL query based on the report configuration
  */
-export function buildSqlQuery(options: SqlQueryOptions): string {
-  const { 
+export function buildSqlQuery(options: {
+  selectedReportType: ReportTypeTemplate;
+  reportType: string;
+  selectedColumns: (Field | FormulaColumn)[];
+  groupByFields: string[];
+  filters: Filter[];
+  filterLogic: "and" | "or" | "custom";
+  customFilterFormula: string;
+  isPivotActive: boolean;
+  pivotColumnIds: string[];
+  pivotValues: string[];
+  selectedAggregations: Record<string, string>;
+  cteQuery: any
+}): string {
+  const {
+    selectedReportType,
     reportType, 
     selectedColumns, 
     groupByFields, 
@@ -30,56 +97,14 @@ export function buildSqlQuery(options: SqlQueryOptions): string {
     isPivotActive,
     pivotColumnIds,
     pivotValues,
-    selectedAggregations
+    selectedAggregations,
+    cteQuery
   } = options;
   
   // Check if we're building a pivot query
   if (isPivotActive && pivotColumnIds && pivotColumnIds.length > 0 && pivotValues && pivotValues.length > 0) {
-    // For pivot queries, we need to build the base query first, then add the pivot clause
-    
-    // Filter out summary formula fields from the selected columns
-    const filteredColumns = selectedColumns.filter(column => 
-      !('isSummaryFormula' in column && column.isSummaryFormula === true)
-    );
-    
-    // Build the base query to use in the WITH clause
-    let sql = 'WITH base_data AS (\n';
-    
-    // Calculate all fields needed - from group by, pivot, and value columns
-    const allNeededColumns = Array.from(new Set([
-      ...groupByFields,
-      ...(pivotColumnIds || []),
-      ...(pivotValues || [])
-    ]));
-    
-    // SELECT clause for base data
-    console.log('allNeededColumns', allNeededColumns);
-    sql += '  SELECT\n';
-    allNeededColumns.forEach((id, index) => {
-      const column = selectedColumns.find(col => col.id === id);
-      sql += `    ${id}${index < allNeededColumns.length - 1 ? ',' : ''}\n`;
-    });
-    
-    // FROM clause
-    sql += `  FROM ${reportType}\n`;
-    
-    // WHERE clause if needed
-    if (filters.length > 0) {
-      sql += `  WHERE ${generateWhereClause(filters, filterLogic, customFilterFormula)}\n`;
-    }
-    
-    // Close the base CTE
-    sql += ')\n\n';
-    
-    // Add the pivot clause
-    sql += generatePivotClause({
-      selectedColumns,
-      pivotColumnIds,
-      pivotValues,
-      selectedAggregations,
-      groupByFields
-    });
-    
+    const sql = buildPivotSqlQueries(selectedColumns, groupByFields, pivotColumnIds, pivotValues, reportType,
+        filters, filterLogic, customFilterFormula, selectedAggregations, cteQuery);
     return sql;
   }
   
@@ -93,7 +118,7 @@ export function buildSqlQuery(options: SqlQueryOptions): string {
   const selectClause = generateSelectClause(filteredColumns, groupByFields);
   
   // Generate the FROM clause
-  const fromClause = `FROM ${reportType}`;
+  const fromClause = `FROM ${selectedReportType.name}`;
   
   // Generate the WHERE clause if there are filters
   const whereClause = filters.length > 0 
@@ -140,14 +165,18 @@ function generateSelectClause(selectedColumns: Field[], groupByFields: string[])
   const fieldMap: Record<string, string> = {};
   
   // First add all available fields from the system
-  accountFields.forEach(field => {
+  /*accountFields.forEach(field => {
     fieldMap[field.id] = field.id;
+  });*/
+
+  selectedColumns.forEach(field => {
+    fieldMap[field.id] = field.duckDBColumnName;
   });
   
-  // Then add any custom fields from the selected columns that might not be in accountFields
+  // Then add any custom fields from the selected columns that might not be in selectedColumns
   columnsToInclude.forEach(column => {
     if (!fieldMap[column.id]) {
-      fieldMap[column.id] = column.id;
+      fieldMap[column.id] = column.duckDBColumnName;
     }
   });
 
@@ -168,7 +197,7 @@ function generateSelectClause(selectedColumns: Field[], groupByFields: string[])
         }
       }
       // Regular column, just use the ID
-      return `  ${column.id}`;
+      return `  ${column.duckDBColumnName}`;
     }).join(',\n');
   }
 
@@ -193,7 +222,7 @@ function generateSelectClause(selectedColumns: Field[], groupByFields: string[])
         return `  '${formulaCol.formula}' AS ${formulaCol.alias}`;
       }
     }
-    return `  ${column.id}`;
+    return `  ${column.duckDBColumnName}`;
   });
   
   const nonGroupedPart = nonGroupedColumns.map(column => {
@@ -222,7 +251,7 @@ function generateSelectClause(selectedColumns: Field[], groupByFields: string[])
     }
     
     // Regular column with aggregation
-    const columnId = column.id;
+    const columnId = column.duckDBColumnName;
     
     // Apply an appropriate aggregate function based on the column type
     let aggregateFunction = 'COUNT';
@@ -376,7 +405,7 @@ function hasSpecialDateKeyword(value: string): boolean {
  */
 function getSingleFilterCondition(filter: Filter): string {
   const { field, operator, value, rangeStart, rangeEnd, selectedOptions } = filter;
-  const fieldId = field.id;
+  const fieldId = field.duckDBColumnName;
   
   // Special handling for date and datetime fields
   if (field.type === 'date' || field.type === 'datetime') {
@@ -685,7 +714,15 @@ function getNumericValue(value: string): number | string {
 function generatePivotClause(
   options: Pick<SqlQueryOptions, 'selectedColumns' | 'pivotColumnIds' | 'pivotValues' | 'selectedAggregations' | 'groupByFields'>
 ): string {
-  const { selectedColumns, pivotColumnIds = [], pivotValues = [], selectedAggregations = {}, groupByFields = [] } = options;
+  const { selectedColumns, pivotValues = [], selectedAggregations = {}, groupByFields = [] } = options;
+  let pivotColumnIds = options.pivotColumnIds || [];
+
+  const pivotColumnFields = selectedColumns.filter(column => pivotColumnIds.includes(column.id));
+  if (pivotColumnFields.length === 0 || pivotValues.length === 0) {
+    return '';
+  }
+
+  pivotColumnIds = pivotColumnFields.map(column => column.duckDBColumnName || column.columnName || column.id);
   
   if (pivotColumnIds.length === 0 || pivotValues.length === 0) {
     return '';
@@ -703,10 +740,12 @@ function generatePivotClause(
   }
   
   // USING clause (aggregations)
+  const aggregatedField =  selectedColumns.filter(column => Object.keys(selectedAggregations).includes(column.id));
   pivotSql += 'USING ';
   pivotValues.forEach((id, index) => {
+    let field = aggregatedField.find(column => column.id === id);
     const aggregation = selectedAggregations[id] || 'SUM';
-    pivotSql += `${aggregation}(${id})`;
+    pivotSql += `${aggregation}(${field.duckDBColumnName || field.columnName || id})`;
     
     if (index < pivotValues.length - 1) {
       pivotSql += ', ';
@@ -720,7 +759,8 @@ function generatePivotClause(
   if (validGroupByFields.length > 0) {
     pivotSql += 'GROUP BY ';
     validGroupByFields.forEach((id, index) => {
-      pivotSql += id;
+      const column = selectedColumns.find(column => column.id == id);
+      pivotSql += column.duckDBColumnName || column.columnName || id;
       if (index < validGroupByFields.length - 1) {
         pivotSql += ', ';
       }

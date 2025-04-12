@@ -13,15 +13,21 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Service
 public class DuckDBServiceImpl implements DuckDBService {
 
     private final DuckDBConfig duckDBConfig;
+    private final Map<String, Connection> dataSourceConnections = new ConcurrentHashMap<>();
 
     public DuckDBServiceImpl(DuckDBConfig duckDBConfig) {
         this.duckDBConfig = duckDBConfig;
@@ -44,7 +50,33 @@ public class DuckDBServiceImpl implements DuckDBService {
 
     @Override
     public Connection getConnection(String dataSource) throws SQLException {
-        return duckDBConfig.getConnection(dataSource);
+        // For the default data source, return the main DuckDB connection
+        if ("default".equals(dataSource)) {
+            return duckDBConfig.duckDBConnection();
+        }
+        
+        // For other data sources, create or return a connection from the map
+        return dataSourceConnections.computeIfAbsent(dataSource, this::createAdditionalConnection);
+    }
+    
+    private Connection createAdditionalConnection(String dataSource) {
+        try {
+            // Get the main connection
+            Connection mainConn = duckDBConfig.duckDBConnection();
+            
+            // If this is not the default connection, attach the database
+            if (!"default".equals(dataSource)) {
+                try (Statement stmt = mainConn.createStatement()) {
+                    stmt.execute("ATTACH DATABASE '" + dataSource + "' AS " + dataSource);
+                }
+                log.info("Attached database: {}", dataSource);
+            }
+            
+            return mainConn;
+        } catch (SQLException e) {
+            log.error("Failed to create connection for data source: {}", dataSource, e);
+            throw new RuntimeException("Failed to create connection for data source: " + dataSource, e);
+        }
     }
 
     @Override
@@ -99,11 +131,28 @@ public class DuckDBServiceImpl implements DuckDBService {
 
     @Override
     public void closeConnection(String dataSource) {
-        duckDBConfig.closeConnection(dataSource);
+        // We don't actually close the connection since it's managed by duckDBConfig,
+        // but we can detach databases if needed
+        if (!"default".equals(dataSource) && dataSourceConnections.containsKey(dataSource)) {
+            try {
+                Connection conn = getConnection("default");
+                try (Statement stmt = conn.createStatement()) {
+                    stmt.execute("DETACH DATABASE " + dataSource);
+                }
+                dataSourceConnections.remove(dataSource);
+                log.info("Detached database: {}", dataSource);
+            } catch (SQLException e) {
+                log.error("Error detaching database: {}", dataSource, e);
+            }
+        }
     }
 
     @Override
     public void closeAllConnections() {
-        duckDBConfig.closeAllConnections();
+        // Detach all attached databases
+        dataSourceConnections.keySet().forEach(this::closeConnection);
+        dataSourceConnections.clear();
+        
+        // The main connection is managed by DuckDBConfig and will be closed by its @PreDestroy method
     }
 } 
