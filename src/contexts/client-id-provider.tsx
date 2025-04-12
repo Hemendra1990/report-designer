@@ -1,6 +1,8 @@
 "use client";
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { getCookie, setCookie } from '@/helper/cookie-helper';
+import { GlobalKeys } from '@/types/constants/global-keys';
 
 const ClientIdContext = createContext<ClientIdContextProps>(null);
 
@@ -20,11 +22,11 @@ function ClientIdProviders({ children }: { children: React.ReactNode }) {
                 setClientId(subdomainClientId);
             }
         } else {
-            const queryClientId = searchParams.get('client_id');
-            const storedClientId = sessionStorage.getItem('client_id');
+            const queryClientId = searchParams.get(GlobalKeys.CLIENT_ID_COOKIE_NAME);
+            const storedClientId = getCookie(GlobalKeys.CLIENT_ID_COOKIE_NAME);
             if (queryClientId) {
                 setClientId(queryClientId);
-                sessionStorage.setItem('client_id', queryClientId);
+                setCookie(GlobalKeys.CLIENT_ID_COOKIE_NAME, queryClientId);
             } else if (storedClientId) {
                 setClientId(storedClientId);
             }
@@ -33,7 +35,7 @@ function ClientIdProviders({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         if (clientId && isLocalhost()) {
-            sessionStorage.setItem('client_id', clientId);
+            setCookie(GlobalKeys.CLIENT_ID_COOKIE_NAME, clientId);
         }
     }, [clientId]);
 
