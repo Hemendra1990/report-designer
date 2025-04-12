@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
+import "../globals.css";
 import Navbar from "@/components/Navbar";
 import ClientQueryProviders from "@/contexts/query-client-provider";
-import { AuthContextProvider } from "@/contexts/auth-context";
 import { ReportTypeFormProvider } from "@/contexts/report-type-form-context";
+import ClientIdProviders from "@/contexts/client-id-provider";
+import { AuthProvider } from "@/contexts/auth-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,12 +34,14 @@ export default function RootLayout({
       >
         <div className="min-h-screen bg-gray-50">
           <ClientQueryProviders>
-            <AuthContextProvider>
-              <ReportTypeFormProvider>
-                <Navbar />
-                <main>{children}</main>
-              </ReportTypeFormProvider>
-            </AuthContextProvider>
+            <ClientIdProviders>
+              <AuthProvider>
+                <ReportTypeFormProvider>
+                  <Navbar />
+                  <main>{children}</main>
+                </ReportTypeFormProvider>
+              </AuthProvider>
+            </ClientIdProviders>
           </ClientQueryProviders>
         </div>
       </body>

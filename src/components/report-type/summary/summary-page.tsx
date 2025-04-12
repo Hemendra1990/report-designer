@@ -8,7 +8,7 @@ import { useReportTypeFormContext } from "@/contexts/report-type-form-context";
 import { useDeleteReportType, useReportTypeById } from "@/hooks/report-type-hook";
 import { useAllTableMetadata } from "@/hooks/metadata-hook";
 import { ReportTypeConfig } from "@/components/model/report-type";
-import ToastMessage from "@/app/report-types/summary/summary-helper";
+import ToastMessage from "@/app/(secure)/report-types/summary/summary-helper";
 import { useRouter } from "next/navigation";
 
 // Sample list of available objects for reference (same as in other pages)

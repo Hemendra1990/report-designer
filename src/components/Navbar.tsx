@@ -15,6 +15,7 @@ import {
   Menu,
   X
 } from 'lucide-react';
+import UserMenu from './nav/UserMenu';
 
 export default function Navbar() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -104,9 +105,7 @@ export default function Navbar() {
             <button className="p-2 hover:bg-gray-100 rounded-full">
               <HelpCircle size={20} className="text-gray-600" />
             </button>
-            <button className="p-2 hover:bg-gray-100 rounded-full">
-              <User size={20} className="text-gray-600" />
-            </button>
+            <UserMenu/>
           </div>
         </div>
       </div>
