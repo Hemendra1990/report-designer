@@ -14,13 +14,63 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.WebRequest;
 
+import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+/**
+ * Global exception handler for REST API.
+ */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     private static Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    /**
+     * Handle DuckDBException.
+     *
+     * @param ex the exception
+     * @param request the web request
+     * @return a ResponseEntity with error details
+     */
+    @ExceptionHandler(DuckDBException.class)
+    public ResponseEntity<Map<String, Object>> handleDuckDBException(DuckDBException ex, WebRequest request) {
+        logger.error("DuckDB error occurred", ex);
+        return createErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    /**
+     * Handle general exceptions.
+     *
+     * @param ex the exception
+     * @param request the web request
+     * @return a ResponseEntity with error details
+     */
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, Object>> handleGlobalException(Exception ex, WebRequest request) {
+        logger.error("Unhandled exception occurred", ex);
+        return createErrorResponse("An unexpected error occurred: " + ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    /**
+     * Create an error response with the specified message and status.
+     *
+     * @param message the error message
+     * @param status the HTTP status
+     * @return a ResponseEntity with error details
+     */
+    private ResponseEntity<Map<String, Object>> createErrorResponse(String message, HttpStatus status) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", LocalDateTime.now().toString());
+        body.put("status", status.value());
+        body.put("error", status.getReasonPhrase());
+        body.put("message", message);
+        
+        return new ResponseEntity<>(body, status);
+    }
 
     @ExceptionHandler({ValidationException.class, ServiceException.class, DataAccessException.class, MethodArgumentNotValidException.class})
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)

@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Field, toField } from "../model/Field";
-import { AggregateIcon, PivotTableIcon, GroupIcon } from "@/components/icons/ReportIcons";
+import React, {useState} from 'react';
+import {Button} from "@/components/ui/button";
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select";
+import {Switch} from "@/components/ui/switch";
+import {Label} from "@/components/ui/label";
+import {AggregateIcon, GroupIcon, PivotTableIcon} from "@/components/icons/ReportIcons";
 
 interface PivotOptionsProps {
   selectedColumns: any[]; // Accept any type of column object
@@ -43,14 +42,23 @@ const PivotOptions: React.FC<PivotOptionsProps> = ({
   const [selectedGroupByField, setSelectedGroupByField] = useState<string>('');
   
   // Fields that can be pivoted (categorical fields like picklists, text)
-  const pivotableFields = selectedColumns.filter(col => 
-    ['text', 'picklist', 'user', 'lookup'].includes(col.type as string)
-  );
+  // Fields that can be pivoted (categorical fields like picklists, text, character types)
+  const pivotableFields = selectedColumns.filter(col => {
+    const typeString = (col.type as string).toUpperCase();
+    const textTypes = ["TEXT", "CHAR", "VARCHAR", "VARCHAR(255)", "VARCHAR(50)"];
+    
+    // Check if it's a string type from our database or a UI category type
+    return textTypes.includes(typeString.toUpperCase()) ||
+          ['text', 'picklist', 'user', 'lookup'].map(t => t.toUpperCase()).includes(typeString);
+  });
   
   // Fields that can be aggregated (numeric fields)
-  const aggregatableFields = selectedColumns.filter(col => 
-    ['number', 'currency', 'percent'].includes(col.type as string)
-  );
+  const aggregatableFields = selectedColumns.filter(col => {
+    const numberTypes = ["int4", "int8", "int", "float8", "bigserial", "bigint"];
+    const typeString = (col.type as string).toLowerCase();
+    return ['number', 'currency', 'percent'].includes(typeString)
+            || numberTypes.includes(typeString);
+  });
   
   // Helper to add a field to pivot on
   const addPivotField = () => {

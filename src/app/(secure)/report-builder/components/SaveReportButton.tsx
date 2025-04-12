@@ -32,12 +32,12 @@ export default function SaveReportButton({
     try {
       // Generate SQL query using the utilities
       const generatedSql = buildSqlQuery({
-        reportType,
-        selectedColumns,
-        groupByFields,
-        filters,
-        filterLogic,
-        customFilterFormula
+          reportType,
+          selectedColumns,
+          groupByFields,
+          filters,
+          filterLogic,
+          customFilterFormula
       });
       
       // Call the onSave callback with the generated SQL
