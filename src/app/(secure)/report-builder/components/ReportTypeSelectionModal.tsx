@@ -63,7 +63,6 @@ export function ReportTypeSelectionModal({
                     objects: reportType?.usedTables?.map(table => ({name: table})),
                     lastUsed:`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`,
                     status: 'Active',
-                    type: reportType?.typeGroup,
                     createdBy: reportType?.createdBy,
                     fieldsCount: reportType?.columnCount
                 }
@@ -127,10 +126,6 @@ export function ReportTypeSelectionModal({
         }
     }
 
-    // Extract unique categories from report types
-    const categories = useMemo(() => {
-        return Array.from(new Set(reportTypes.map(report => report.type)));
-    }, [reportTypes]);
 
     // Group fields by table name for better organization
     const fieldsByCategory = useMemo(() => {
@@ -332,20 +327,7 @@ export function ReportTypeSelectionModal({
                                     >
                                         <div className="flex items-start justify-between">
                                             <div className="flex gap-2.5">
-                                                <div
-                                                    className="w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0"
-                                                    style={{
-                                                        backgroundColor: `${report.type === 'tabular' ? '#EBF5FF' :
-                                                            report.type === 'summary' ? '#E6FFFA' :
-                                                                report.type === 'matrix' ? '#FFF5F5' :
-                                                                    '#FFFBEB'}`
-                                                    }}
-                                                >
-                                                    {report.type == 'tabular' && <BarChart4 className="h-4 w-4 text-blue-600" />}
-                                                    {report.type == 'summary' && <PieChart className="h-4 w-4 text-emerald-600" />}
-                                                    {report.type == 'matrix' && <Users className="h-4 w-4 text-rose-600" />}
-                                                    {report.type == 'joined' && <Sparkles className="h-4 w-4 text-amber-600" />}
-                                                </div>
+                                                
 
                                                 <div className="flex-1">
                                                     <h4 className="font-medium text-sm text-slate-800 group-hover:text-primary flex items-center gap-2">

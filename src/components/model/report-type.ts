@@ -1,6 +1,5 @@
 export interface ReportType {
     id?: string;
-    typeGroup: string;
     label: string;
     name: string;
     description: string;
@@ -53,5 +52,4 @@ export interface ReportTypeSummary {
     createdOn: string;
     usedTables: string[];
     columnCount: number;
-    typeGroup: "tabular" | "summary" | "matrix" | "joined";
 }

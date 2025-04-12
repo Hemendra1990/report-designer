@@ -257,10 +257,10 @@ export default function ReportTypeSummaryPage(props: ReportTypeSummaryPageProps)
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="space-y-1">
+                  {/* <div className="space-y-1">
                     <p className="text-sm font-medium text-muted-foreground">Report Type Format</p>
                     <p className="capitalize">{reportType?.typeGroup}</p>
-                  </div>
+                  </div> */}
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-muted-foreground">Primary Object</p>
                     <p>{reportType?.primaryTableDisplayName || "Unknown"}</p>

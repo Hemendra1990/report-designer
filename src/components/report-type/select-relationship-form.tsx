@@ -176,10 +176,10 @@ export default function SelectRelationshipsForm(props: SelectRelationshipsFormPr
                     <div className="font-medium text-muted-foreground">Description:</div>
                     <div>{reportType.description}</div>
                   </div>
-                  <div className="grid grid-cols-[120px_1fr] gap-2">
+                  {/* <div className="grid grid-cols-[120px_1fr] gap-2">
                     <div className="font-medium text-muted-foreground">Report Type:</div>
                     <div className="capitalize">{reportType.typeGroup} Report</div>
-                  </div>
+                  </div> */}
                 </div>
               </CardContent>
             </Card>

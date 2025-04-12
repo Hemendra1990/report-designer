@@ -72,7 +72,6 @@ export default function SelectObjectForm() {
                         label: selectedTable.displayName + " Report Type",
                         name: selectedTable.tableName.toLowerCase() + "_report_type",
                         description: `Report type for ${selectedTable.displayName} objects`,
-                        typeGroup: prev.typeGroup || reportTypeGroup,
                         primaryTable: selectedTable.tableName,
                         primaryTableDisplayName: selectedTable.displayName,
                         primaryTableId: selectedTable.id,
