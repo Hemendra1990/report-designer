@@ -26,11 +26,21 @@ interface ReportTypeSummaryPageProps {
 
 export default function ReportTypeSummaryPage(props: ReportTypeSummaryPageProps) {
   const { reportTypeId } = props;
-  const { reportType } =useReportTypeFormContext();
+  const { reportType,setReportType } =useReportTypeFormContext();
   const { data: availableObjects } = useAllTableMetadata();
   const deleteReportType = useDeleteReportType();
   const [showDeleteToast, setShowDeleteToast] = useState(false);
   const router = useRouter();
+  const { reportTypeResponse } = useReportTypeById(reportTypeId);
+
+  useEffect(() => {
+    if (reportTypeResponse?.data?.layoutList) {
+      setReportType((prev) => ({
+        ...prev,
+        layoutList: reportTypeResponse?.data?.layoutList || [],
+      }));
+    }
+  }, [reportTypeResponse?.data?.layoutList]);
   
   // Get related object details with field counts
   const getObjectDetails = () => {

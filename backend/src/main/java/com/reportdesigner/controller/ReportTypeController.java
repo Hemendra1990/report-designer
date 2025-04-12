@@ -5,7 +5,6 @@ import com.reportdesigner.dto.ReportTypeDTO;
 import com.reportdesigner.dto.ReportTypeLayoutDTO;
 import com.reportdesigner.dto.ReportTypeSummaryDTO;
 import com.reportdesigner.exception.ValidationException;
-import com.reportdesigner.model.ReportTypeLayout;
 import com.reportdesigner.service.ReportTypeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

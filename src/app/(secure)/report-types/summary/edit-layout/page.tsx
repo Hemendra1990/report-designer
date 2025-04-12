@@ -9,7 +9,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ReportTypeLayout } from "@/components/model/report-type";
 import { useReportTypeFormContext } from "@/contexts/report-type-form-context";
 import { useCallback } from 'react';
-import { useUpdateReportTypeLayoutStatus } from "@/hooks/report-type-hook";
+import { useInvalidateAllReportTypeSummary, useUpdateReportTypeLayoutStatus } from "@/hooks/report-type-hook";
 import { useRouter } from "next/navigation";
 import ToastMessage from "../summary-helper";
 
@@ -25,6 +25,8 @@ export default function EditLayout() {
   const [showSuccessMessage, setShowSuccessMessage] = useState<boolean>(false);
   const updateReportTypeLayoutStatus = useUpdateReportTypeLayoutStatus();
   const [showErrorToast, setShowErrorToast] = useState<string>('');
+  const { invalidateAllReportTypeSummary }  = useInvalidateAllReportTypeSummary();
+
   // Get column details for the selected tab
 
   useEffect(() => {
@@ -44,7 +46,6 @@ export default function EditLayout() {
 
   let selectedTabColumns: ReportTypeLayout[] = useMemo(() => {
     if (!selectedTab || !reportType?.layoutList?.length) return [];
-    debugger
     return reportType.layoutList
       .filter(col => col.tableName === selectedTab);
   }, [selectedTab]);
@@ -88,9 +89,10 @@ export default function EditLayout() {
   // Handle save
   const handleSave = () => {
     updateReportTypeLayoutStatus.mutate(
-      { payload: reportType || [] },
+      { payload: reportType},
       {
         onSuccess: () => {
+          invalidateAllReportTypeSummary();
           setShowSuccessMessage(true);
           setTimeout(() => {
             setShowSuccessMessage(false);

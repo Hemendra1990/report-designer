@@ -36,7 +36,7 @@ export interface ReportTypeConfig {
 }
 
 export interface ReportTypeLayout {
-    id: string;
+    id?: string;
     columnName: string;
     columnDisplayName: string;
     columnType: string;

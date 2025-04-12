@@ -13,7 +13,7 @@ import { getRelatedData } from "@/services/crm/metadata-service";
 import { useReportTypeFormContext } from "@/contexts/report-type-form-context";
 import { iTableMetaData } from "../model/table-metadata";
 import { useReportTypeConfigGeneration } from "@/helper/report-type/report-type-helper";
-import { useCreatereportType } from "@/hooks/report-type-hook";
+import { useCreatereportType, useInvalidateReportTypeById } from "@/hooks/report-type-hook";
 import ToastMessage from "@/app/(secure)/report-types/summary/summary-helper";
 import isEqual from "lodash/isEqual";
 
@@ -75,6 +75,7 @@ export default function DefineRelationships(props: DefineRelationshipsProps) {
   const { data: allTableMetaData, isLoading } = useAllTableMetadata();
   const { reportTypeConfigGeneration, handleObjectRemove } = useReportTypeConfigGeneration();
   const createReportTypeMutation = useCreatereportType();
+  const {invalidateReportTypeById} = useInvalidateReportTypeById();
   const router = useRouter();
   const [showErrorToast, setShowErrorToast] = useState<string>('');
   const [relatedTableInformationMap, setRelatedTableInformationMap] = useState<Record<string, iTableMetaData[]>>({});
@@ -273,6 +274,7 @@ export default function DefineRelationships(props: DefineRelationshipsProps) {
   }
 
   const handleOnSuccess = (data: any) => {
+    invalidateReportTypeById();
     setShowSuccessMessage(true);
     setReportTypeId(data?.data?.data?.id);
     router.push(`/report-types/summary/${data?.data?.data?.id}`);
