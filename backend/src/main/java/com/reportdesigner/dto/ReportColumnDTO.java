@@ -16,11 +16,20 @@ import lombok.Setter;
 public class ReportColumnDTO {
     private String id;
     private ReportDTO report;
+    private String name;
+    private String type;
+    private String category;
+    private String icon;
+    private Boolean isFormula;
+    private String formula;
+    private Boolean isSummaryFormula;
+    private String alias;
+    private String description;
     private String tableName;
+    private String tableId;
     private String columnName;
-    private String displayName;
+    private String columnDisplayName;
+    private String columnType;
     private String duckDBColumnName;
-    private Integer sortOrder;
-    private Boolean visible;
-    private String aggregationType;
+    private String duckDBColumnDisplayName;
 }

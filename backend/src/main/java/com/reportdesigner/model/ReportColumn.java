@@ -29,12 +29,25 @@ public class ReportColumn extends BaseEntity {
     @ManyToOne
     @JoinColumn(name = "report_id")
     private Report report;
-    
+
+    private String name;
+    private String type;
+    private String category;
+    private String icon;
+    private Boolean isFormula;
+
+    @Column(columnDefinition = "TEXT")
+    private String formula;
+    private Boolean isSummaryFormula;
+    private String alias;
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
     private String tableName;
+    private String tableId;
     private String columnName;
+    private String columnDisplayName;
+    private String columnType;
     private String duckDBColumnName;
-    private String displayName;
-    private Integer sortOrder;
-    private Boolean visible;
-    private String aggregationType; // SUM, AVG, COUNT, etc.
+    private String duckDBColumnDisplayName;
 }
