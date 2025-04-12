@@ -215,7 +215,7 @@ export default function ReportTypeSummaryPage(props: ReportTypeSummaryPageProps)
                   </thead>
                   <tbody>
                     {relatedObjectsDetails.map((obj, index) => (
-                      <tr key={obj.id} className="border-b border-muted">
+                      <tr key={index} className="border-b border-muted">
                         <td className="py-3">
                           <div className="flex items-center gap-2">
                             <div 
