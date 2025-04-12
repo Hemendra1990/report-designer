@@ -1,6 +1,6 @@
 import SelectObjectForm from "@/components/report-type/select-object-form";
 
-export default function ReportTypeSelectionPage() {
-  console.log("Create report type page ------------------------");
-  return <SelectObjectForm reportTypeId="" ></SelectObjectForm>
+export default function ReportTypeSelectionPage({ params }: { params: any }) {
+    console.log("Edit report type page ------------------------");
+    return <SelectObjectForm ></SelectObjectForm>;
 }

@@ -22,5 +22,4 @@ public class ReportTypeSummaryDTO {
     private OffsetDateTime createdOn;
     private List<String> usedTables;
     private int columnCount;
-    private String typeGroup;
 }

@@ -31,7 +31,6 @@ public class ReportTypeMapper implements BaseMapper<ReportTypeDTO, ReportType> {
                 .cteQuery(entity.getCteQuery())
                 .objectTree(entity.getObjectTree())
                 .usedTables(entity.getUsedTables())
-                .typeGroup(entity.getTypeGroup())
                 .createdOn(entity.getCreatedOn())
                 .updatedOn(entity.getUpdatedOn())
                 .configList(reportTypeConfigMapper.toDtoList(entity.getConfigList()))
@@ -48,7 +47,6 @@ public class ReportTypeMapper implements BaseMapper<ReportTypeDTO, ReportType> {
                 .description(dto.getDescription())
                 .primaryTableId(dto.getPrimaryTableId())
                 .primaryTable(dto.getPrimaryTable())
-                .typeGroup(dto.getTypeGroup())
                 .primaryTableDisplayName(dto.getPrimaryTableDisplayName())
                 .cteQuery(dto.getCteQuery())
                 .objectTree(dto.getObjectTree())
@@ -107,7 +105,6 @@ public class ReportTypeMapper implements BaseMapper<ReportTypeDTO, ReportType> {
                         .stream()
                         .filter(ReportTypeLayout::getActive)
                         .count())
-                .typeGroup(reportType.getTypeGroup())
                 .build();
     }
 }

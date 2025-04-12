@@ -16,15 +16,10 @@ import { useAllColumnMetadataByTableName, useAllTableMetadata } from "@/hooks/me
 import { useReportTypeFormContext } from "@/contexts/report-type-form-context";
 import { generateLayoutColumn } from "@/helper/report-type/report-type-helper";
 
-interface SelectObjectFormProps {
-    reportTypeId: string;
-}
-
-export default function SelectObjectForm(props: SelectObjectFormProps) {
+export default function SelectObjectForm() {
     const searchParams = useSearchParams();
     const reportTypeGroup = searchParams.get("type") || "";
 
-    const { reportTypeId } = props;
     const { setReportTypeId, reportType, setReportType } = useReportTypeFormContext();
 
     const [selectedObject, setSelectedObject] = useState<string>(reportType.primaryTable || "");
@@ -47,11 +42,6 @@ export default function SelectObjectForm(props: SelectObjectFormProps) {
     const { data: allTableMetaData, isLoading } = useAllTableMetadata();
     const { data: allColumnMetaData } = useAllColumnMetadataByTableName(availableTables.find(table => table.tableName === selectedObject)?.tableName as string);
 
-    useEffect(() => {
-        if (reportTypeId) {
-            setReportTypeId(reportTypeId);
-        }
-    }, [reportTypeId])
 
     useEffect(() => {
         if (allTableMetaData) {
