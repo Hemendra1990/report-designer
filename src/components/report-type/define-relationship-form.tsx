@@ -14,7 +14,7 @@ import { useReportTypeFormContext } from "@/contexts/report-type-form-context";
 import { iTableMetaData } from "../model/table-metadata";
 import { useReportTypeConfigGeneration } from "@/helper/report-type/report-type-helper";
 import { useCreatereportType } from "@/hooks/report-type-hook";
-import ToastMessage from "@/app/report-types/summary/summary-helper";
+import ToastMessage from "@/app/(secure)/report-types/summary/summary-helper";
 import isEqual from "lodash/isEqual";
 
 // Define letters for objects
