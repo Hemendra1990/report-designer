@@ -1,11 +1,20 @@
 // Add DataTable component
 
-import { flexRender, getCoreRowModel, getExpandedRowModel, getFilteredRowModel, getGroupedRowModel, getPaginationRowModel, getSortedRowModel, useReactTable } from "@tanstack/react-table";
-import { DataTableProps } from "../model/DataTableProps";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { ChevronLeftIcon, ChevronRightIcon, TableIcon } from "@/components/icons";
-import { NavigationIcon, PivotTableIcon } from "@/components/icons/ReportIcons";
+import {
+  flexRender,
+  getCoreRowModel,
+  getExpandedRowModel,
+  getFilteredRowModel,
+  getGroupedRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable
+} from "@tanstack/react-table";
+import {DataTableProps} from "../model/DataTableProps";
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select";
+import {Button} from "@/components/ui/button";
+import {ChevronLeftIcon, ChevronRightIcon, TableIcon} from "@/components/icons";
+import {PivotTableIcon} from "@/components/icons/ReportIcons";
 
 export function DataTable<TData extends Record<string, any>>(props: DataTableProps<TData>) {
     const {
@@ -200,7 +209,7 @@ export function DataTable<TData extends Record<string, any>>(props: DataTablePro
                 ))}
               </thead>
               <tbody className="bg-white divide-y divide-slate-100 text-slate-700">
-                {table.getRowModel().rows.length === 0 ? (
+                {table?.getRowModel()?.rows.length === 0 ? (
                   <tr>
                     <td 
                       colSpan={columns.length} 
@@ -210,7 +219,7 @@ export function DataTable<TData extends Record<string, any>>(props: DataTablePro
                     </td>
                   </tr>
                 ) : (
-                  table.getRowModel().rows.map((row, index) => (
+                  table?.getRowModel()?.rows.map((row, index) => (
                     <tr 
                       key={row.id} 
                       className={`${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'} hover:bg-blue-50/40 transition-colors duration-150`}

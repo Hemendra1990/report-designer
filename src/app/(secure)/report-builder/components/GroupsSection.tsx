@@ -1,22 +1,18 @@
-import React, { RefObject } from 'react';
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { SearchIcon, CrossIcon, PlusIcon } from "@/components/icons";
-import { FormulaIcon } from "@/components/icons/ReportIcons";
-import { GroupingState } from "@tanstack/react-table";
+import React from 'react';
+import {Input} from "@/components/ui/input";
+import {CrossIcon, SearchIcon} from "@/components/icons";
+import {FormulaIcon} from "@/components/icons/ReportIcons";
+import {GroupingState} from "@tanstack/react-table";
+import {Field, FormulaColumn} from "@/app/(secure)/report-builder/model/Field";
 
 interface GroupsSectionProps {
-  selectedColumns: Array<{
-    id: string;
-    name: string;
-    type: string;
-  }>;
+  selectedColumns: Array<Field | FormulaColumn>;
   groupSearchTerm: string;
   setGroupSearchTerm: (value: string) => void;
   showGroupDropdown: boolean;
   setShowGroupDropdown: (show: boolean) => void;
   setSelectedGroup: (id: string | null) => void;
-  handleGroupBy: (fieldId: string) => void;
+  handleGroupBy: (fieldId: Field) => void;
   grouping: GroupingState;
   groupSearchRef: React.MutableRefObject<HTMLDivElement | null>;
   addSummaryFormulaColumn?: () => void;
@@ -93,7 +89,7 @@ const GroupsSection: React.FC<GroupsSectionProps> = ({
                       setSelectedGroup(column.id);
                       setGroupSearchTerm(column.name);
                       setShowGroupDropdown(false);
-                      handleGroupBy(column.id);
+                      handleGroupBy(column);
                     }}
                   >
                     <span className={`size-4 flex items-center justify-center rounded-sm text-xs ${column.type === 'number' || column.type === 'currency' ? 'bg-primary/10 text-primary' : 'bg-accent/80 text-accent-foreground'}`}>
@@ -115,7 +111,7 @@ const GroupsSection: React.FC<GroupsSectionProps> = ({
       {grouping.length > 0 && (
         <div className="mt-2 space-y-2">
           {grouping.map((groupId, index) => {
-            const groupColumn = selectedColumns.find(col => col.id === groupId);
+            const groupColumn = selectedColumns.find(col => col.duckDBColumnName === groupId);
             if (!groupColumn) return null;
             return (
               <div key={groupId} className="bg-accent/50 border rounded-md p-2 text-sm flex justify-between items-center">

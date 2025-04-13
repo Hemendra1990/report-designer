@@ -1,19 +1,12 @@
 "use client";
 
-import {
-  QueryClient,
-  QueryClientProvider,
-  useQuery,
-  useQueryClient
-} from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ReportTypesProvider, useReportTypes } from "./context/ReportTypesContext";
-import { mapColumnTypeToFieldType, getFieldTypeIcon } from "./utils/fieldUtils";
+import {QueryClient, QueryClientProvider, useQuery, useQueryClient} from "@tanstack/react-query";
+import {useRouter} from "next/navigation";
+import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
+import {ReportTypesProvider, useReportTypes} from "./context/ReportTypesContext";
+import {getFieldTypeIcon, mapColumnTypeToFieldType} from "./utils/fieldUtils";
 
 // Import our icon components
-
-
 // Import TanStack Table
 import {
   ColumnDef,
@@ -30,18 +23,18 @@ import FormulaBuilder from "./components/FormulaBuilder";
 import InfoBanner from "./components/InfoBanner";
 import PreviewPanel from "./components/PreviewPanel";
 import ReportBuilderPanel from "./components/ReportBuilderPanel";
-import { ReportTypeSelectionModal } from "./components/ReportTypeSelectionModal";
+import {ReportTypeSelectionModal} from "./components/ReportTypeSelectionModal";
 import TopHeaderBar from "./components/TopHeaderBar";
-import { getDefaultOperator } from "./helper/ReportBuilderHelper";
-import { AccountData } from "./model/AccountData";
-import { accountFields, moreSampleData, sampleData } from "./model/fake-data";
-import { Field, FormulaColumn, FieldType, toField } from "./model/Field";
-import { Filter } from "./model/Filter";
-import { ReportTypeTemplate } from "./model/ReportType";
-import { FetchDataOptions, ServerResponse } from "./model/ServerReqRes";
-import { formulaFunctions } from "./util/ReportBuilderUtil";
-import { useReportTypeById } from "@/hooks/report-type-hook";
-import { executeQuery } from "@/services/crm/dml-service";
+import {getDefaultOperator} from "./helper/ReportBuilderHelper";
+import {AccountData} from "./model/AccountData";
+import {accountFields, moreSampleData, sampleData} from "./model/fake-data";
+import {Field, FieldType, FormulaColumn, toField} from "./model/Field";
+import {Filter} from "./model/Filter";
+import {ReportTypeTemplate} from "./model/ReportType";
+import {formulaFunctions} from "./util/ReportBuilderUtil";
+import {useReportTypeById} from "@/hooks/report-type-hook";
+import {executeQuery} from "@/services/crm/dml-service";
+import {buildSqlQuery} from "@/app/(secure)/report-builder/util/SqlQueryBuilder";
 
 
 // Replace the static initialSelectedColumns with a more dynamic approach
@@ -78,62 +71,6 @@ export default function ReportBuilderWithQueryClient() {
       </ReportTypesProvider>
     </QueryClientProvider>
   );
-}
-
-// Convert fetchTableData to a function that returns a promise
-async function fetchTableData(options: FetchDataOptions): Promise<ServerResponse> {
-  const { pageIndex, pageSize, sorting, grouping, selectedColumns, filters } = options;
-
-  try {
-    // When sending to the backend, ensure formula columns have their SQL expression and alias
-    const columnsWithFormulas = selectedColumns.map((col) => {
-      // Get the appropriate column name for SQL queries with fallbacks
-      const sqlColumnName = col.duckDBColumnName || col.columnName || col.id;
-      
-      // Use type guard to check if the column is a formula column
-      if ('isFormula' in col && col.isFormula === true) {
-        const formulaCol = col as FormulaColumn;
-        return {
-          ...col,
-          sqlColumnName,
-          sqlExpression: formulaCol.formula, // Include the formula expression
-          sqlAlias: formulaCol.alias // Include the alias for SQL generation
-        };
-      }
-      return {
-        ...col,
-        sqlColumnName
-      };
-    });
-
-    const response = await fetch('/api/report-data', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        page: pageIndex + 1,
-        pageSize,
-        sorting,
-        grouping,
-        columns: columnsWithFormulas, // Use the enhanced columns with formula info
-        filters,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error('Network response was not ok');
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching data:', error);
-    return {
-      data: [],
-      pageCount: 0,
-      totalRows: 0
-    };
-  }
 }
 
 // Main component
@@ -272,7 +209,7 @@ function ReportBuilderPage() {
 
   // Add state for SQL generation and saving
   const [generatedSql, setGeneratedSql] = useState<string>('');
-  const [showSqlPreview, setShowSqlPreview] = useState<boolean>(false);
+  //const [showSqlPreview, setShowSqlPreview] = useState<boolean>(false);
   
   // Add filter state
   const [filters, setFilters] = useState<Filter[]>([]);
@@ -597,15 +534,27 @@ function ReportBuilderPage() {
     error
   } = useQuery({
     queryKey: createQueryKey(),
-    queryFn: () => executeQuery({"query": `${reportTypeResponse?.data?.cteQuery} ${generateReportSQL()} limit 20`}),
-    /* queryFn: () => fetchTableData({
-      pageIndex: pagination.pageIndex,
-      pageSize: pagination.pageSize,
-      sorting,
-      grouping,
-      selectedColumns,
-      filters,
-    }), */
+    //queryFn: () => executeQuery({"query": `${reportTypeResponse?.data?.cteQuery} ${generateReportSQL()} limit 20`}),
+    queryFn: () => {
+      const sqlQuery = buildSqlQuery({
+        selectedReportType: selectedReportType,
+        reportType: selectedReportType?.name || "", // Convert "Report Type" to "report_type"
+        selectedColumns: selectedColumns,
+        groupByFields: groupByFields,
+        filters: filters,
+        filterLogic: filterLogic,
+        customFilterFormula: "",
+        isPivotActive: isPivotActive,
+        pivotColumnIds: pivotColumnIds,
+        pivotValues: pivotValues,
+        selectedAggregations: selectedAggregations,
+        cteQuery: reportTypeResponse?.data?.cteQuery
+      });
+      // Remove newlines from the SQL query
+      const cleanSqlQuery = sqlQuery.replace(/\n/g, ' ');
+      console.log('SQL Query:', sqlQuery);
+      return executeQuery({"query": `${reportTypeResponse?.data?.cteQuery} ${cleanSqlQuery} limit 20`})
+    },
     enabled: autoUpdatePreview && selectedColumns.length > 0,
   });
 
@@ -742,8 +691,9 @@ function ReportBuilderPage() {
   };
 
   // Function to handle grouping by a field
-  const handleGroupBy = (fieldId: string) => {
-    console.log('Grouping by:', fieldId);
+  const handleGroupBy = (field: Field) => {
+    console.log('Grouping by:', field.id);
+    const fieldId = field.duckDBColumnName || field.columnName || field.id;
 
     const updateGrouping: OnChangeFn<GroupingState> = (updater) => {
       const prevGrouping = typeof updater === 'function' ? updater(grouping) : updater;
@@ -1106,127 +1056,32 @@ function ReportBuilderPage() {
     setIsPreviewExpanded(!isPreviewExpanded);
   };
 
-  // Generate SQL for the report
-  const generatePivotSQL = useCallback(() => {
-    if (!isPivotActive || pivotColumnIds.length === 0 || pivotValues.length === 0) {
-      return '';
-    }
-
-    // Start building the SQL
-    let sql = 'WITH base_data AS (\n';
-    sql += '  SELECT\n';
-    
-    // Add selected columns
-    const allSelectedColumns = [
-      ...groupByFields,
-      ...pivotColumnIds,
-      ...pivotValues
-    ];
-    
-    allSelectedColumns.forEach((id, index) => {
-      const column = selectedColumns.find(col => col.id === id) as Field | undefined;
-      // Use duckDBColumnName with fallbacks
-      const sqlColumnName = column?.duckDBColumnName || column?.columnName || id;
-      const displayName = column?.duckDBColumnDisplayName || column?.columnDisplayName || column?.name || id;
-      sql += `    ${sqlColumnName} as "${displayName}"${index < allSelectedColumns.length - 1 ? ',' : ''}\n`;
-    });
-    
-    sql += `  FROM ${reportTypeResponse?.data?.name}\n`;
-    
-    // Add filters if any
-    if (filters.length > 0) {
-      sql += '  WHERE ';
-      
-      // Simple filter logic for demonstration
-      if (filterLogic === 'and') {
-        filters.forEach((filter, index) => {
-          // Use duckDBColumnName with fallbacks
-          const sqlColumnName = filter.field.duckDBColumnName || filter.field.columnName || filter.field.id;
-          sql += `${sqlColumnName} = '${filter.value}'`;
-          if (index < filters.length - 1) {
-            sql += ' AND ';
-          }
-        });
-      } else if (filterLogic === 'or') {
-        filters.forEach((filter, index) => {
-          // Use duckDBColumnName with fallbacks
-          const sqlColumnName = filter.field.duckDBColumnName || filter.field.columnName || filter.field.id;
-          sql += `${sqlColumnName} = '${filter.value}'`;
-          if (index < filters.length - 1) {
-            sql += ' OR ';
-          }
-        });
-      } else {
-        // Custom formula
-        sql += customFormula;
-      }
-      
-      sql += '\n';
-    }
-    
-    sql += ')\n\n';
-    
-    // Now build the PIVOT query
-    sql += 'PIVOT base_data\n';
-    
-    // ON clause (what to pivot)
-    if (pivotColumnIds.length === 1) {
-      // Find the column definition to get the duckDBColumnName
-      const pivotColumn = selectedColumns.find(col => col.id === pivotColumnIds[0]) as Field | undefined;
-      const sqlColumnName = pivotColumn?.duckDBColumnName || pivotColumn?.columnName || pivotColumnIds[0];
-      sql += `ON ${sqlColumnName}\n`;
-    } else {
-      // For multiple pivot columns, use concatenation as shown in DuckDB docs
-      const pivotColumnsSql = pivotColumnIds.map(id => {
-        const column = selectedColumns.find(col => col.id === id) as Field | undefined;
-        return column?.duckDBColumnName || column?.columnName || id;
-      });
-      sql += `ON ${pivotColumnsSql.join(' || \'_\' || ')}\n`;
-    }
-    
-    // USING clause (aggregations)
-    sql += 'USING ';
-    pivotValues.forEach((id, index) => {
-      const column = selectedColumns.find(col => col.id === id) as Field | undefined;
-      const sqlColumnName = column?.duckDBColumnName || column?.columnName || id;
-      const aggregation = selectedAggregations[id] || 'SUM';
-      sql += `${aggregation}(${sqlColumnName})`;
-      
-      if (index < pivotValues.length - 1) {
-        sql += ', ';
-      }
-    });
-    sql += '\n';
-    
-    // Group BY clause if needed - IMPORTANT: exclude fields used in the pivot ON clause
-    const validGroupByFields = groupByFields.filter(field => !pivotColumnIds.includes(field));
-    
-    if (validGroupByFields.length > 0) {
-      sql += 'GROUP BY ';
-      validGroupByFields.forEach((id, index) => {
-        const column = selectedColumns.find(col => col.id === id) as Field | undefined;
-        const sqlColumnName = column?.duckDBColumnName || column?.columnName || id;
-        sql += sqlColumnName;
-        if (index < validGroupByFields.length - 1) {
-          sql += ', ';
-        }
-      });
-    }
-    
-    return sql;
-  }, [isPivotActive, pivotColumnIds, pivotValues, selectedAggregations, selectedColumns, groupByFields, filters, filterLogic, customFormula]);
-
   // Function to handle applying the pivot configuration
   const handleApplyPivot = useCallback(() => {
     if (isPivotActive && autoUpdatePreview) {
-      const sql = generatePivotSQL();
-      setGeneratedSql(sql);
-      console.log('Generated PIVOT SQL:', sql);
-      
+      const pivotSql = buildSqlQuery({
+        selectedReportType: selectedReportType,
+        reportType: selectedReportType?.name || "", // Convert "Report Type" to "report_type"
+        selectedColumns: selectedColumns,
+        groupByFields: groupByFields,
+        filters: filters,
+        filterLogic: filterLogic,
+        customFilterFormula: "",
+        isPivotActive: isPivotActive,
+        pivotColumnIds: pivotColumnIds,
+        pivotValues: pivotValues,
+        selectedAggregations: selectedAggregations,
+        cteQuery: reportTypeResponse?.data?.cteQuery
+      });
+      console.log('Generated PIVOT SQL using buildSqlQuery:', pivotSql);
+      //const sql = generatePivotSQL();
+      setGeneratedSql(pivotSql);
+      //console.log('Generated PIVOT SQL using page.tsx:', sql);
+
       // In a real implementation, we would execute this SQL and update the rowData
       fetchData();
     }
-  }, [isPivotActive, autoUpdatePreview, generatePivotSQL, fetchData]);
+  }, [isPivotActive, autoUpdatePreview, fetchData]); //generatePivotSQL,
 
   // Update the fieldsForPanel construction to create a proper Record<string, any[]> structure
   // Group fields by category to match the expected format
@@ -1377,7 +1232,8 @@ function ReportBuilderPage() {
         onSelect={handleReportTypeSelect}
       />
       <div className="min-h-screen bg-gray-50 flex flex-col">
-        <TopHeaderBar 
+        <TopHeaderBar
+          selectedReportType={selectedReportType}
           reportName={selectedReportType?.name || "New Accounts Report"}
           reportType={selectedReportType?.type || "Accounts"}
           showShortcuts={showShortcuts}
@@ -1398,6 +1254,7 @@ function ReportBuilderPage() {
           // Pass the new generateReportSQL function
           generateReportSQL={generateReportSQL}
           onSaveReport={handleSaveReport}
+          reportTypeResponse={reportTypeResponse}
         />
         
         <InfoBanner message="Previewing a limited number of records. Run the report to see everything." />

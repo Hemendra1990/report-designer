@@ -119,7 +119,9 @@ const FilterFieldSelector: React.FC<FilterFieldSelectorProps> = ({
         tableId: field.tableId,
         type: mapColumnTypeToFieldType(field.columnType),
         category: field.tableName,
-        active: field.active
+        active: field.active,
+        duckDBColumnName:field.duckDBColumnName,
+        duckDBColumnDisplayName:field.duckDBColumnDisplayName
       } as ExtendedField);
       
       return acc;
