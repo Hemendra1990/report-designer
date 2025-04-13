@@ -44,7 +44,7 @@ function buildPivotSqlQueries(selectedColumns: Field[], groupByFields: string[],
     const sqlColumnName = column?.duckDBColumnName || column?.columnName || id;
     const displayName = column?.duckDBColumnDisplayName || column?.columnDisplayName || column?.name || id;
     // sql += `    ${column.duckDBColumnName}${index < allNeededColumns.length - 1 ? ',' : ''}\n`;
-    sql += `    ${sqlColumnName} as "${displayName}"${index < allNeededColumns.length - 1 ? ',' : ''}\n`;
+    sql += `    ${sqlColumnName}${index < allNeededColumns.length - 1 ? ',' : ''}\n`;
   });
 
   // FROM clause
