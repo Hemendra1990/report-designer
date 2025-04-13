@@ -522,10 +522,13 @@ export function PivotTable<TData extends Record<string, any>>(props: DataTablePr
     };
 
     return (
-        <div className="h-full flex flex-col bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="h-full flex flex-col bg-white rounded-lg shadow-md overflow-hidden relative">
             {isLoading && (
-                <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-10 backdrop-blur-sm rounded-md">
-                    <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-200 border-t-indigo-600"></div>
+                <div className="absolute inset-0 bg-white/40 flex items-center justify-center z-10 rounded-md">
+                    <div className="bg-white p-3 rounded-lg shadow-md flex items-center space-x-3">
+                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-slate-200 border-t-indigo-600"></div>
+                        <span className="text-sm text-slate-600 font-medium">Loading pivot data...</span>
+                    </div>
                 </div>
             )}
 
