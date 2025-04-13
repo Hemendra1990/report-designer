@@ -313,7 +313,7 @@ export default function EditLayout() {
                       </thead>
                       <tbody className="divide-y">
                         {selectedTabColumns.map((field, idx) => (
-                          <tr key={field.columnName} className="hover:bg-muted/30">
+                          <tr key={idx} className="hover:bg-muted/30">
                             <td className="p-3 text-center">
                               <Checkbox
                                 id={`${field.id}-${field.active}`}
