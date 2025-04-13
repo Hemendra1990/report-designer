@@ -1,12 +1,16 @@
 package com.reportdesigner.controller;
 
+import com.reportdesigner.dto.*;
 import com.reportdesigner.service.duckdb.DuckDBFileReader;
 import com.reportdesigner.service.duckdb.DuckDBPostgresConnector;
 import com.reportdesigner.service.duckdb.DuckDBQueryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.HashMap;
 import java.util.List;
@@ -19,6 +23,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/duckdb")
 @RequiredArgsConstructor
+@Deprecated(forRemoval = true)
 public class DuckDBQueryController {
 
     private final DuckDBQueryService queryService;
@@ -52,10 +57,10 @@ public class DuckDBQueryController {
     public ResponseEntity<List<Map<String, Object>>> queryFile(@RequestBody FileQueryRequest request) {
         try {
             List<Map<String, Object>> results = fileReader.queryFile(
-                request.getFilePath(),
-                request.getFileType(),
-                request.getSql(),
-                request.getOptions()
+                    request.getFilePath(),
+                    request.getFileType(),
+                    request.getSql(),
+                    request.getOptions()
             );
             return ResponseEntity.ok(results);
         } catch (Exception e) {
@@ -74,8 +79,8 @@ public class DuckDBQueryController {
     public ResponseEntity<List<Map<String, Object>>> readCsvFile(@RequestBody FileReadRequest request) {
         try {
             List<Map<String, Object>> results = fileReader.readCsvFile(
-                request.getFilePath(),
-                request.getOptions()
+                    request.getFilePath(),
+                    request.getOptions()
             );
             return ResponseEntity.ok(results);
         } catch (Exception e) {
@@ -128,14 +133,14 @@ public class DuckDBQueryController {
     public ResponseEntity<Map<String, Object>> connectToPostgres(@RequestBody PostgresConnectRequest request) {
         try {
             boolean connected = postgresConnector.connectToPostgres(
-                request.getHost(),
-                request.getPort(),
-                request.getDatabase(),
-                request.getUsername(),
-                request.getPassword(),
-                request.getSchema() != null ? request.getSchema() : "public"
+                    request.getHost(),
+                    request.getPort(),
+                    request.getDatabase(),
+                    request.getUsername(),
+                    request.getPassword(),
+                    request.getSchema() != null ? request.getSchema() : "public"
             );
-            
+
             Map<String, Object> response = new HashMap<>();
             response.put("connected", connected);
             return ResponseEntity.ok(response);
@@ -172,167 +177,16 @@ public class DuckDBQueryController {
     public ResponseEntity<Map<String, Object>> attachPostgresTable(@RequestBody PostgresTableAttachRequest request) {
         try {
             boolean attached = postgresConnector.attachPostgresTable(
-                request.getPostgresTable(),
-                request.getDuckDbTableName()
+                    request.getPostgresTable(),
+                    request.getDuckDbTableName()
             );
-            
+
             Map<String, Object> response = new HashMap<>();
             response.put("attached", attached);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Error attaching PostgreSQL table via DuckDB", e);
             throw new RuntimeException("Error attaching PostgreSQL table via DuckDB: " + e.getMessage(), e);
-        }
-    }
-
-    // Request/response models
-    public static class QueryRequest {
-        private String sql;
-
-        public String getSql() {
-            return sql;
-        }
-
-        public void setSql(String sql) {
-            this.sql = sql;
-        }
-    }
-
-    public static class FileQueryRequest {
-        private String filePath;
-        private String fileType;
-        private String sql;
-        private Map<String, Object> options;
-
-        public String getFilePath() {
-            return filePath;
-        }
-
-        public void setFilePath(String filePath) {
-            this.filePath = filePath;
-        }
-
-        public String getFileType() {
-            return fileType;
-        }
-
-        public void setFileType(String fileType) {
-            this.fileType = fileType;
-        }
-
-        public String getSql() {
-            return sql;
-        }
-
-        public void setSql(String sql) {
-            this.sql = sql;
-        }
-
-        public Map<String, Object> getOptions() {
-            return options;
-        }
-
-        public void setOptions(Map<String, Object> options) {
-            this.options = options;
-        }
-    }
-
-    public static class FileReadRequest {
-        private String filePath;
-        private Map<String, Object> options;
-
-        public String getFilePath() {
-            return filePath;
-        }
-
-        public void setFilePath(String filePath) {
-            this.filePath = filePath;
-        }
-
-        public Map<String, Object> getOptions() {
-            return options;
-        }
-
-        public void setOptions(Map<String, Object> options) {
-            this.options = options;
-        }
-    }
-
-    public static class PostgresConnectRequest {
-        private String host;
-        private int port;
-        private String database;
-        private String username;
-        private String password;
-        private String schema;
-
-        public String getHost() {
-            return host;
-        }
-
-        public void setHost(String host) {
-            this.host = host;
-        }
-
-        public int getPort() {
-            return port;
-        }
-
-        public void setPort(int port) {
-            this.port = port;
-        }
-
-        public String getDatabase() {
-            return database;
-        }
-
-        public void setDatabase(String database) {
-            this.database = database;
-        }
-
-        public String getUsername() {
-            return username;
-        }
-
-        public void setUsername(String username) {
-            this.username = username;
-        }
-
-        public String getPassword() {
-            return password;
-        }
-
-        public void setPassword(String password) {
-            this.password = password;
-        }
-        
-        public String getSchema() {
-            return schema;
-        }
-        
-        public void setSchema(String schema) {
-            this.schema = schema;
-        }
-    }
-
-    public static class PostgresTableAttachRequest {
-        private String postgresTable;
-        private String duckDbTableName;
-
-        public String getPostgresTable() {
-            return postgresTable;
-        }
-
-        public void setPostgresTable(String postgresTable) {
-            this.postgresTable = postgresTable;
-        }
-
-        public String getDuckDbTableName() {
-            return duckDbTableName;
-        }
-
-        public void setDuckDbTableName(String duckDbTableName) {
-            this.duckDbTableName = duckDbTableName;
         }
     }
 } 

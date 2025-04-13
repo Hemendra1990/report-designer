@@ -1,6 +1,6 @@
 package com.reportdesigner.service.duckdb;
 
-import com.reportdesigner.service.duckdb.impl.DuckDBPostgresConnectorImpl;
+import com.reportdesigner.service.duckdb.impl.DuckDBPostgresConnectorImplxxx;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -27,7 +27,7 @@ class DuckDBPostgresConnectorTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        postgresConnector = new DuckDBPostgresConnectorImpl(duckDBConnection, queryService);
+        postgresConnector = new DuckDBPostgresConnectorImplxxx(duckDBConnection, queryService);
     }
     
     @Test
