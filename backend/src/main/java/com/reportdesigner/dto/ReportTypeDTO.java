@@ -21,7 +21,6 @@ public class ReportTypeDTO {
     private String primaryTableDisplayName;
     private String cteQuery;
     private String objectTree;
-    private String typeGroup;
     private OffsetDateTime createdOn;
     private OffsetDateTime updatedOn;
     private List<String> usedTables;

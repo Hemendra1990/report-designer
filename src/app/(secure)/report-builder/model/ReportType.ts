@@ -16,7 +16,6 @@ export interface RecentReportType {
     lastUsed: string;
     status: "Active" | "Draft";
     description: string;
-    type: "tabular" | "summary" | "matrix" | "joined";
     createdBy?: string;
     objects?: Array<{
     name: string;

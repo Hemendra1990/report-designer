@@ -145,6 +145,8 @@ export interface ColumnMetadata {
   foreignKey: boolean;
   referencedTable: string | null;
   referencedColumn: string | null;
+  columnName:string;
+  headerName:string;
 }
 
 export async function getMetadataTables(

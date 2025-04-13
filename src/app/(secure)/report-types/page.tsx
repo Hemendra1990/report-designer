@@ -82,7 +82,6 @@ const reportTypes: ReportTypeTemplate[] = [
 export default function ReportTypesPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedReportType, setSelectedReportType] = useState<string>("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [sortBy, setSortBy] = useState<"name" | "createdAt" | "updatedAt">("createdAt");
@@ -197,11 +196,6 @@ export default function ReportTypesPage() {
     }
   };
 
-  // Find the selected report object to access its color
-  const selectedReport = isCreating
-    ? reportTypes.find(r => r.id === selectedReportType)
-    : existingReportTypes.find(r => r.id === selectedReportType);
-
   if (loading) {
     return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
   }
@@ -216,108 +210,7 @@ export default function ReportTypesPage() {
       <div className="flex-1 p-6 md:p-10">
         <div className="max-w-6xl mx-auto space-y-10">
           {isCreating ? (
-            <>
-              <div className="text-center">
-                <h1 className="text-3xl md:text-4xl font-bold mb-3 tracking-tight">Create Custom Report</h1>
-                <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-                  Select the type of report you want to create from the options below.
-                </p>
-              </div>
-
-              {/* Search Bar */}
-              <div className="relative">
-                <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
-                <Input
-                  type="text"
-                  placeholder="Search Report Types by name or description..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-12 h-11 text-base rounded-md border border-input focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                />
-              </div>
-              {/* Report Types as Cards with Radio Selection */}
-              <RadioGroup value={selectedReportType} onValueChange={setSelectedReportType}>
-                <div className="grid md:grid-cols-2 gap-6">
-                  {sortedAndFilteredReportTypes.map((report) => (
-                    <div key={report.id}>
-                      <Card
-                        className={`cursor-pointer transition-all duration-200 ease-in-out hover:shadow-lg border ${selectedReportType === report.id
-                            ? `border-2`
-                            : "border-border hover:border-muted-foreground/50"
-                          }`}
-                        style={{
-                          borderColor: selectedReportType === report.id ? report.color : undefined,
-                          backgroundColor: selectedReportType === report.id ? `${report.color}10` : ''
-                        }}
-                      >
-                        <label htmlFor={`report-type-${report.id}`} className="block cursor-pointer p-6">
-                          <div className="flex items-start gap-5">
-                            <RadioGroupItem
-                              value={report.id}
-                              id={`report-type-${report.id}`}
-                              className="mt-1 flex-shrink-0"
-                              style={{
-                                borderColor: selectedReportType === report.id ? report.color : undefined,
-                              }}
-                            />
-                            <div className="flex-grow">
-                              <div className="flex items-center gap-3 mb-3">
-                                <div
-                                  className="p-2 rounded-md flex items-center justify-center"
-                                  style={{ backgroundColor: `${report.color}20` }}
-                                >
-                                  <Image
-                                    src={report.icon}
-                                    alt={`${report.name} icon`}
-                                    width={24}
-                                    height={24}
-                                  />
-                                </div>
-                                <h3 className="font-semibold text-lg text-foreground">{report.name}</h3>
-                              </div>
-                              <p className="text-muted-foreground text-sm leading-relaxed">{report.description}</p>
-                            </div>
-                          </div>
-                        </label>
-                      </Card>
-                    </div>
-                  ))}
-                </div>
-              </RadioGroup>
-
-              {/* Action Buttons */}
-              <div className="flex justify-end items-center gap-4 mt-10">
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="px-6"
-                  onClick={() => setIsCreating(false)}
-                >
-                  Cancel
-                </Button>
-                <Link
-                  href={selectedReportType ? `/report-types/select-object?type=${selectedReportType}` : "#"}
-                  aria-disabled={!selectedReportType}
-                  tabIndex={!selectedReportType ? -1 : undefined}
-                  className={`${!selectedReportType ? "cursor-not-allowed" : ""}`}
-                >
-                  <Button
-                    disabled={!selectedReportType}
-                    size="lg"
-                    className={`px-8 transition-colors duration-200 ease-in-out ${!selectedReportType ? "opacity-50 cursor-not-allowed" : "hover:opacity-90"}`}
-                    style={{
-                      backgroundColor: selectedReport?.color,
-                      color: selectedReport ? getContrastYIQ(selectedReport.color) : undefined
-                    }}
-                  >
-                    Next
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="ml-2">
-                      <path d="m9 18 6-6-6-6" />
-                    </svg>
-                  </Button>
-                </Link>
-              </div>
-            </>
+           <></>
           ) : (
             <>
               <div className="flex justify-between items-center mb-4">
@@ -327,10 +220,12 @@ export default function ReportTypesPage() {
                     Manage and organize your report templates
                   </p>
                 </div>
-                <Button size="sm" onClick={() => setIsCreating(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Report Type
-                </Button>
+                  <Link href={`/report-types/select-object`}>
+                    <Button size="sm" onClick={() => setIsCreating(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      New Report Type
+                    </Button>
+                  </Link>
               </div>
               {showDeleteToast && (
                 <ToastMessage type="success" message="Report Type Deleted Successfully" />
@@ -544,14 +439,4 @@ export default function ReportTypesPage() {
       </div>
     </div>
   );
-}
-
-// Helper function to determine text color (black/white) based on background hex color
-function getContrastYIQ(hexcolor: string): string {
-  hexcolor = hexcolor.replace("#", "");
-  const r = parseInt(hexcolor.substring(0, 2), 16);
-  const g = parseInt(hexcolor.substring(2, 4), 16);
-  const b = parseInt(hexcolor.substring(4, 6), 16);
-  const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
-  return (yiq >= 128) ? '#000000' : '#FFFFFF';
 }

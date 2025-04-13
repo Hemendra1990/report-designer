@@ -26,11 +26,21 @@ interface ReportTypeSummaryPageProps {
 
 export default function ReportTypeSummaryPage(props: ReportTypeSummaryPageProps) {
   const { reportTypeId } = props;
-  const { reportType } =useReportTypeFormContext();
+  const { reportType,setReportType } =useReportTypeFormContext();
   const { data: availableObjects } = useAllTableMetadata();
   const deleteReportType = useDeleteReportType();
   const [showDeleteToast, setShowDeleteToast] = useState(false);
   const router = useRouter();
+  const { reportTypeResponse } = useReportTypeById(reportTypeId);
+
+  useEffect(() => {
+    if (reportTypeResponse?.data?.layoutList) {
+      setReportType((prev) => ({
+        ...prev,
+        layoutList: reportTypeResponse?.data?.layoutList || [],
+      }));
+    }
+  }, [reportTypeResponse?.data?.layoutList]);
   
   // Get related object details with field counts
   const getObjectDetails = () => {
@@ -205,7 +215,7 @@ export default function ReportTypeSummaryPage(props: ReportTypeSummaryPageProps)
                   </thead>
                   <tbody>
                     {relatedObjectsDetails.map((obj, index) => (
-                      <tr key={obj.id} className="border-b border-muted">
+                      <tr key={index} className="border-b border-muted">
                         <td className="py-3">
                           <div className="flex items-center gap-2">
                             <div 
@@ -247,10 +257,10 @@ export default function ReportTypeSummaryPage(props: ReportTypeSummaryPageProps)
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="space-y-1">
+                  {/* <div className="space-y-1">
                     <p className="text-sm font-medium text-muted-foreground">Report Type Format</p>
                     <p className="capitalize">{reportType?.typeGroup}</p>
-                  </div>
+                  </div> */}
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-muted-foreground">Primary Object</p>
                     <p>{reportType?.primaryTableDisplayName || "Unknown"}</p>

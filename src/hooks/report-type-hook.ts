@@ -122,7 +122,7 @@ export const useAllReportTypeSummary = () => {
         return getAllReportTypeSummary().then((res) => res?.data?.data);
     };
     const allReportTypeSummaryResponse = useQuery<ReportTypeSummary[]>({
-        queryKey: [QueryKeys.ALL_REPORTY_TYPE_SUMMARY],
+        queryKey: [QueryKeys.ALL_REPORT_TYPE_SUMMARY],
         queryFn: allReportTypeSummary,
     });
     return { allReportTypeSummaryResponse };
@@ -131,7 +131,7 @@ export const useAllReportTypeSummary = () => {
 export const useInvalidateAllReportTypeSummary = () => {
     const queryClient = useQueryClient();
     const invalidateAllReportTypeSummary = () => {
-        queryClient.invalidateQueries({ queryKey: [QueryKeys.ALL_REPORTY_TYPE_SUMMARY] });
+        queryClient.invalidateQueries({ queryKey: [QueryKeys.ALL_REPORT_TYPE_SUMMARY] });
     }
     return { invalidateAllReportTypeSummary };
 }
