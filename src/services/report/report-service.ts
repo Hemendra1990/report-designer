@@ -15,3 +15,7 @@ export const getReportById = (id: string) => {
 export const createReport = (report: Report) => {
     return httpClient.post(`${BASE_URL}`, report);
 }
+
+export const updateReport = (report: Report) => {
+    return httpClient.put(`${BASE_URL}/${report.id}`, report);
+}

@@ -16,4 +16,7 @@ public interface ReportRepository extends JpaRepository<Report, String> {
         FROM Report r
     """)
     List<ReportDTO> findBasicDetails();
+
+    boolean existsByNameAndIdNot(String name, String id);
+    boolean existsByName(String name);
 }

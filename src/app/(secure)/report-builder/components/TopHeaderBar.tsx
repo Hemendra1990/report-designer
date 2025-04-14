@@ -31,8 +31,8 @@ interface TopHeaderBarProps {
 }
 
 const TopHeaderBar: React.FC<TopHeaderBarProps> = ({
-                                                       reportName = "New Accounts Report",
-                                                       reportType = "Accounts",
+                                                       reportName,
+                                                       reportType,
                                                        showShortcuts,
                                                        onToggleShortcuts,
                                                        onRun,

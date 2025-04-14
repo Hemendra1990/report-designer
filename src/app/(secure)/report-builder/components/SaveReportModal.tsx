@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 interface SaveReportModalProps {
   isOpen: boolean;
@@ -17,6 +17,12 @@ export default function SaveReportModal({
 }: SaveReportModalProps) {
   const [reportName, setReportName] = useState(initialReportName);
   const [showSql, setShowSql] = useState(false);
+
+  useEffect(() => {
+    if (initialReportName) {
+      setReportName(initialReportName);
+    }
+  }, [initialReportName])
 
   if (!isOpen) return null;
 

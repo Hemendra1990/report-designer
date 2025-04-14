@@ -1,7 +1,7 @@
 "use client";
 
 import {QueryClient, QueryClientProvider, useQuery, useQueryClient} from "@tanstack/react-query";
-import {useRouter} from "next/navigation";
+import {useRouter, useSearchParams} from "next/navigation";
 import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {ReportTypesProvider, useReportTypes} from "./context/ReportTypesContext";
 import {getFieldTypeIcon, mapColumnTypeToFieldType} from "./utils/fieldUtils";
@@ -36,7 +36,7 @@ import {useReportTypeById} from "@/hooks/report-type-hook";
 import {executeQuery, executeQueryOnDuckDB} from "@/services/crm/dml-service";
 import {buildSqlQuery} from "@/app/(secure)/report-builder/util/SqlQueryBuilder";
 import { generateReportPayload } from "@/helper/report/report-helper";
-import { useCreatereport } from "@/hooks/report-hook";
+import { useCreatereport, useReportById, useUpdatereport } from "@/hooks/report-hook";
 import ToastMessage from "../report-types/summary/summary-helper";
 
 
@@ -81,12 +81,37 @@ function ReportBuilderPage() {
   const router = useRouter();
   const { setSelectedReportTypeId, reportFields, isFieldsLoading, selectedReportTypeId } = useReportTypes();
   const { reportTypeResponse } = useReportTypeById(selectedReportTypeId || '');
-  const [showReportTypeModal, setShowReportTypeModal] = useState(true);
+  const [showReportTypeModal, setShowReportTypeModal] = useState(false);
   const [selectedReportType, setSelectedReportType] = useState<ReportTypeTemplate | null>(null);
   const createReportMutation = useCreatereport();
+  const updateReportMutation = useUpdatereport();
 
   // Initialize with sample columns, will be updated when report type is selected
   const [selectedColumns, setSelectedColumns] = useState<(Field | FormulaColumn)[]>(initialSampleColumns);  //MARKED: selected columns
+  const searchParams = useSearchParams();
+  const reportId = searchParams.get('reportId');
+  const { reportResponse } = useReportById(reportId);
+
+
+  useEffect(() => {
+    if(!reportId) {
+      setShowReportTypeModal(true);
+    }
+  }, [reportId])
+
+  useEffect(() => {
+    if (reportResponse?.data) {
+      console.log('Report data:', reportResponse.data);
+      setSelectedReportTypeId(reportResponse?.data?.reportType?.id);
+      setSelectedColumns(reportResponse?.data?.columns as any || []);
+    }
+  }, [reportResponse.data]) 
+
+  useEffect(() => {
+    if (reportTypeResponse?.data) {
+      setSelectedReportType(reportTypeResponse?.data as any);
+    }
+  }, [reportTypeResponse])
 
   // Effect to update selectedColumns when reportFields change
   useEffect(() => {
@@ -1176,7 +1201,7 @@ function ReportBuilderPage() {
   );
 
   const handleOnSuccess = (data: any) => {
-    setShowSuccessToast('Report saved successfully.');
+    setShowSuccessToast(`Report ${reportId ? 'updated' : 'created'} successfully`);
     router.push('/reports');
   }
 
@@ -1187,7 +1212,10 @@ function ReportBuilderPage() {
 
   // Handle saving the report with generated SQL
   const handleSaveReport = (sql: string, reportName: string) => {
-    let payload = generateReportPayload(reportName, reportTypeResponse?.data, generatedSql, selectedColumns, groupByFields, filters); 
+    let payload = generateReportPayload(reportId || null, reportName, reportTypeResponse?.data, generatedSql, selectedColumns, groupByFields, filters); 
+    if (reportId) {
+      updateReportMutation.mutate({payload: payload, onSuccess: handleOnSuccess, onError: handleOnError});
+    }
     createReportMutation.mutate({payload: payload, onSuccess: handleOnSuccess, onError: handleOnError});
   };
 
@@ -1443,8 +1471,8 @@ function ReportBuilderPage() {
       <div className="min-h-screen bg-gray-50 flex flex-col">
         <TopHeaderBar
           selectedReportType={selectedReportType}
-          reportName={selectedReportType?.name || "New Accounts Report"}
-          reportType={selectedReportType?.type || "Accounts"}
+          reportName={reportResponse?.data?.name || selectedReportType?.name || "New Report"}
+          reportType={selectedReportType?.type || "report"}
           showShortcuts={showShortcuts}
           onToggleShortcuts={() => setShowShortcuts(!showShortcuts)}
           onRun={fetchData}
@@ -1465,7 +1493,7 @@ function ReportBuilderPage() {
           onSaveReport={handleSaveReport}
           reportTypeResponse={reportTypeResponse}
         />
-        
+        {JSON.stringify(reportResponse?.data?.name)}
         <InfoBanner message="Previewing a limited number of records. Run the report to see everything." />
         
         <AppliedFiltersBar 
@@ -1643,7 +1671,6 @@ function ReportBuilderPage() {
           onFilterSearchTermChange={setFilterSearchTerm}
           addFilter={addFilter}
         />
-          // Error Toaster
         <>
           {
             showErrorToast && (

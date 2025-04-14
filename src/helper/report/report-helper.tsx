@@ -1,7 +1,8 @@
 import { Report } from "@/components/model/report"
 import { ReportType } from "@/components/model/report-type"
+import { report } from "process";
 
-export const generateReportPayload = (reportName: string, reportType: ReportType, sqlQuery: string, columns, groups, filters): Report => {
+export const generateReportPayload = (reportId: string, reportName: string, reportType: ReportType, sqlQuery: string, columns, groups, filters): Report => {
     let updatedColumns = columns.map(column => {
         delete column.id;
         return column;
@@ -18,6 +19,7 @@ export const generateReportPayload = (reportName: string, reportType: ReportType
     })
 
     let reportPayload: Report = {
+        id: reportId,
         name: reportName,
         label: reportName,
         description: reportName,
