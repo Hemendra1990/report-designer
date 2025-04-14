@@ -83,6 +83,18 @@ export function PivotTable<TData extends Record<string, any>>(props: DataTablePr
         );
     };
 
+    // Helper to determine if a column is a percentage
+    const isPercentColumn = (columnId: string) => {
+        const percentPatterns = [
+            'percent', 'rate', 'ratio', 'margin', 'growth', 
+            'change', 'discount', 'tax', 'commission'
+        ];
+        
+        return percentPatterns.some(pattern => 
+            columnId.toLowerCase().includes(pattern)
+        );
+    };
+
     // Render the pivot table directly from the data received from DuckDB
     const renderPivotTable = () => {
         if (!hasData) return null;
@@ -161,84 +173,202 @@ export function PivotTable<TData extends Record<string, any>>(props: DataTablePr
             return columnName.replace(/_/g, ' ');
         };
 
+        // Function to determine if a column is a dimension/row identifier
+        const isDimensionColumn = (index: number, columnName: string) => {
+            if (index < (rowFields?.length || 0)) return true; // First N columns are dimensions
+
+            // Also check if the column name contains typical dimension names
+            const dimensionPatterns = ['id', 'name', 'category', 'type', 'group', 'segment', 'year', 'quarter', 'month'];
+            return dimensionPatterns.some(pattern => columnName.toLowerCase().includes(pattern.toLowerCase()));
+        };
+
         return (
             <div className="w-full h-full flex flex-col">
                 <div className="flex-1 overflow-auto">
-                    <table className="min-w-full border-collapse">
+                    <table className="min-w-full border-collapse font-inter text-sm">
                         <thead>
-                            <tr className="bg-gradient-to-r from-slate-50 to-indigo-50/40">
+                            <tr>
                                 {sortedColumns.map((columnName, index) => {
                                     const isFirstColumn = index === 0;
-                                    // Apply different styling for the first column vs pivot columns
+                                    const isDimension = isDimensionColumn(index, columnName);
+                                    const formattedHeader = formatColumnHeader(columnName);
+                                    
+                                    // Multi-part header handling
+                                    const isMultiPart = formattedHeader.includes(':') || formattedHeader.includes('-');
+                                    let [mainLabel, subLabel] = ['', ''];
+                                    
+                                    if (isMultiPart) {
+                                        const parts = formattedHeader.includes(':') ? 
+                                            formattedHeader.split(':') : 
+                                            formattedHeader.split('-');
+                                            
+                                        mainLabel = parts[0].trim();
+                                        subLabel = parts.slice(1).join('-').trim();
+                                    }
+                                    
                                     return (
                                         <th key={columnName} 
-                                            className={`px-4 py-3 text-xs font-medium tracking-wide whitespace-nowrap border-b border-indigo-200 ${
-                                                isFirstColumn 
-                                                ? 'text-left sticky left-0 z-10 bg-gradient-to-r from-slate-50 to-indigo-50/40' 
-                                                : 'text-right bg-gradient-to-b from-indigo-50/30 to-white'
-                                            }`}
+                                            className={`
+                                                px-3 py-2.5 
+                                                font-medium 
+                                                text-xs 
+                                                tracking-wide 
+                                                whitespace-nowrap 
+                                                border-b-2 
+                                                ${isDimension 
+                                                    ? 'text-left bg-slate-50 border-slate-200 text-slate-700' 
+                                                    : 'text-right bg-indigo-50/40 border-indigo-200 text-indigo-900'}
+                                                ${isFirstColumn ? 'sticky left-0 z-10' : ''}
+                                            `}
                                         >
-                                            {formatColumnHeader(columnName)}
-                                    </th>
+                                            {isMultiPart ? (
+                                                <div className="flex flex-col">
+                                                    <span className="font-semibold">{mainLabel}</span>
+                                                    <span className="text-[10px] opacity-75 mt-0.5">{subLabel}</span>
+                                                </div>
+                                            ) : (
+                                                <span>{formattedHeader}</span>
+                                            )}
+                                        </th>
                                     );
                                 })}
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-slate-100">
-                            {data.map((row, rowIndex) => (
-                                <tr 
-                                    key={rowIndex} 
-                                    className={`${rowIndex % 2 === 0 ? 'bg-white' : 'bg-indigo-50/10'} hover:bg-indigo-50/30 transition-colors duration-150`}
-                                >
-                                    {sortedColumns.map((columnName, colIndex) => {
-                                        const value = row[columnName];
-                                        const isFirstColumn = colIndex === 0;
-                                        const isNull = value === null || value === undefined;
-                                        const isNumber = typeof value === 'number';
-                                        const isCurrency = isNumber && isCurrencyColumn(columnName);
-                                        
-                                        // Background color for first column
-                                        const bgColor = rowIndex % 2 === 0 ? 'bg-white' : 'bg-indigo-50/10';
-                                        
-                                        // Format cell content based on data type
-                                        let cellContent;
-                                        if (isNull) {
-                                            cellContent = <span className="text-slate-300">—</span>;
-                                        } else if (isCurrency) {
-                                            cellContent = new Intl.NumberFormat('en-US', {
-                                                style: 'currency',
-                                                currency: 'USD',
-                                                minimumFractionDigits: 0,
-                                                maximumFractionDigits: 0
-                                            }).format(value);
-                                        } else if (isNumber) {
-                                            // For decimal values, show 2 decimal places
-                                            const decimalPlaces = Number.isInteger(value) ? 0 : 2;
-                                            cellContent = new Intl.NumberFormat('en-US', {
-                                                minimumFractionDigits: 0,
-                                                maximumFractionDigits: decimalPlaces
-                                            }).format(value);
+                            {data.map((row, rowIndex) => {
+                                // Calculate row depth based on recurring values in dimension columns
+                                let depth = 0;
+                                if (rowIndex > 0) {
+                                    // Look at dimension columns only
+                                    for (let i = 0; i < Math.min(sortedColumns.length, rowFields?.length || 0); i++) {
+                                        if (row[sortedColumns[i]] === data[rowIndex-1][sortedColumns[i]]) {
+                                            depth++;
                                         } else {
-                                            cellContent = value;
+                                            break;
                                         }
+                                    }
+                                }
+                                
+                                return (
+                                    <tr 
+                                        key={rowIndex} 
+                                        className={`
+                                            hover:bg-blue-50/30 
+                                            transition-colors 
+                                            duration-150
+                                            ${rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}
+                                            ${depth > 0 ? 'border-t-0' : ''}
+                                        `}
+                                    >
+                                        {sortedColumns.map((columnName, colIndex) => {
+                                            const value = row[columnName];
+                                            const isFirstColumn = colIndex === 0;
+                                            const isDimension = isDimensionColumn(colIndex, columnName);
+                                            const isNull = value === null || value === undefined;
+                                            const isNumber = typeof value === 'number';
+                                            const isCurrency = isNumber && isCurrencyColumn(columnName);
+                                            const isPercent = isNumber && isPercentColumn(columnName);
+                                            
+                                            // Hide repeated values based on depth - only for dimension columns
+                                            const isRepeated = depth > 0 && colIndex < depth && isDimension;
+                                            
+                                            // Background color for dimension columns
+                                            const bgColor = rowIndex % 2 === 0 
+                                                ? (isDimension ? 'bg-white' : '') 
+                                                : (isDimension ? 'bg-slate-50/30' : '');
+                                            
+                                            // Format cell content based on data type
+                                            let cellContent;
+                                            if (isNull || isRepeated) {
+                                                cellContent = <span className="text-slate-300">—</span>;
+                                            } else if (isCurrency) {
+                                                const valueNum = Number(value);
+                                                const absValue = Math.abs(valueNum);
+                                                
+                                                // Format with K/M/B suffixes for large numbers
+                                                let formattedValue = '';
+                                                if (absValue >= 1e9) {
+                                                    formattedValue = `$${(valueNum / 1e9).toFixed(1)}B`;
+                                                } else if (absValue >= 1e6) {
+                                                    formattedValue = `$${(valueNum / 1e6).toFixed(1)}M`;
+                                                } else if (absValue >= 1e3) {
+                                                    formattedValue = `$${(valueNum / 1e3).toFixed(1)}K`;
+                                                } else {
+                                                    formattedValue = new Intl.NumberFormat('en-US', {
+                                                        style: 'currency',
+                                                        currency: 'USD',
+                                                        minimumFractionDigits: 0,
+                                                        maximumFractionDigits: 0
+                                                    }).format(valueNum);
+                                                }
+                                                
+                                                const textColor = valueNum < 0 ? 'text-red-600' : 'text-emerald-700';
+                                                cellContent = <span className={textColor}>{formattedValue}</span>;
+                                            } else if (isPercent) {
+                                                const valueNum = Number(value);
+                                                const textColor = valueNum < 0 ? 'text-red-600' : 
+                                                                 valueNum > 0 ? 'text-emerald-700' : '';
+                                                
+                                                cellContent = <span className={textColor}>
+                                                    {valueNum.toFixed(1)}%
+                                                </span>;
+                                            } else if (isNumber) {
+                                                // For decimal values, show 1 decimal place
+                                                const valueNum = Number(value);
+                                                const absValue = Math.abs(valueNum);
+                                                
+                                                let formattedValue = '';
+                                                if (absValue >= 1e9) {
+                                                    formattedValue = `${(valueNum / 1e9).toFixed(1)}B`;
+                                                } else if (absValue >= 1e6) {
+                                                    formattedValue = `${(valueNum / 1e6).toFixed(1)}M`;
+                                                } else if (absValue >= 1e3) {
+                                                    formattedValue = `${(valueNum / 1e3).toFixed(1)}K`;
+                                                } else {
+                                                    // Number value is small, show as is
+                                                    formattedValue = valueNum.toLocaleString();
+                                                }
+                                                
+                                                cellContent = formattedValue;
+                                            } else {
+                                                cellContent = value;
+                                            }
 
-                                        return (
-                                            <td 
-                                                key={columnName} 
-                                                className={`px-4 py-3 whitespace-nowrap ${
-                                                    isFirstColumn 
-                                                    ? `text-left font-medium text-indigo-700 sticky left-0 z-10 ${bgColor}` 
-                                                    : isNumber ? 'text-right font-medium' : 'text-left'
-                                                } ${isNull ? 'text-slate-300' : ''}`}
-                                            >
-                                                {cellContent}
-                                            </td>
-                                        );
-                                    })}
-                                </tr>
-                            ))}
+                                            return (
+                                                <td 
+                                                    key={columnName} 
+                                                    className={`
+                                                        px-3 py-2 
+                                                        text-xs
+                                                        whitespace-nowrap 
+                                                        ${isDimension ? 'text-left' : 'text-right'} 
+                                                        ${isDimension && isFirstColumn ? 'font-medium text-slate-800' : ''} 
+                                                        ${isDimension && !isFirstColumn ? 'text-slate-600' : ''}
+                                                        ${isNumber && !isDimension ? 'font-medium text-slate-900' : ''}
+                                                        ${isNull || isRepeated ? 'text-slate-300' : ''} 
+                                                        ${isFirstColumn ? `sticky left-0 z-10 ${bgColor}` : ''}
+                                                    `}
+                                                >
+                                                    {cellContent}
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
+                </div>
+                
+                {/* Footer with data summary */}
+                <div className="border-t border-slate-200 bg-slate-50/70 px-4 py-2 text-xs text-slate-500 flex items-center justify-between">
+                    <div>
+                        Showing {data.length} rows
+                    </div>
+                    <div className="flex items-center">
+                        <PivotTableIcon className="h-3 w-3 mr-1 text-indigo-400" />
+                        <span>Pivot View</span>
+                    </div>
                 </div>
             </div>
         );
@@ -248,177 +378,24 @@ export function PivotTable<TData extends Record<string, any>>(props: DataTablePr
         <div className="h-full flex flex-col bg-white rounded-lg shadow-md overflow-hidden relative">
             {isLoading && (
                 <div className="absolute inset-0 bg-white/40 flex items-center justify-center z-10 rounded-md">
-                    <div className="bg-white p-3 rounded-lg shadow-md flex items-center space-x-3">
-                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-slate-200 border-t-indigo-600"></div>
-                        <span className="text-sm text-slate-600 font-medium">Loading pivot data...</span>
+                    <div className="animate-pulse flex flex-col items-center">
+                        <div className="h-8 w-8 bg-indigo-200 rounded-full mb-2"></div>
+                        <div className="text-xs text-slate-500">Loading data...</div>
                     </div>
                 </div>
             )}
 
-            <div className="bg-gradient-to-r from-slate-50 to-indigo-50 border-b border-indigo-100">
-                <div className="px-5 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2">
-                            <PivotTableIcon className="h-5 w-5 text-indigo-500" />
-                            <span className="font-medium text-indigo-700">Pivot View</span>
-                        </div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-4">
-                        <div className="flex items-center text-xs">
-                            <span className="text-slate-500 mr-2 font-medium">Values:</span>
-                            <div className="flex flex-wrap gap-1 max-w-[200px]">
-                                {pivotValues.map(pv => {
-                                    const col = columns.find(c => c.id === pv);
-                                    const displayName = col ? (typeof col.header === 'string' ? col.header : pv) : pv;
-                                    return (
-                                        <span key={pv} className="bg-emerald-100 text-emerald-600 px-2 py-0.5 rounded text-xs border border-emerald-200">
-                                            {displayName}
-                                        </span>
-                                    );
-                                })}
-                                {pivotValues.length === 0 && (
-                                    <span className="text-slate-400 italic">None selected</span>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="flex items-center text-xs">
-                            <span className="text-slate-500 mr-2 font-medium">Columns:</span>
-                            <div className="flex flex-wrap gap-1 max-w-[200px]">
-                                {pivotColumns.map(pc => {
-                                    const col = columns.find(c => c.id === pc);
-                                    const displayName = col ? (typeof col.header === 'string' ? col.header : pc) : pc;
-                                    return (
-                                        <span key={pc} className="bg-amber-100 text-amber-600 px-2 py-0.5 rounded text-xs border border-amber-200">
-                                            {displayName}
-                                        </span>
-                                    );
-                                })}
-                                {pivotColumns.length === 0 && (
-                                    <span className="text-slate-400 italic">None selected</span>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Simply render the data as received from DuckDB */}
-            {hasData ? (
-                renderPivotTable()
-            ) : (
-                <div className="flex-1 flex items-center justify-center bg-slate-50/50">
-                    <div className="flex flex-col items-center gap-3 max-w-md p-8">
-                                                <div className="w-16 h-16 rounded-full bg-indigo-50 flex items-center justify-center">
-                                                    <PivotTableIcon className="h-8 w-8 text-indigo-400" />
-                                                </div>
-                                                <p className="text-lg font-medium text-indigo-600 mt-3">No pivot data available</p>
-                        <p className="text-sm text-slate-400 text-center">
-                                                    {pivotColumns.length === 0
-                                                        ? "Add pivot columns and values in the Pivot section to see your data transformed"
-                                                        : "Try selecting different pivot columns or values to see results"}
-                                                </p>
+            {!hasData && !isLoading && (
+                <div className="h-full flex flex-col items-center justify-center p-6 text-slate-400">
+                    <PivotTableIcon className="h-10 w-10 mb-3 text-slate-300" />
+                    <div className="text-sm mb-1">No data to display</div>
+                    <div className="text-xs text-slate-400">
+                        Apply filters or configure your pivot table to see data
                     </div>
                 </div>
             )}
 
-            {/* Pagination controls */}
-            <div className="px-5 py-3 border-t border-slate-200 flex items-center justify-between bg-gradient-to-r from-slate-50 to-indigo-50/20">
-                <div className="flex items-center">
-                    <span className="text-xs text-slate-500">
-                        {hasData ? (
-                            <span className="text-indigo-600">
-                                <span className="font-medium">Pivot view</span>: {data.length} rows
-                            </span>
-                        ) : (
-                            <>
-                                <span className="text-indigo-600">
-                                    <span className="font-medium">Pivot mode</span> -
-                                    {pivotColumns.length === 0
-                                        ? " Please select pivot columns in the Pivot section"
-                                        : " Data is grouped by pivot columns"}
-                                </span>
-                            </>
-                        )}
-                    </span>
-                </div>
-                <div className="flex items-center gap-2">
-                    {hasData && (
-                        <>
-                            <Select
-                                value={pagination.pageSize.toString()}
-                                onValueChange={(value) => {
-                                    setPagination({
-                                        ...pagination,
-                                        pageSize: Number(value),
-                                    });
-                                }}
-                            >
-                                <SelectTrigger className="w-[110px] h-8 bg-white text-xs border border-indigo-200 shadow-sm">
-                                    <SelectValue placeholder="10 per page" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {[10, 20, 30, 40, 50].map((pageSize) => (
-                                        <SelectItem key={pageSize} value={pageSize.toString()}>
-                                            {pageSize} per page
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <div className="flex gap-1">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setPagination((prev) => ({ ...prev, pageIndex: 0 }))}
-                                    disabled={pagination.pageIndex === 0}
-                                    className="h-8 bg-white border border-indigo-200 shadow-sm hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 transition-colors"
-                                >
-                                    <span className="sr-only">Go to first page</span>
-                                    <ChevronLeftIcon className="h-3 w-3 mr-1" />
-                                    <ChevronLeftIcon className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setPagination((prev) => ({ ...prev, pageIndex: prev.pageIndex - 1 }))}
-                                    disabled={pagination.pageIndex === 0}
-                                    className="h-8 bg-white border border-indigo-200 shadow-sm hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 transition-colors"
-                                >
-                                    <span className="sr-only">Go to previous page</span>
-                                    <ChevronLeftIcon className="h-3 w-3" />
-                                </Button>
-                                <span className="flex items-center gap-1 px-3 h-8 text-xs bg-indigo-50 border border-indigo-200 rounded shadow-sm">
-                                    <span className="text-indigo-600">Page</span>{' '}
-                                    <span className="font-medium text-indigo-700">{pagination.pageIndex + 1}</span> of{' '}
-                                    <span className="font-medium">{pageCount || 1}</span>
-                                </span>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setPagination((prev) => ({ ...prev, pageIndex: prev.pageIndex + 1 }))}
-                                    disabled={pagination.pageIndex >= (pageCount - 1)}
-                                    className="h-8 bg-white border border-indigo-200 shadow-sm hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 transition-colors"
-                                >
-                                    <span className="sr-only">Go to next page</span>
-                                    <ChevronRightIcon className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setPagination((prev) => ({ ...prev, pageIndex: pageCount - 1 }))}
-                                    disabled={pagination.pageIndex >= (pageCount - 1)}
-                                    className="h-8 bg-white border border-indigo-200 shadow-sm hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 transition-colors"
-                                >
-                                    <span className="sr-only">Go to last page</span>
-                                    <ChevronRightIcon className="h-3 w-3 mr-1" />
-                                    <ChevronRightIcon className="h-3 w-3" />
-                                </Button>
-                            </div>
-                        </>
-                    )}
-                </div>
-            </div>
+            {hasData && renderPivotTable()}
         </div>
     );
 } 
