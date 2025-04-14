@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Plus, Edit2, Trash2, ArrowUpDown, ChevronLeft, ChevronRight, MoreHorizontal, FileText, Calendar, User, Users } from "lucide-react";
+import { Search, Plus, Edit2, Trash2, ArrowUpDown, ChevronLeft, ChevronRight, MoreHorizontal, FileText, Calendar, User, Users, ArrowRight, Filter, X, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   DropdownMenu,
@@ -29,6 +29,8 @@ import { useReportTypeFormContext } from "@/contexts/report-type-form-context";
 import { defaultReportType } from "@/helper/report-type/report-type-helper";
 import { ReportType } from "@/components/model/report-type";
 import { useRouter } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 // Report Types with additional details
 interface BaseReportType {
@@ -89,7 +91,7 @@ export default function ReportTypesPage() {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [existingReportTypes, setExistingReportTypes] = useState<ExistingReportType[]>([]);
   // List view states
-  const [loading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const {allReportTypeResponse}  = useAllReportTypes();
   const deleteReportType = useDeleteReportType();
@@ -215,87 +217,77 @@ export default function ReportTypesPage() {
     return <div className="text-red-500 p-6">{error}</div>;
   }
 
+  const colorMap = {
+    "tabular": "bg-blue-50 text-blue-600 border-blue-200",
+    "summary": "bg-green-50 text-green-600 border-green-200",
+    "matrix": "bg-red-50 text-red-600 border-red-200",
+    "joined": "bg-orange-50 text-orange-600 border-orange-200"
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       {/* Main Content */}
-      <div className="flex-1 p-6 md:p-10">
-        <div className="max-w-6xl mx-auto space-y-10">
+      <div className="flex-1 p-4 md:p-6">
+        <div className="max-w-6xl mx-auto">
           {isCreating ? (
             <>
-              <div className="text-center">
-                <h1 className="text-3xl md:text-4xl font-bold mb-3 tracking-tight">Create Custom Report</h1>
-                <p className="text-muted-foreground text-lg max-w-xl mx-auto">
+              <div className="text-center mb-6">
+                <h1 className="text-3xl font-bold mb-2 tracking-tight">Create Custom Report</h1>
+                <p className="text-muted-foreground">
                   Select the type of report you want to create from the options below.
                 </p>
               </div>
 
-              {/* Search Bar */}
-              <div className="relative">
-                <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
+              <div className="mb-6">
                 <Input
                   type="text"
-                  placeholder="Search Report Types by name or description..."
+                  placeholder="Search report types..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-12 h-11 text-base rounded-md border border-input focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="max-w-md mx-auto"
                 />
               </div>
-              {/* Report Types as Cards with Radio Selection */}
+
               <RadioGroup value={selectedReportType} onValueChange={setSelectedReportType}>
-                <div className="grid md:grid-cols-2 gap-6">
+                <div className="grid md:grid-cols-2 gap-4 mb-6">
                   {sortedAndFilteredReportTypes.map((report) => (
-                    <div key={report.id}>
-                      <Card
-                        className={`cursor-pointer transition-all duration-200 ease-in-out hover:shadow-lg border ${selectedReportType === report.id
-                            ? `border-2`
-                            : "border-border hover:border-muted-foreground/50"
-                          }`}
-                        style={{
-                          borderColor: selectedReportType === report.id ? report.color : undefined,
-                          backgroundColor: selectedReportType === report.id ? `${report.color}10` : ''
-                        }}
-                      >
-                        <label htmlFor={`report-type-${report.id}`} className="block cursor-pointer p-6">
-                          <div className="flex items-start gap-5">
+                    <Card
+                      key={report.id}
+                      className={`cursor-pointer transition-all border ${selectedReportType === report.id
+                          ? `border-2`
+                          : "border-border hover:border-muted-foreground/50"
+                        }`}
+                      style={{
+                        borderColor: selectedReportType === report.id ? report.color : undefined,
+                        backgroundColor: selectedReportType === report.id ? `${report.color}10` : ''
+                      }}
+                    >
+                      <div className="p-4">
+                        <label htmlFor={`report-type-${report.id}`} className="block cursor-pointer">
+                          <div className="flex items-start gap-3">
                             <RadioGroupItem
                               value={report.id}
                               id={`report-type-${report.id}`}
-                              className="mt-1 flex-shrink-0"
+                              className="mt-1"
                               style={{
                                 borderColor: selectedReportType === report.id ? report.color : undefined,
                               }}
                             />
-                            <div className="flex-grow">
-                              <div className="flex items-center gap-3 mb-3">
-                                <div
-                                  className="p-2 rounded-md flex items-center justify-center"
-                                  style={{ backgroundColor: `${report.color}20` }}
-                                >
-                                  <Image
-                                    src={report.icon}
-                                    alt={`${report.name} icon`}
-                                    width={24}
-                                    height={24}
-                                  />
-                                </div>
-                                <h3 className="font-semibold text-lg text-foreground">{report.name}</h3>
-                              </div>
-                              <p className="text-muted-foreground text-sm leading-relaxed">{report.description}</p>
+                            <div>
+                              <h3 className="font-semibold text-lg">{report.name}</h3>
+                              <p className="text-muted-foreground text-sm">{report.description}</p>
                             </div>
                           </div>
                         </label>
-                      </Card>
-                    </div>
+                      </div>
+                    </Card>
                   ))}
                 </div>
               </RadioGroup>
 
-              {/* Action Buttons */}
-              <div className="flex justify-end items-center gap-4 mt-10">
+              <div className="flex justify-end gap-3">
                 <Button
                   variant="outline"
-                  size="lg"
-                  className="px-6"
                   onClick={() => setIsCreating(false)}
                 >
                   Cancel
@@ -304,252 +296,200 @@ export default function ReportTypesPage() {
                   href={selectedReportType ? `/report-types/select-object?type=${selectedReportType}` : "#"}
                   aria-disabled={!selectedReportType}
                   tabIndex={!selectedReportType ? -1 : undefined}
-                  className={`${!selectedReportType ? "cursor-not-allowed" : ""}`}
                 >
                   <Button
                     disabled={!selectedReportType}
-                    size="lg"
-                    className={`px-8 transition-colors duration-200 ease-in-out ${!selectedReportType ? "opacity-50 cursor-not-allowed" : "hover:opacity-90"}`}
                     style={{
                       backgroundColor: selectedReport?.color,
                       color: selectedReport ? getContrastYIQ(selectedReport.color) : undefined
                     }}
                   >
                     Next
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="ml-2">
-                      <path d="m9 18 6-6-6-6" />
-                    </svg>
                   </Button>
                 </Link>
               </div>
             </>
           ) : (
-            <>
-              <div className="flex justify-between items-center mb-4">
-                <div>
-                  <h1 className="text-2xl font-semibold tracking-tight">Report Types</h1>
-                  <p className="text-muted-foreground text-sm mt-1">
-                    Manage and organize your report templates
-                  </p>
-                </div>
+            <div className="bg-card rounded-lg border shadow-sm">
+              <div className="p-4 border-b flex flex-wrap justify-between items-center gap-3">
+                <h1 className="text-xl font-semibold">Report Types</h1>
                 <Button size="sm" onClick={() => setIsCreating(true)}>
                   <Plus className="h-4 w-4 mr-2" />
                   New Report Type
                 </Button>
               </div>
+              
               {showDeleteToast && (
-                <ToastMessage type="success" message="Report Type Deleted Successfully" />
+                <div className="p-4 border-b">
+                  <ToastMessage type="success" message="Report Type Deleted Successfully" />
+                </div>
               )}
-              {/* Stats Section */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-                <Card className="p-3">
-                  <CardHeader className="flex flex-row items-center justify-between pb-1 space-y-0">
-                    <CardTitle className="text-xs font-medium">Total Report Types</CardTitle>
-                    <FileText className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent className="pt-1">
-                    <div className="text-xl font-semibold">{allReportTypeResponse?.data?.length}</div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {allReportTypeResponse?.data?.length === 1 ? '1 report type' : `${totalItems} report types`} available
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card className="p-3">
-                  <CardHeader className="flex flex-row items-center justify-between pb-1 space-y-0">
-                    <CardTitle className="text-xs font-medium">Recently Updated</CardTitle>
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent className="pt-1">
-                    <div className="text-xl font-semibold">
-                      {existingReportTypes.length > 0
-                        ? formatDate(
-                          existingReportTypes
-                            .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0]
-                            .updatedAt
-                        )
-                        : 'N/A'}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">Last update</p>
-                  </CardContent>
-                </Card>
-
-                <Card className="p-3">
-                  <CardHeader className="flex flex-row items-center justify-between pb-1 space-y-0">
-                    <CardTitle className="text-xs font-medium">Templates</CardTitle>
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent className="pt-1">
-                    <div className="text-xl font-semibold">{reportTypes.length}</div>
-                    <p className="text-xs text-muted-foreground mt-1">Available for use</p>
-                  </CardContent>
-                </Card>
+              
+              <div className="p-4 border-b flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2 flex-1 max-w-md">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                    <Input
+                      type="text"
+                      placeholder="Search report types..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-9 h-9"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Select value={sortBy} onValueChange={(value) => handleSortChange(value as any)}>
+                    <SelectTrigger className="w-32 h-9">
+                      <SelectValue placeholder="Sort by" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="name">Name</SelectItem>
+                      <SelectItem value="createdAt">Created Date</SelectItem>
+                      <SelectItem value="updatedAt">Updated Date</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9"
+                    onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+                  >
+                    <ArrowUpDown className="h-4 w-4 mr-2" />
+                    {sortOrder === "asc" ? "Asc" : "Desc"}
+                  </Button>
+                </div>
               </div>
 
-              {/* Search, Sort, Filters */}
-              <div className="bg-card rounded-lg border shadow-sm">
-                <div className="p-4 space-y-4">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3 flex-1">
-                      <div className="relative flex-1 max-w-sm">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                        <Input
-                          type="text"
-                          placeholder="Search..."
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          className="pl-9 h-8 text-sm"
-                        />
-                      </div>
-                      <Select value={sortBy} onValueChange={handleSortChange}>
-                        <SelectTrigger className="w-[160px] h-8 text-sm">
-                          <SelectValue placeholder="Sort by" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="name">Name</SelectItem>
-                          <SelectItem value="createdAt">Created</SelectItem>
-                          <SelectItem value="updatedAt">Updated</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
-                      >
-                        <ArrowUpDown className="h-4 w-4" />
+              <div className="divide-y divide-border/60">
+                {currentItems.length === 0 ? (
+                  <div className="text-center py-10">
+                    <FileText className="mx-auto h-10 w-10 text-muted-foreground/40" />
+                    <h3 className="mt-3 text-base font-medium">No report types found</h3>
+                    <p className="text-sm text-muted-foreground mt-1 mb-4">
+                      {searchQuery ? "Try adjusting your search" : "Create your first report type"}
+                    </p>
+                    {!searchQuery && (
+                      <Button size="sm" onClick={() => setIsCreating(true)}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create Report Type
                       </Button>
-                    </div>
-                    <Select value={String(itemsPerPage)} onValueChange={handleItemsPerPageChange}>
-                      <SelectTrigger className="w-[100px] h-8 text-sm">
-                        <SelectValue placeholder="Per page" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="5">5</SelectItem>
-                        <SelectItem value="10">10</SelectItem>
-                        <SelectItem value="20">20</SelectItem>
-                        <SelectItem value="50">50</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Report Cards */}
-                  <div className="space-y-3">
-                    {currentItems.length === 0 ? (
-                      <div className="text-center py-8">
-                        <FileText className="mx-auto h-10 w-10 text-muted-foreground/50" />
-                        <h3 className="mt-3 text-md font-semibold">No report types</h3>
-                        <p className="text-sm text-muted-foreground">Create one to get started</p>
-                      </div>
-                    ) : (
-                      currentItems.map((reportType) => (
-                        <Card key={reportType.id} className="hover:shadow transition-shadow">
-                          <CardHeader className="flex flex-row items-start justify-between py-4">
-                            <div className="flex gap-4">
-                              <div
-                                className="p-2 rounded-md flex items-center justify-center"
-                                style={{ backgroundColor: `${reportType.color}20` }}
-                              >
-                                <Image src={reportType.icon} alt={`${reportType.name} icon`} width={24} height={24} />
-                              </div>
-                              <div>
-                                <CardTitle className="text-lg font-semibold">{reportType.name}</CardTitle>
-                                <CardDescription className="text-sm line-clamp-2">
-                                  {reportType.description}
-                                </CardDescription>
-                                <div className="flex gap-6 mt-2 text-xs text-muted-foreground">
-                                  <div className="flex items-center gap-1">
-                                    <Calendar className="h-3 w-3" />
-                                    {formatDate(reportType.createdAt as string)}
-                                  </div>
-                                  <div className="flex items-center gap-1">
-                                    <User className="h-3 w-3" />
-                                    {formatDate(reportType.updatedAt as string)}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    onClick={() => handleEdit(reportType)}
-                                  >
-                                    <Edit2 className="h-4 w-4 mr-2" />
-                                    Edit
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => handleEditLayout(reportType)}
-                                  >
-                                    <Edit2 className="h-4 w-4 mr-2" />
-                                    Edit layout
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    className="text-destructive"
-                                    onClick={() => handleDelete(reportType)}
-                                  >
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          </CardHeader>
-                        </Card>
-                      ))
                     )}
                   </div>
+                ) : (
+                  currentItems.map((reportType) => (
+                    <div 
+                      key={reportType.id} 
+                      className="hover:bg-muted/10 transition-colors duration-150"
+                    >
+                      <div className="p-4">
+                        <div className="flex items-start sm:items-center justify-between gap-4">
+                          <div className="flex gap-3 flex-1 min-w-0">
+                            <div
+                              className="p-2 rounded-md flex items-center justify-center flex-shrink-0"
+                              style={{ backgroundColor: `${reportType.color}15` }}
+                            >
+                              <Image src={reportType.icon} alt={`${reportType.name} icon`} width={18} height={18} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <h3 className="text-base font-medium truncate">{reportType.name}</h3>
+                              <p className="text-sm text-muted-foreground line-clamp-1 mt-1">
+                                {reportType.description}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-muted-foreground hover:text-foreground"
+                              onClick={() => handleEdit(reportType)}
+                            >
+                              <Edit2 className="h-4 w-4 mr-1.5" />
+                              <span className="hidden sm:inline">Edit</span>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-muted-foreground hover:text-foreground"
+                              onClick={() => handleEditLayout(reportType)}
+                            >
+                              <FileText className="h-4 w-4 mr-1.5" />
+                              <span className="hidden sm:inline">Layout</span>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive/70 hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => handleDelete(reportType)}
+                            >
+                              <Trash2 className="h-4 w-4 mr-1.5" />
+                              <span className="hidden sm:inline">Delete</span>
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
 
-                  {/* Pagination */}
-                  {totalPages > 1 && (
-                    <div className="flex items-center justify-between pt-3 border-t">
-                      <p className="text-xs text-muted-foreground">
-                        Showing {startIndex + 1} to {Math.min(endIndex, totalItems)} of {totalItems}
-                      </p>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => handlePageChange(currentPage - 1)}
-                          disabled={currentPage === 1}
-                          className="h-7 w-7"
-                        >
-                          <ChevronLeft className="h-3 w-3" />
-                        </Button>
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between p-4 border-t">
+                  <p className="text-sm text-muted-foreground">
+                    Showing <span className="font-medium">{startIndex + 1}</span> to <span className="font-medium">{Math.min(endIndex, totalItems)}</span> of <span className="font-medium">{totalItems}</span>
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="h-8 w-8"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter(page => {
+                        // Show first page, last page, current page, and pages adjacent to current
+                        return (
+                          page === 1 ||
+                          page === totalPages ||
+                          Math.abs(page - currentPage) <= 1
+                        );
+                      })
+                      .map((page, index, array) => {
+                        // Add ellipsis when there are gaps
+                        if (index > 0 && array[index - 1] !== page - 1) {
+                          return (
+                            <span key={`ellipsis-${page}`} className="px-1 text-xs text-muted-foreground">...</span>
+                          );
+                        }
+                        return (
                           <Button
                             key={page}
                             variant={currentPage === page ? "default" : "outline"}
                             size="icon"
-                            className="h-7 w-7 text-xs"
+                            className="h-8 w-8 text-xs"
                             onClick={() => handlePageChange(page)}
                           >
                             {page}
                           </Button>
-                        ))}
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => handlePageChange(currentPage + 1)}
-                          disabled={currentPage === totalPages}
-                          className="h-7 w-7"
-                        >
-                          <ChevronRight className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  )}
+                        );
+                      })}
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="h-8 w-8"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            </>
-
+              )}
+            </div>
           )}
         </div>
       </div>

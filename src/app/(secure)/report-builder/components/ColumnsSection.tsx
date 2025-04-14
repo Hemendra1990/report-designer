@@ -251,6 +251,13 @@ const ColumnsSection: React.FC<ColumnsSectionProps> = ({
             </button>
           </div>
         ))}
+        
+        {selectedColumns.length === 0 && (
+          <div className="bg-gray-50 p-4 rounded-md border border-dashed border-gray-300 text-center">
+            <p className="text-gray-500 text-sm font-medium">No columns selected</p>
+            <p className="text-gray-400 text-xs mt-1">Add columns to define your report structure</p>
+          </div>
+        )}
       </div>
     </div>
   );
