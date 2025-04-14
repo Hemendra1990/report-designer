@@ -1,6 +1,6 @@
 import { QueryKeys } from "@/components/enum/query-keys";
 import { ReportType, ReportTypeLayout, ReportTypeSummary } from "@/components/model/report-type";
-import { createReportType, deleteReportTypeById, getAllReportTypes, getAllReportTypeSummary, getReportTypeById, layoutColumnListByReportId, updateReportTypeLayoutStatus } from "@/services/report-type/report-type-service";
+import { activeLayoutColumnListByReportId, createReportType, deleteReportTypeById, getAllReportTypes, getAllReportTypeSummary, getReportTypeById, layoutColumnListByReportId, updateReportTypeLayoutStatus } from "@/services/report-type/report-type-service";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { on } from "process";
@@ -107,6 +107,20 @@ export const useLayoutColumnListByReportId = (reportTypeId: string) => {
     });
 
     return { layoutColumnByReportIdResponse };
+};
+
+export const useActiveLayoutColumnListByReportId = (reportTypeId: string) => {
+    const layoutColumnByReportId = () => {
+        return activeLayoutColumnListByReportId(reportTypeId).then((res) => res?.data?.data);
+    };
+
+    const activeLayoutColumnByReportIdResponse = useQuery({
+        queryKey: [QueryKeys.ACTIVE_LAYOUT_COLUMN_LIST_BY_REPORT_ID, reportTypeId],
+        enabled: !!reportTypeId,
+        queryFn: layoutColumnByReportId,
+    });
+
+    return { activeLayoutColumnByReportIdResponse };
 };
 
 export const useInvalidateLayoutColumnByReportid= () => {

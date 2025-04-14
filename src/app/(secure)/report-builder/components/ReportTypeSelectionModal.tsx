@@ -19,7 +19,7 @@ import { groupFieldsByTable, mapColumnTypeToFieldType } from "../utils/fieldUtil
 import { AxiosError } from 'axios';
 import { Field, FieldType } from "../model/Field";
 import { ApiReportField } from "../services/api-types";
-import { useAllReportTypeSummary, useLayoutColumnListByReportId } from "@/hooks/report-type-hook";
+import { useActiveLayoutColumnListByReportId, useAllReportTypeSummary } from "@/hooks/report-type-hook";
 import { ReportTypeLayout } from "@/components/model/report-type";
 
 // Define an extended Field type that includes ApiReportField properties
@@ -45,7 +45,7 @@ export function ReportTypeSelectionModal({
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [selectedReport, setSelectedReport] = useState<RecentReportType | null>(null);
-    const { layoutColumnByReportIdResponse } = useLayoutColumnListByReportId(selectedReport?.id as string);
+    const { activeLayoutColumnByReportIdResponse } = useActiveLayoutColumnListByReportId(selectedReport?.id as string);
     const [activeTab, setActiveTab] = useState<"details" | "fields">("details");
     const [fieldSearchTerm, setFieldSearchTerm] = useState("");
     const { allReportTypeSummaryResponse } = useAllReportTypeSummary();
@@ -113,7 +113,7 @@ export function ReportTypeSelectionModal({
 
     const getFieldCategoryMap = (): Record<string, ReportTypeLayout[]> => {
         if (allReportTypeSummaryResponse?.data) {
-            const fieldCategoryMap: Record<string, ReportTypeLayout[]> = layoutColumnByReportIdResponse?.data.reduce((acc: any, layout: any) => {
+            const fieldCategoryMap: Record<string, ReportTypeLayout[]> = activeLayoutColumnByReportIdResponse?.data.reduce((acc: any, layout: any) => {
                 const table = layout.tableName;
                 if (!acc[table]) {
                   acc[table] = [];
@@ -519,12 +519,12 @@ export function ReportTypeSelectionModal({
                                             />
                                         </div>
 
-                                        {layoutColumnByReportIdResponse?.isLoading ? (
+                                        {activeLayoutColumnByReportIdResponse?.isLoading ? (
                                             // Loading skeleton for fields
                                             <ScrollArea className="flex-1 pr-3 -mr-3">
                                                 <FieldsSkeletonList />
                                             </ScrollArea>
-                                        ) : layoutColumnByReportIdResponse?.isError ? (
+                                        ) : activeLayoutColumnByReportIdResponse?.isError ? (
                                             // Error state for fields
                                             <div className="flex-1 flex items-center justify-center">
                                                 <div className="text-center">

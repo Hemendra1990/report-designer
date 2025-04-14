@@ -76,6 +76,17 @@ public class ReportTypeController {
                 .data(layoutList)
                 .build();
     }
+
+    @GetMapping("/{reportTypeId}/active/fields")
+    public ApiResponse activeColumnListByReportId(@PathVariable String reportTypeId) throws ValidationException {
+        List<ReportTypeLayoutDTO> layoutList = reportTypeService.getActiveColumnListByReportId(reportTypeId);
+        return ApiResponse.builder()
+                .status(HttpStatus.OK.toString())
+                .message("Active layout columns fetched successfully")
+                .data(layoutList)
+                .build();
+    }
+
     @GetMapping("/reportSummary")
     public ApiResponse getAllReportTypes() {
         List<ReportTypeSummaryDTO> summaries = reportTypeService.getAllReportTypeSummaries();

@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -103,7 +104,7 @@ public class ReportTypeMapper implements BaseMapper<ReportTypeDTO, ReportType> {
                 .createdBy(reportType.getCreatedBy())
                 .createdOn(reportType.getCreatedOn())
                 .usedTables(reportType.getUsedTables())
-                .columnCount(reportType.getLayoutList() != null ? reportType.getLayoutList().size() : 0)
+                .columnCount(reportType.getLayoutList() != null ? reportType.getLayoutList().stream().filter(ReportTypeLayout::getActive).collect(Collectors.toList()).size() : 0)
                 .typeGroup(reportType.getTypeGroup())
                 .build();
     }

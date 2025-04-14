@@ -192,6 +192,21 @@ public class ReportTypeService {
     }
 
     @Transactional
+    public List<ReportTypeLayoutDTO> getActiveColumnListByReportId(String reportTypeId) throws ValidationException {
+        try {
+            ReportType reportType = reportTypeRepository.findById(reportTypeId)
+                    .orElseThrow(() -> new ValidationException("Report type not found", ErrorCode.ERR_PROCESSING, "getActiveColumnListByReportId"));
+            return reportType.getLayoutList()
+                    .stream()
+                    .filter(ReportTypeLayout::getActive)
+                    .map(reportTypeMapper::toLayoutDto)
+                    .collect(Collectors.toList());
+        } catch (Exception ex) {
+            throw new ValidationException(ex.getMessage(), ErrorCode.ERR_PROCESSING, "getActiveColumnListByReportId");
+        }
+    }
+
+    @Transactional
     public List<ReportTypeSummaryDTO> getAllReportTypeSummaries() {
         List<ReportType> reportTypeSummary = reportTypeRepository.findAll();
         return reportTypeSummary.stream()

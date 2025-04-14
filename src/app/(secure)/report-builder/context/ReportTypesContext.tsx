@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { RecentReportType } from '../model/ReportType';
 import { getReportTypes, getReportTypeFields } from '../services/reportTypeService';
 import { ApiReportField } from '../services/api-types';
-import { getAllReportTypes, layoutColumnListByReportId } from '@/services/report-type/report-type-service';
+import { activeLayoutColumnListByReportId, getAllReportTypes, layoutColumnListByReportId } from '@/services/report-type/report-type-service';
 
 interface ReportTypesContextType {
   reportTypes: RecentReportType[];
@@ -41,7 +41,7 @@ export const ReportTypesProvider: React.FC<{ children: ReactNode }> = ({ childre
     queryKey: ['reportFields', selectedReportTypeId],
     queryFn: async () =>
       selectedReportTypeId
-        ? (await layoutColumnListByReportId(selectedReportTypeId)).data.data
+        ? (await activeLayoutColumnListByReportId(selectedReportTypeId)).data.data
         : [],
     enabled: !!selectedReportTypeId, // Only run when a report type is selected
   });

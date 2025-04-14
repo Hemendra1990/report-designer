@@ -6,6 +6,7 @@ export enum QueryKeys {
     GET_ALL_REPORT_TYPES = 'getAllReportTypes',
     CREATE_REPORT_TYPE = 'createReportType',
     LAYOUT_COLUMN_LIST_BY_REPORT_ID='layoutColumnByReportId',
+    ACTIVE_LAYOUT_COLUMN_LIST_BY_REPORT_ID='activeLayoutColumnByReportId',
     ALL_REPORTY_TYPE_SUMMARY = 'allReportTypeSummary'
 }
 

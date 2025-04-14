@@ -27,6 +27,10 @@ export const layoutColumnListByReportId = (reportTypeId: string) =>{
     return httpClient.get(`${BASE_URL}/${reportTypeId}/fields`);
 }
 
+export const activeLayoutColumnListByReportId = (reportTypeId: string) =>{
+    return httpClient.get(`${BASE_URL}/${reportTypeId}/active/fields`);
+}
+
 export const getAllReportTypeSummary = () =>{
     return httpClient.get(`${BASE_URL}/reportSummary`);
 }
