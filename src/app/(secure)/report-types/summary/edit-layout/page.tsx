@@ -88,7 +88,7 @@ export default function EditLayout() {
   // Handle save
   const handleSave = () => {
     updateReportTypeLayoutStatus.mutate(
-      { payload: reportType || [] },
+      { payload: reportType },
       {
         onSuccess: () => {
           setShowSuccessMessage(true);

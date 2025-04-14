@@ -58,6 +58,7 @@ export function ReportTypeSelectionModal({
                 let type:RecentReportType =  {
                     id: reportType.id,
                     name: reportType?.name,
+                    label:reportType?.label,
                     category: '',
                     description: reportType?.description,
                     objects: reportType?.usedTables?.map(table => ({name: table})),
@@ -349,7 +350,7 @@ export function ReportTypeSelectionModal({
 
                                                 <div className="flex-1">
                                                     <h4 className="font-medium text-sm text-slate-800 group-hover:text-primary flex items-center gap-2">
-                                                        {report.name}
+                                                        {report?.label}
                                                         <Badge variant={report.status === "Active" ? "default" : "secondary"} className="ml-1.5 px-1 py-0 h-4 text-[0.65rem]">
                                                             {report.status}
                                                         </Badge>
@@ -422,7 +423,7 @@ export function ReportTypeSelectionModal({
                                     <FileText className="h-5 w-5 text-green-600" />
                                 </div>
                                 <div>
-                                    <h3 className="text-sm font-semibold text-slate-800">{selectedReport.name}</h3>
+                                    <h3 className="text-sm font-semibold text-slate-800">{selectedReport?.label}</h3>
                                     <p className="text-xs text-slate-500">{selectedReport.category} Report Type</p>
                                 </div>
                             </div>

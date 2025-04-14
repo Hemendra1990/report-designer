@@ -141,6 +141,11 @@ export default function ReportTypesPage() {
     router.push(`/report-types/define-relationships/${reportType?.id}`);
   }
 
+  const handleEditLayout = async (reportType: any) => {
+    setReportTypeId(reportType?.id)
+    router.push(`/report-types/summary/edit-layout`);
+  }
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -479,6 +484,12 @@ export default function ReportTypesPage() {
                                   >
                                     <Edit2 className="h-4 w-4 mr-2" />
                                     Edit
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => handleEditLayout(reportType)}
+                                  >
+                                    <Edit2 className="h-4 w-4 mr-2" />
+                                    Edit layout
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
                                     className="text-destructive"

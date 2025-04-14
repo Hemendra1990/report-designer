@@ -1450,8 +1450,8 @@ function ReportBuilderPage() {
       <div className="min-h-screen bg-gray-50 flex flex-col">
         <TopHeaderBar
           selectedReportType={selectedReportType}
-          reportName={selectedReportType?.name || "New Accounts Report"}
-          reportType={selectedReportType?.type || "Accounts"}
+          reportName={reportResponse?.data?.label || selectedReportType?.name || "New Report"}
+          reportType={selectedReportType?.type || "report"}
           showShortcuts={showShortcuts}
           onToggleShortcuts={() => setShowShortcuts(!showShortcuts)}
           onRun={fetchData}
