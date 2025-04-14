@@ -343,6 +343,14 @@ function ReportBuilderPage() {
   // Handle adding a column to the report
   const addColumn = (field: Field) => {
     console.log('Adding column:', field);
+    //if already exists in selectedColumns, do nothing
+    const isFieldSelected = selectedColumns.some(
+      (col) => col.columnName === field.columnName && col.tableName === field.tableName
+    );
+    if (isFieldSelected){
+      return;
+    }
+
     if (!selectedColumns.some(col => col.id === field.id)) {
       const newColumn: Field = {...field};
       
@@ -1215,8 +1223,10 @@ function ReportBuilderPage() {
     let payload = generateReportPayload(reportId || null, reportName, reportTypeResponse?.data, generatedSql, selectedColumns, groupByFields, filters); 
     if (reportId) {
       updateReportMutation.mutate({payload: payload, onSuccess: handleOnSuccess, onError: handleOnError});
+    } else {
+      createReportMutation.mutate({payload: payload, onSuccess: handleOnSuccess, onError: handleOnError});
     }
-    createReportMutation.mutate({payload: payload, onSuccess: handleOnSuccess, onError: handleOnError});
+    
   };
 
   // Toggle preview expanded state
@@ -1493,7 +1503,6 @@ function ReportBuilderPage() {
           onSaveReport={handleSaveReport}
           reportTypeResponse={reportTypeResponse}
         />
-        {JSON.stringify(reportResponse?.data?.name)}
         <InfoBanner message="Previewing a limited number of records. Run the report to see everything." />
         
         <AppliedFiltersBar 
