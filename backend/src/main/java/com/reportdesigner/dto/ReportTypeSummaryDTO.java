@@ -17,6 +17,7 @@ import java.util.List;
 public class ReportTypeSummaryDTO {
     private String id;
     private String name;
+    private String label;
     private String description;
     private String createdBy;
     private OffsetDateTime createdOn;

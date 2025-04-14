@@ -16,6 +16,7 @@ import { useReportTypeConfigGeneration } from "@/helper/report-type/report-type-
 import { useCreatereportType } from "@/hooks/report-type-hook";
 import ToastMessage from "@/app/(secure)/report-types/summary/summary-helper";
 import isEqual from "lodash/isEqual";
+import { Skeleton } from '@/components/ui/skeleton';
 
 // Define letters for objects
 const letters = ["A", "B", "C", "D", "E", "F", "G", "H"];
@@ -164,6 +165,38 @@ export default function DefineRelationships(props: DefineRelationshipsProps) {
 
     fetchRelatedTables();
   }, [primaryObject]);
+
+  const ObjectTreeSkeleton = () => {
+    return (
+      <div className="space-y-4">
+        {/* Primary Object Skeleton */}
+        <div className="flex items-center space-x-4 border rounded-md p-4 bg-slate-50">
+          <Skeleton className="h-10 w-10 rounded-md bg-slate-200" />
+          <div className="space-y-2 flex-1">
+            <Skeleton className="h-5 w-32 bg-slate-200" />
+            <Skeleton className="h-4 w-40 bg-slate-200" />
+          </div>
+          <Skeleton className="h-9 w-36 rounded-md bg-slate-200" />
+        </div>
+        
+        {/* Related Objects Skeletons */}
+        {[1, 2].map((item) => (
+          <div key={item} className="flex items-center space-x-4 border rounded-md p-4 ml-6">
+            <Skeleton className="h-10 w-10 rounded-md bg-slate-200" />
+            <div className="space-y-2 flex-1">
+              <Skeleton className="h-5 w-24 bg-slate-200" />
+              <Skeleton className="h-4 w-28 bg-slate-200" />
+            </div>
+            <div className="flex space-x-2">
+              <Skeleton className="h-8 w-8 rounded-md bg-slate-200" />
+              <Skeleton className="h-8 w-8 rounded-md bg-slate-200" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+  
 
   // Fetch available objects for a specific parent
   const fetchAvailableObjectsForParent = async (parentId: string | null) => {
@@ -410,9 +443,7 @@ export default function DefineRelationships(props: DefineRelationshipsProps) {
                       isLoadingAvailableObjects={isLoadingAvailableObjects}
                     />
                   ) : (
-                    <div className="flex justify-center items-center h-40">
-                      <p>Loading primary object data...</p>
-                    </div>
+                    <ObjectTreeSkeleton />
                   )
                 ) : (
                   <div className="flex justify-center items-center h-40">

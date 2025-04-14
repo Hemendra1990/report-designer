@@ -441,7 +441,7 @@ export default function ReportsPage() {
                 <circle cx="10" cy="13" r="2" />
                 <path d="m20 17-1.09-1.09a2 2 0 0 0-2.82 0L10 22" />
               </svg>
-              <h3 className="text-lg font-medium mb-2">No report types found</h3>
+              <h3 className="text-lg font-medium mb-2">No reports found</h3>
               <p className="text-muted-foreground mb-4">
                 {searchTerm || typeFilter !== "all" || statusFilter !== "all" || showStarredOnly
                   ? "Try a different search term or clear your filters."

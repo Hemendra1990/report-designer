@@ -48,6 +48,7 @@ export interface ReportTypeLayout {
 export interface ReportTypeSummary {
     id: string;
     name: string;
+    label:string;
     description: string;
     createdBy: string;
     createdOn: string;

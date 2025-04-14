@@ -1481,7 +1481,7 @@ function ReportBuilderPage() {
       <div className="min-h-screen bg-gray-50 flex flex-col">
         <TopHeaderBar
           selectedReportType={selectedReportType}
-          reportName={reportResponse?.data?.name || selectedReportType?.name || "New Report"}
+          reportName={reportResponse?.data?.label || selectedReportType?.name || "New Report"}
           reportType={selectedReportType?.type || "report"}
           showShortcuts={showShortcuts}
           onToggleShortcuts={() => setShowShortcuts(!showShortcuts)}
