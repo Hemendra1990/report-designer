@@ -1,7 +1,7 @@
 "use client";
 
 import {QueryClient, QueryClientProvider, useQuery, useQueryClient} from "@tanstack/react-query";
-import {useRouter} from "next/navigation";
+import {useRouter, useSearchParams} from "next/navigation";
 import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {ReportTypesProvider, useReportTypes} from "./context/ReportTypesContext";
 import {getFieldTypeIcon, mapColumnTypeToFieldType} from "./utils/fieldUtils";
@@ -35,6 +35,7 @@ import {formulaFunctions} from "./util/ReportBuilderUtil";
 import {useReportTypeById} from "@/hooks/report-type-hook";
 import {executeQuery, executeQueryOnDuckDB} from "@/services/crm/dml-service";
 import {buildSqlQuery} from "@/app/(secure)/report-builder/util/SqlQueryBuilder";
+import {useCreatereport, useReportById, useUpdatereport} from "@/hooks/report-hook";
 
 
 // Replace the static initialSelectedColumns with a more dynamic approach
@@ -80,9 +81,35 @@ function ReportBuilderPage() {
   const { reportTypeResponse } = useReportTypeById(selectedReportTypeId || '');
   const [showReportTypeModal, setShowReportTypeModal] = useState(true);
   const [selectedReportType, setSelectedReportType] = useState<ReportTypeTemplate | null>(null);
+  const createReportMutation = useCreatereport();
+  const updateReportMutation = useUpdatereport();
 
   // Initialize with sample columns, will be updated when report type is selected
-  const [selectedColumns, setSelectedColumns] = useState<(Field | FormulaColumn)[]>(initialSampleColumns);
+  const [selectedColumns, setSelectedColumns] = useState<(Field | FormulaColumn)[]>(initialSampleColumns);  //MARKED: selected columns
+  const searchParams = useSearchParams();
+  const reportId = searchParams.get('reportId');
+  const { reportResponse } = useReportById(reportId);
+
+
+  useEffect(() => {
+    if(!reportId) {
+      setShowReportTypeModal(true);
+    }
+  }, [reportId])
+
+  useEffect(() => {
+    if (reportResponse?.data) {
+      console.log('Report data:', reportResponse.data);
+      setSelectedReportTypeId(reportResponse?.data?.reportType?.id);
+      setSelectedColumns(reportResponse?.data?.columns as any || []);
+    }
+  }, [reportResponse.data])
+
+  useEffect(() => {
+    if (reportTypeResponse?.data) {
+      setSelectedReportType(reportTypeResponse?.data as any);
+    }
+  }, [reportTypeResponse])
 
   // Effect to update selectedColumns when reportFields change
   useEffect(() => {
@@ -237,6 +264,8 @@ function ReportBuilderPage() {
   const [selectedAggregations, setSelectedAggregations] = useState<Record<string, string>>({});
 
   const [fieldsByCategory, setfieldsByCategory] = useState<Record<string, Field[]>>({});
+  const [showErrorToast, setShowErrorToast] = useState<string>('');
+  const [showSuccessToast, setShowSuccessToast] = useState<string>('');
 
   useEffect(() => {
     if (reportFields) {
@@ -312,6 +341,14 @@ function ReportBuilderPage() {
   // Handle adding a column to the report
   const addColumn = (field: Field) => {
     console.log('Adding column:', field);
+    //if already exists in selectedColumns, do nothing
+    const isFieldSelected = selectedColumns.some(
+      (col) => col.columnName === field.columnName && col.tableName === field.tableName
+    );
+    if (isFieldSelected){
+      return;
+    }
+
     if (!selectedColumns.some(col => col.id === field.id)) {
       const newColumn: Field = {...field};
       
@@ -1169,17 +1206,25 @@ function ReportBuilderPage() {
     [selectedColumns]
   );
 
+  const handleOnSuccess = (data: any) => {
+    setShowSuccessToast(`Report ${reportId ? 'updated' : 'created'} successfully`);
+    router.push('/reports');
+  }
+
+  const handleOnError = (err: any) => {
+    setShowErrorToast(err?.response?.data?.message || 'Something went wrong. Please try again.');
+    setTimeout(() => setShowErrorToast(''), 3000);
+  }
+
   // Handle saving the report with generated SQL
   const handleSaveReport = (sql: string, reportName: string) => {
-    console.log(`Saving report '${reportName}' with SQL:`, sql);
-    // Here you would typically persist this data to your backend
-    // For example, using an API call
-    
-    // Provide feedback to the user
-    alert(`Report "${reportName}" has been saved successfully!`);
-    
-    // Optionally navigate to reports list page
-    // router.push('/reports');
+    let payload = generateReportPayload(reportId || null, reportName, reportTypeResponse?.data, generatedSql, selectedColumns, groupByFields, filters);
+    if (reportId) {
+      updateReportMutation.mutate({payload: payload, onSuccess: handleOnSuccess, onError: handleOnError});
+    } else {
+      createReportMutation.mutate({payload: payload, onSuccess: handleOnSuccess, onError: handleOnError});
+    }
+
   };
 
   // Toggle preview expanded state
@@ -1651,6 +1696,18 @@ function ReportBuilderPage() {
           onFilterSearchTermChange={setFilterSearchTerm}
           addFilter={addFilter}
         />
+        <>
+          {
+            showErrorToast && (
+              <ToastMessage type="error" message={showErrorToast} />
+            )
+          }
+          {
+            showSuccessToast && (
+              <ToastMessage type="success" message={showSuccessToast} />
+            )
+          }
+        </>
       </div>
     </>
   );
