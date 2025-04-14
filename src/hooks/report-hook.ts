@@ -1,6 +1,6 @@
 import { QueryKeys } from "@/components/enum/query-keys";
 import { Report } from "@/components/model/report";
-import { createReport, getAllReports, getReportById, updateReport } from "@/services/report/report-service";
+import { createReport, deleteReportById, getAllReports, getReportById, updateReport } from "@/services/report/report-service";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 
@@ -40,20 +40,20 @@ export const useAllReport = () => {
 
 export const useInvalidateAllReport = () => {
     const queryClient = useQueryClient();
-    const invalidateAllReportTypes = () => {
-        queryClient.invalidateQueries({ queryKey: [QueryKeys.GET_ALL_REPORT_TYPES] });
+    const invalidateAllReport = () => {
+        queryClient.invalidateQueries({ queryKey: [QueryKeys.GET_ALL_REPORT] });
     }
-    return { invalidateAllReportTypes };
+    return { invalidateAllReport };
 }
 
 export const useCreatereport = () => {
-    const { invalidateAllReportTypes } = useInvalidateAllReport();
+    const { invalidateAllReport } = useInvalidateAllReport();
     return useMutation({
         mutationFn: ({ payload, onSuccess, onError }: { payload: Report, onSuccess?: (data: any) => void, onError?: (err: AxiosError) => void }) => {
             return createReport(payload);
         },
         onSuccess: (data, variables) => {
-            invalidateAllReportTypes();
+            invalidateAllReport();
             if (variables?.onSuccess) {
                 variables.onSuccess(data);
             }
@@ -68,13 +68,13 @@ export const useCreatereport = () => {
 
 export const useUpdatereport = () => {
     const { invalidateReportById } = useInvalidateReportById();
-    const { invalidateAllReportTypes } = useInvalidateAllReport();
+    const { invalidateAllReport } = useInvalidateAllReport();
     return useMutation({
         mutationFn: ({ payload, onSuccess, onError }: { payload: Report, onSuccess?: (data: any) => void, onError?: (err: AxiosError) => void }) => {
             return updateReport(payload);
         },
         onSuccess: (data, variables) => {
-            invalidateAllReportTypes();
+            invalidateAllReport();
             if (variables?.onSuccess) {
                 variables.onSuccess(data);
             }
@@ -84,6 +84,18 @@ export const useUpdatereport = () => {
             if (variables?.onError) {
                 variables.onError(err);
             }
+        },
+    });
+};
+
+export const useDeleteReportById = () => {
+    return useMutation({
+        mutationFn: ({ reportId }: { reportId: string }) => {
+            return deleteReportById(reportId);
+        },
+        onSuccess: () => {
+        },
+        onError: () => {
         },
     });
 };

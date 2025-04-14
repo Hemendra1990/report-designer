@@ -19,3 +19,8 @@ export const createReport = (report: Report) => {
 export const updateReport = (report: Report) => {
     return httpClient.put(`${BASE_URL}/${report.id}`, report);
 }
+
+
+export const deleteReportById = (reportId:string) => {
+    return httpClient.delete(`${BASE_URL}/${reportId}`);
+}

@@ -78,4 +78,12 @@ public class ReportService {
     public List<ReportDTO> findBasicDetails() {
         return reportRepository.findBasicDetails();
     }
+
+
+    public void deleteReportById(String id) throws ValidationException {
+        if (!reportRepository.existsById(id)) {
+            throw new ValidationException("Report not found", ErrorCode.EMPTY_OR_NULL_VALUE_FOUND, "ReportService.deleteById");
+        }
+        reportRepository.deleteById(id);
+    }
 }

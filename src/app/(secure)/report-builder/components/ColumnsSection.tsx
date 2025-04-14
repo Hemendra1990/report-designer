@@ -212,7 +212,7 @@ const ColumnsSection: React.FC<ColumnsSectionProps> = ({
       <div className="space-y-1.5">
         {selectedColumns.map((column, index) => (
           <div
-            key={column.id}
+            key={index}
             ref={(el) => {
               if (columnRefs.current) {
                 columnRefs.current[index] = el;
