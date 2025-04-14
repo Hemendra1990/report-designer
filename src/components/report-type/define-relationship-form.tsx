@@ -66,7 +66,7 @@ export default function DefineRelationships(props: DefineRelationshipsProps) {
   const { reportType, setReportType, setReportTypeId } = useReportTypeFormContext();
   
   const [primaryObject, setPrimaryObject] = useState<AvailableObject | null>(null);
-  const [relatedObjects, setRelatedObjects] = useState<RelatedObject[]>(reportType.objectTree ? JSON.parse(reportType.objectTree) : []);
+  const [relatedObjects, setRelatedObjects] = useState<RelatedObject[]>([]);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [availableObjects, setAvailableObjects] = useState<AvailableObject[]>([]);
   const [relatedTables, setRelatedTables] = useState<TableMetadata[]>([]);
@@ -78,48 +78,65 @@ export default function DefineRelationships(props: DefineRelationshipsProps) {
   const router = useRouter();
   const [showErrorToast, setShowErrorToast] = useState<string>('');
   const [relatedTableInformationMap, setRelatedTableInformationMap] = useState<Record<string, iTableMetaData[]>>({});
+  const [isLoadingComponent,setIsLoadingComponent] = useState(false);
 
   useEffect(() => {
     if (reportTypeId) {
       setReportTypeId(reportTypeId);
     }
   }, [reportTypeId])
+
+  useEffect(() => {
+    if (reportType?.objectTree) {
+      const parsed = JSON.parse(reportType.objectTree);
+      if (!isEqual(parsed, relatedObjects)) {
+        setRelatedObjects(parsed);
+      }
+    }
+  }, [reportType?.objectTree]);
   
   // Fetch available objects and initialize primary object
   useEffect(() => {
     const fetchData = async () => {
       try {
+        setIsLoadingComponent(true);
         const response = allTableMetaData || [];
         const mappedObjects = response?.map((table: TableMetadata) => ({
           id: table.tableName,
           name: table.tableName,
           displayName: table.displayName,
           schema: table.schema,
-          letter: "A", // Will be assigned dynamically
+          letter: "A",
           description: `Table in schema ${table.schema}`,
           color: "#1E88E5",
-          relatedTo: [], // Will be populated based on foreign key relationships
-          icon: "/icons/database.svg" // Default icon for all tables
+          relatedTo: [],
+          icon: "/icons/database.svg"
         }));
         
         setAvailableObjects(mappedObjects);
-        
-        // Find the primary object
-        const foundObject = mappedObjects.find((obj: AvailableObject) => 
-          // obj.id === primaryObjectId && obj.schema === primaryObjectSchema
-          obj.id === reportType?.primaryTable
-        );
-        
-        if (foundObject) {
-          setPrimaryObject(foundObject);
+        // Check if reportType?.primaryTable exists before trying to find it
+        if (reportType?.primaryTable) {
+          const foundObject = mappedObjects.find((obj: AvailableObject) =>
+            obj.id === reportType.primaryTable
+          );
+
+          if (foundObject) {
+            setPrimaryObject(foundObject);
+          } else {
+            console.warn(`Primary table "${reportType.primaryTable}" not found in available objects`);
+          }
+        } else {
+          console.log("Primary table not yet defined in reportType");
         }
       } catch (error) {
         console.error("Error fetching tables:", error);
+      } finally {
+        setIsLoadingComponent(false);
       }
     };
     
     fetchData();
-  }, [reportType?.primaryTable, reportType?.schema]);
+  }, [reportType?.primaryTable, reportType?.schema, allTableMetaData]);
 
   // Fetch related tables when primary object changes
   useEffect(() => {
@@ -380,17 +397,27 @@ export default function DefineRelationships(props: DefineRelationshipsProps) {
                 <CardTitle>Select Objects</CardTitle>
               </CardHeader>
               <CardContent>
-                {primaryObject && (
-                  <ObjectTree 
-                    availableObjects={availableObjects}
-                    primaryObject={primaryObject}
-                    relatedObjects={relatedObjects}
-                    onAddRelatedObject={handleAddRelatedObject}
-                    onRemoveRelatedObject={handleRemoveRelatedObject}
-                    onChangeRelationshipType={handleChangeRelationshipType}
-                    onOpenObjectSelector={handleOpenObjectSelector}
-                    isLoadingAvailableObjects={isLoadingAvailableObjects}
-                  />
+                {(primaryObject || isLoading) ? (
+                  primaryObject ? (
+                    <ObjectTree
+                      availableObjects={availableObjects}
+                      primaryObject={primaryObject}
+                      relatedObjects={relatedObjects}
+                      onAddRelatedObject={handleAddRelatedObject}
+                      onRemoveRelatedObject={handleRemoveRelatedObject}
+                      onChangeRelationshipType={handleChangeRelationshipType}
+                      onOpenObjectSelector={handleOpenObjectSelector}
+                      isLoadingAvailableObjects={isLoadingAvailableObjects}
+                    />
+                  ) : (
+                    <div className="flex justify-center items-center h-40">
+                      <p>Loading primary object data...</p>
+                    </div>
+                  )
+                ) : (
+                  <div className="flex justify-center items-center h-40">
+                    <p>No primary object selected. Please select a primary object first.</p>
+                  </div>
                 )}
               </CardContent>
             </Card>

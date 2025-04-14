@@ -1,13 +1,10 @@
-"use client";
 import DefineRelationshipsForm from "@/components/report-type/define-relationship-form";
-import { useParams } from "next/navigation";
 
-export default function SelectRelationshipPage() {
+export default async function SelectRelationshipPage({ params }: { params: Promise<{ reportTypeId: string }> }) {
 
-  const { reportTypeId } = useParams()
-  
-    if (!reportTypeId) {
-      return <div>Loading...</div> // or handle gracefully
-    }
-  return <DefineRelationshipsForm reportTypeId={reportTypeId as string } ></DefineRelationshipsForm>
+  const { reportTypeId } = await params
+  if (!reportTypeId) {
+    return <div>Loading...</div> // or handle gracefully
+  }
+  return <DefineRelationshipsForm reportTypeId={reportTypeId as string} ></DefineRelationshipsForm>
 }
