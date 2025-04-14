@@ -293,7 +293,7 @@ export function ReportTypeSelectionModal({
                         selectedReport ? "flex-1 border-r border-gray-100" : "flex-1"
                     )}>
                         <DialogHeader className="px-0 mb-2">
-                            <DialogTitle className="text-lg font-semibold text-slate-800">Select a Report Type</DialogTitle>
+                            <DialogTitle className="text-lg font-semibold text-slate-800">Select a Report</DialogTitle>
                         </DialogHeader>
 
                         <div className="relative mb-3">

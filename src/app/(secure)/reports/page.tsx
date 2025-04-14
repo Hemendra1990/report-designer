@@ -445,7 +445,7 @@ export default function ReportsPage() {
               <p className="text-muted-foreground mb-4">
                 {searchTerm || typeFilter !== "all" || statusFilter !== "all" || showStarredOnly
                   ? "Try a different search term or clear your filters."
-                  : "Create your first report type to get started."}
+                  : "Create your first report to get started."}
               </p>
               {(searchTerm || typeFilter !== "all" || statusFilter !== "all" || showStarredOnly) ? (
                 <Button variant="outline" onClick={() => {
@@ -457,8 +457,8 @@ export default function ReportsPage() {
                   Clear All Filters
                 </Button>
               ) : (
-                <Link href="/report-types">
-                  <Button>Create Report Type</Button>
+                <Link href="/report-builder">
+                  <Button>Create Report</Button>
                 </Link>
               )}
             </div>
