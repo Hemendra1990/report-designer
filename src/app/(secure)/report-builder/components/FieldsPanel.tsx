@@ -5,6 +5,32 @@ import { FormulaIcon } from "@/components/icons/ReportIcons";
 import { useReportTypes } from '../context/ReportTypesContext';
 import { getFieldTypeIcon } from '../utils/fieldUtils';
 
+// Custom scrollbar styles
+const scrollbarStyles = `
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #a1a1a1;
+  }
+  
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #c1c1c1 #f1f1f1;
+  }
+`;
+
 // Match the field type to the one in accountFields
 interface Field {
   id: string;
@@ -121,6 +147,9 @@ const FieldsPanel: React.FC<FieldsPanelProps> = ({
 
   return (
     <div className={`${leftPanelCollapsed ? 'w-12' : 'w-64'} bg-card border-r border-border flex flex-col overflow-hidden transition-all duration-300 shrink-0`}>
+      {/* Add the style tag for custom scrollbar */}
+      <style>{scrollbarStyles}</style>
+      
       {/* Collapse Control */}
       <div className="flex justify-end p-1">
         <button
@@ -136,7 +165,7 @@ const FieldsPanel: React.FC<FieldsPanelProps> = ({
 
       {!leftPanelCollapsed ? (
         <>
-          <div className="p-3 border-b border-gray-200">
+          <div className="p-3 border-b border-gray-200 flex-shrink-0">
             <div className="relative">
               <Input
                 className="pl-8 text-sm"
@@ -150,16 +179,16 @@ const FieldsPanel: React.FC<FieldsPanelProps> = ({
             </div>
           </div>
 
-          <div className="overflow-y-auto flex-1">
+          <div className="overflow-y-auto flex-1 flex flex-col">
             {isFieldsLoading ? (
               <div className="p-4 text-center text-gray-500">Loading fields...</div>
             ) : (
-              <>
+              <div className="flex flex-col overflow-hidden flex-1">
                 {/* All Fields Categories */}
                 {filteredCategories.map(category => (
-                  <div key={category} className="border-b border-gray-200">
+                  <div key={category} className="border-b border-gray-200 flex flex-col">
                     <div
-                      className="p-2 flex justify-between items-center cursor-pointer hover:bg-gray-50"
+                      className="p-2 flex justify-between items-center cursor-pointer hover:bg-gray-50 flex-shrink-0"
                       onClick={() => toggleCategory(category)}
                     >
                       <div className="text-xs font-semibold text-gray-500 uppercase">
@@ -171,7 +200,7 @@ const FieldsPanel: React.FC<FieldsPanelProps> = ({
                     </div>
 
                     {expandedCategories[category as keyof typeof expandedCategories] && (
-                      <div className="pl-2">
+                      <div className="pl-2 max-h-[calc(100vh-280px)] overflow-y-auto custom-scrollbar">
                         {displayFieldsByCategory[category]
                           .filter((field: ExtendedField) =>
                             !searchTerm.trim() ||
@@ -222,7 +251,7 @@ const FieldsPanel: React.FC<FieldsPanelProps> = ({
                       "No fields matching your search."}
                   </div>
                 )}
-              </>
+              </div>
             )}
           </div>
         </>

@@ -101,6 +101,15 @@ export function buildSqlQuery(options: {
     cteQuery
   } = options;
   
+  // Debug the grouping fields and columns
+  console.log('SQL Builder - Group By Fields:', groupByFields);
+  console.log('SQL Builder - Selected Columns:', selectedColumns.map(col => ({
+    id: col.id,
+    duckDBColumnName: col.duckDBColumnName,
+    columnName: col.columnName,
+    name: col.name
+  })));
+  
   // Check if we're building a pivot query
   if (isPivotActive && pivotColumnIds && pivotColumnIds.length > 0 && pivotValues && pivotValues.length > 0) {
     const sql = buildPivotSqlQueries(selectedColumns, groupByFields, pivotColumnIds, pivotValues, reportType,
@@ -127,7 +136,16 @@ export function buildSqlQuery(options: {
   
   // Generate the GROUP BY clause if there are group by fields
   const groupByClause = groupByFields.length > 0
-    ? `GROUP BY ${groupByFields.join(', ')}`
+    ? `GROUP BY ${groupByFields.map(fieldId => {
+        // Find the corresponding column to get the correct column name
+        const column = selectedColumns.find(col => 
+          col.id === fieldId || 
+          col.duckDBColumnName === fieldId || 
+          col.columnName === fieldId
+        );
+        // Use the appropriate column name
+        return column ? (column.duckDBColumnName || column.columnName || fieldId) : fieldId;
+      }).join(', ')}`
     : '';
   
   // Combine all clauses into the final SQL query
@@ -203,10 +221,18 @@ function generateSelectClause(selectedColumns: Field[], groupByFields: string[])
 
   // Otherwise, apply appropriate aggregation based on whether the column is in the GROUP BY
   // First, get all columns that are in the GROUP BY clause
-  const groupedColumns = columnsToInclude.filter(column => groupByFields.includes(column.id));
+  const groupedColumns = columnsToInclude.filter(column => 
+    groupByFields.includes(column.id) || 
+    (column.duckDBColumnName && groupByFields.includes(column.duckDBColumnName)) ||
+    (column.columnName && groupByFields.includes(column.columnName))
+  );
   
   // Then, get all columns that are NOT in the GROUP BY clause
-  const nonGroupedColumns = columnsToInclude.filter(column => !groupByFields.includes(column.id));
+  const nonGroupedColumns = columnsToInclude.filter(column => 
+    !groupByFields.includes(column.id) && 
+    !(column.duckDBColumnName && groupByFields.includes(column.duckDBColumnName)) &&
+    !(column.columnName && groupByFields.includes(column.columnName))
+  );
   
   // Generate the SELECT clause with grouped columns first, then non-grouped columns with aggregation
   const groupedPart = groupedColumns.map(column => {
