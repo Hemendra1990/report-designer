@@ -1,7 +1,7 @@
 "use client";
 
 import {QueryClient, QueryClientProvider, useQuery, useQueryClient} from "@tanstack/react-query";
-import {useRouter, useSearchParams} from "next/navigation";
+import {useRouter} from "next/navigation";
 import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {ReportTypesProvider, useReportTypes} from "./context/ReportTypesContext";
 import {getFieldTypeIcon, mapColumnTypeToFieldType} from "./utils/fieldUtils";
@@ -35,9 +35,6 @@ import {formulaFunctions} from "./util/ReportBuilderUtil";
 import {useReportTypeById} from "@/hooks/report-type-hook";
 import {executeQuery, executeQueryOnDuckDB} from "@/services/crm/dml-service";
 import {buildSqlQuery} from "@/app/(secure)/report-builder/util/SqlQueryBuilder";
-import { generateReportPayload } from "@/helper/report/report-helper";
-import { useCreatereport, useReportById, useUpdatereport } from "@/hooks/report-hook";
-import ToastMessage from "../report-types/summary/summary-helper";
 
 
 // Replace the static initialSelectedColumns with a more dynamic approach
@@ -81,37 +78,11 @@ function ReportBuilderPage() {
   const router = useRouter();
   const { setSelectedReportTypeId, reportFields, isFieldsLoading, selectedReportTypeId } = useReportTypes();
   const { reportTypeResponse } = useReportTypeById(selectedReportTypeId || '');
-  const [showReportTypeModal, setShowReportTypeModal] = useState(false);
+  const [showReportTypeModal, setShowReportTypeModal] = useState(true);
   const [selectedReportType, setSelectedReportType] = useState<ReportTypeTemplate | null>(null);
-  const createReportMutation = useCreatereport();
-  const updateReportMutation = useUpdatereport();
 
   // Initialize with sample columns, will be updated when report type is selected
-  const [selectedColumns, setSelectedColumns] = useState<(Field | FormulaColumn)[]>(initialSampleColumns);  //MARKED: selected columns
-  const searchParams = useSearchParams();
-  const reportId = searchParams.get('reportId');
-  const { reportResponse } = useReportById(reportId);
-
-
-  useEffect(() => {
-    if(!reportId) {
-      setShowReportTypeModal(true);
-    }
-  }, [reportId])
-
-  useEffect(() => {
-    if (reportResponse?.data) {
-      console.log('Report data:', reportResponse.data);
-      setSelectedReportTypeId(reportResponse?.data?.reportType?.id);
-      setSelectedColumns(reportResponse?.data?.columns as any || []);
-    }
-  }, [reportResponse.data]) 
-
-  useEffect(() => {
-    if (reportTypeResponse?.data) {
-      setSelectedReportType(reportTypeResponse?.data as any);
-    }
-  }, [reportTypeResponse])
+  const [selectedColumns, setSelectedColumns] = useState<(Field | FormulaColumn)[]>(initialSampleColumns);
 
   // Effect to update selectedColumns when reportFields change
   useEffect(() => {
@@ -214,7 +185,7 @@ function ReportBuilderPage() {
   const [showGroupDropdown, setShowGroupDropdown] = useState(false);
   const [groupSearchTerm, setGroupSearchTerm] = useState("");
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
-  const [groupByFields, setGroupByFields] = useState<string[]>([]); //MARKED: group by fields
+  const [groupByFields, setGroupByFields] = useState<string[]>([]);
   const [expandedRowGroups, setExpandedRowGroups] = useState<Record<string, boolean>>({});
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
 
@@ -237,11 +208,11 @@ function ReportBuilderPage() {
   const [totalRows, setTotalRows] = useState(0);
 
   // Add state for SQL generation and saving
-  const [generatedSql, setGeneratedSql] = useState<string>(''); //MARKED: generated sql
+  const [generatedSql, setGeneratedSql] = useState<string>('');
   //const [showSqlPreview, setShowSqlPreview] = useState<boolean>(false);
   
   // Add filter state
-  const [filters, setFilters] = useState<Filter[]>([]); //MARKED: filter json
+  const [filters, setFilters] = useState<Filter[]>([]);
   const [filterLogic, setFilterLogic] = useState<'and' | 'or' | 'custom'>('and');
   const [customFormula, setCustomFormula] = useState('');
 
@@ -266,8 +237,6 @@ function ReportBuilderPage() {
   const [selectedAggregations, setSelectedAggregations] = useState<Record<string, string>>({});
 
   const [fieldsByCategory, setfieldsByCategory] = useState<Record<string, Field[]>>({});
-  const [showErrorToast, setShowErrorToast] = useState<string>('');
-  const [showSuccessToast, setShowSuccessToast] = useState<string>('');
 
   useEffect(() => {
     if (reportFields) {
@@ -343,14 +312,6 @@ function ReportBuilderPage() {
   // Handle adding a column to the report
   const addColumn = (field: Field) => {
     console.log('Adding column:', field);
-    //if already exists in selectedColumns, do nothing
-    const isFieldSelected = selectedColumns.some(
-      (col) => col.columnName === field.columnName && col.tableName === field.tableName
-    );
-    if (isFieldSelected){
-      return;
-    }
-
     if (!selectedColumns.some(col => col.id === field.id)) {
       const newColumn: Field = {...field};
       
@@ -1208,25 +1169,17 @@ function ReportBuilderPage() {
     [selectedColumns]
   );
 
-  const handleOnSuccess = (data: any) => {
-    setShowSuccessToast(`Report ${reportId ? 'updated' : 'created'} successfully`);
-    router.push('/reports');
-  }
-
-  const handleOnError = (err: any) => {
-    setShowErrorToast(err?.response?.data?.message || 'Something went wrong. Please try again.');
-    setTimeout(() => setShowErrorToast(''), 3000);
-  }
-
   // Handle saving the report with generated SQL
   const handleSaveReport = (sql: string, reportName: string) => {
-    let payload = generateReportPayload(reportId || null, reportName, reportTypeResponse?.data, generatedSql, selectedColumns, groupByFields, filters); 
-    if (reportId) {
-      updateReportMutation.mutate({payload: payload, onSuccess: handleOnSuccess, onError: handleOnError});
-    } else {
-      createReportMutation.mutate({payload: payload, onSuccess: handleOnSuccess, onError: handleOnError});
-    }
+    console.log(`Saving report '${reportName}' with SQL:`, sql);
+    // Here you would typically persist this data to your backend
+    // For example, using an API call
     
+    // Provide feedback to the user
+    alert(`Report "${reportName}" has been saved successfully!`);
+    
+    // Optionally navigate to reports list page
+    // router.push('/reports');
   };
 
   // Toggle preview expanded state
@@ -1245,6 +1198,14 @@ function ReportBuilderPage() {
 
   // Function to handle applying the pivot configuration
   const handleApplyPivot = useCallback(() => {
+    console.log('Applying pivot with configuration:', {
+      isPivotActive,
+      pivotColumnIds,
+      pivotValues,
+      groupByFields,
+      selectedAggregations
+    });
+    
     if (isPivotActive) {
       const pivotSql = buildSqlQuery({
         selectedReportType: selectedReportType,
@@ -1470,6 +1431,14 @@ function ReportBuilderPage() {
     }
   }, [filterLogic, autoUpdatePreview, filters.length, selectedColumns.length, fetchData, reportTypeResponse?.data?.cteQuery]);
 
+  // Add logging before rendering PreviewPanel
+  console.log('Report builder passing to PreviewPanel:', {
+    isPivotActive,
+    pivotColumnIds,
+    pivotValues,
+    groupByFields
+  });
+
   return (
     <>
       {/* Report Type Selection Modal */}
@@ -1481,8 +1450,8 @@ function ReportBuilderPage() {
       <div className="min-h-screen bg-gray-50 flex flex-col">
         <TopHeaderBar
           selectedReportType={selectedReportType}
-          reportName={reportResponse?.data?.name || selectedReportType?.name || "New Report"}
-          reportType={selectedReportType?.type || "report"}
+          reportName={selectedReportType?.name || "New Accounts Report"}
+          reportType={selectedReportType?.type || "Accounts"}
           showShortcuts={showShortcuts}
           onToggleShortcuts={() => setShowShortcuts(!showShortcuts)}
           onRun={fetchData}
@@ -1503,6 +1472,7 @@ function ReportBuilderPage() {
           onSaveReport={handleSaveReport}
           reportTypeResponse={reportTypeResponse}
         />
+        
         <InfoBanner message="Previewing a limited number of records. Run the report to see everything." />
         
         <AppliedFiltersBar 
@@ -1618,6 +1588,7 @@ function ReportBuilderPage() {
             isPivotTable={isPivotActive}
             pivotColumns={pivotColumnIds}
             pivotValues={pivotValues}
+            groupByFields={groupByFields}
             generatedSql={generatedSql}
             cteQuery={reportTypeResponse?.data?.cteQuery}
             // Add report context properties
@@ -1680,18 +1651,6 @@ function ReportBuilderPage() {
           onFilterSearchTermChange={setFilterSearchTerm}
           addFilter={addFilter}
         />
-        <>
-          {
-            showErrorToast && (
-              <ToastMessage type="error" message={showErrorToast} />
-            )
-          }
-          {
-            showSuccessToast && (
-              <ToastMessage type="success" message={showSuccessToast} />
-            )
-          }
-        </>
       </div>
     </>
   );

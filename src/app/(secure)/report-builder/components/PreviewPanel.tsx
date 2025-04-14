@@ -47,8 +47,10 @@ interface PreviewPanelProps {
   isExpanded?: boolean;
   // Pivot-related properties
   isPivotTable?: boolean;
+  isPivotActive?: boolean;
   pivotColumns?: string[];
   pivotValues?: string[];
+  groupByFields?: string[];
   // Query-related properties
   generatedSql?: string;
   cteQuery?: string;
@@ -93,8 +95,10 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
   isExpanded = false,
   // Pivot-related properties
   isPivotTable,
+  isPivotActive,
   pivotColumns,
   pivotValues,
+  groupByFields,
   // Query-related properties
   generatedSql,
   cteQuery,
@@ -171,8 +175,10 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
               totalRows={totalRows}
               isLoading={isLoading}
               isPivotTable={isPivotTable}
+              isPivotActive={isPivotActive}
               pivotColumns={pivotColumns || []}
               pivotValues={pivotValues || []}
+              groupByFields={groupByFields || []}
               generatedSql={generatedSql}
               cteQuery={cteQuery}
               selectedReportType={selectedReportType}

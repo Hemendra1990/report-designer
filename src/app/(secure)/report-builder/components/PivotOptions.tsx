@@ -86,7 +86,9 @@ const PivotOptions: React.FC<PivotOptionsProps> = ({
   // Helper to add a group by field
   const addGroupByField = () => {
     if (selectedGroupByField && !groupByFields.includes(selectedGroupByField)) {
-      setGroupByFields([...groupByFields, selectedGroupByField]);
+      const updatedFields = [...groupByFields, selectedGroupByField];
+      console.log('Adding row field:', selectedGroupByField, 'New groupByFields:', updatedFields);
+      setGroupByFields(updatedFields);
       setSelectedGroupByField('');
     }
   };
@@ -108,7 +110,9 @@ const PivotOptions: React.FC<PivotOptionsProps> = ({
   
   // Remove a group by field
   const removeGroupByField = (fieldId: string) => {
-    setGroupByFields(groupByFields.filter(id => id !== fieldId));
+    const updatedFields = groupByFields.filter(id => id !== fieldId);
+    console.log('Removing row field:', fieldId, 'New groupByFields:', updatedFields);
+    setGroupByFields(updatedFields);
   };
   
   // Change the aggregation function for a value field
