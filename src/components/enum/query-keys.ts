@@ -7,7 +7,12 @@ export enum QueryKeys {
     CREATE_REPORT_TYPE = 'createReportType',
     LAYOUT_COLUMN_LIST_BY_REPORT_ID='layoutColumnByReportId',
     ACTIVE_LAYOUT_COLUMN_LIST_BY_REPORT_ID='activeLayoutColumnByReportId',
-    ALL_REPORTY_TYPE_SUMMARY = 'allReportTypeSummary'
+    ALL_REPORTY_TYPE_SUMMARY = 'allReportTypeSummary',
+
+    //Report
+    GET_REPORT_BY_ID = 'getReportById',
+    GET_ALL_REPORT = 'getAllReport',
+
 }
 
 export enum METADATA {

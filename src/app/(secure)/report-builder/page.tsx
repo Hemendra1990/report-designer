@@ -35,6 +35,9 @@ import {formulaFunctions} from "./util/ReportBuilderUtil";
 import {useReportTypeById} from "@/hooks/report-type-hook";
 import {executeQuery, executeQueryOnDuckDB} from "@/services/crm/dml-service";
 import {buildSqlQuery} from "@/app/(secure)/report-builder/util/SqlQueryBuilder";
+import { generateReportPayload } from "@/helper/report/report-helper";
+import { useCreatereport } from "@/hooks/report-hook";
+import ToastMessage from "../report-types/summary/summary-helper";
 
 
 // Replace the static initialSelectedColumns with a more dynamic approach
@@ -80,9 +83,10 @@ function ReportBuilderPage() {
   const { reportTypeResponse } = useReportTypeById(selectedReportTypeId || '');
   const [showReportTypeModal, setShowReportTypeModal] = useState(true);
   const [selectedReportType, setSelectedReportType] = useState<ReportTypeTemplate | null>(null);
+  const createReportMutation = useCreatereport();
 
   // Initialize with sample columns, will be updated when report type is selected
-  const [selectedColumns, setSelectedColumns] = useState<(Field | FormulaColumn)[]>(initialSampleColumns);
+  const [selectedColumns, setSelectedColumns] = useState<(Field | FormulaColumn)[]>(initialSampleColumns);  //MARKED: selected columns
 
   // Effect to update selectedColumns when reportFields change
   useEffect(() => {
@@ -185,7 +189,7 @@ function ReportBuilderPage() {
   const [showGroupDropdown, setShowGroupDropdown] = useState(false);
   const [groupSearchTerm, setGroupSearchTerm] = useState("");
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
-  const [groupByFields, setGroupByFields] = useState<string[]>([]);
+  const [groupByFields, setGroupByFields] = useState<string[]>([]); //MARKED: group by fields
   const [expandedRowGroups, setExpandedRowGroups] = useState<Record<string, boolean>>({});
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
 
@@ -208,11 +212,11 @@ function ReportBuilderPage() {
   const [totalRows, setTotalRows] = useState(0);
 
   // Add state for SQL generation and saving
-  const [generatedSql, setGeneratedSql] = useState<string>('');
+  const [generatedSql, setGeneratedSql] = useState<string>(''); //MARKED: generated sql
   //const [showSqlPreview, setShowSqlPreview] = useState<boolean>(false);
   
   // Add filter state
-  const [filters, setFilters] = useState<Filter[]>([]);
+  const [filters, setFilters] = useState<Filter[]>([]); //MARKED: filter json
   const [filterLogic, setFilterLogic] = useState<'and' | 'or' | 'custom'>('and');
   const [customFormula, setCustomFormula] = useState('');
 
@@ -237,6 +241,8 @@ function ReportBuilderPage() {
   const [selectedAggregations, setSelectedAggregations] = useState<Record<string, string>>({});
 
   const [fieldsByCategory, setfieldsByCategory] = useState<Record<string, Field[]>>({});
+  const [showErrorToast, setShowErrorToast] = useState<string>('');
+  const [showSuccessToast, setShowSuccessToast] = useState<string>('');
 
   useEffect(() => {
     if (reportFields) {
@@ -1169,17 +1175,20 @@ function ReportBuilderPage() {
     [selectedColumns]
   );
 
+  const handleOnSuccess = (data: any) => {
+    setShowSuccessToast('Report saved successfully.');
+    router.push('/reports');
+  }
+
+  const handleOnError = (err: any) => {
+    setShowErrorToast(err?.response?.data?.message || 'Something went wrong. Please try again.');
+    setTimeout(() => setShowErrorToast(''), 3000);
+  }
+
   // Handle saving the report with generated SQL
   const handleSaveReport = (sql: string, reportName: string) => {
-    console.log(`Saving report '${reportName}' with SQL:`, sql);
-    // Here you would typically persist this data to your backend
-    // For example, using an API call
-    
-    // Provide feedback to the user
-    alert(`Report "${reportName}" has been saved successfully!`);
-    
-    // Optionally navigate to reports list page
-    // router.push('/reports');
+    let payload = generateReportPayload(reportName, reportTypeResponse?.data, generatedSql, selectedColumns, groupByFields, filters); 
+    createReportMutation.mutate({payload: payload, onSuccess: handleOnSuccess, onError: handleOnError});
   };
 
   // Toggle preview expanded state
@@ -1634,6 +1643,19 @@ function ReportBuilderPage() {
           onFilterSearchTermChange={setFilterSearchTerm}
           addFilter={addFilter}
         />
+          // Error Toaster
+        <>
+          {
+            showErrorToast && (
+              <ToastMessage type="error" message={showErrorToast} />
+            )
+          }
+          {
+            showSuccessToast && (
+              <ToastMessage type="success" message={showSuccessToast} />
+            )
+          }
+        </>
       </div>
     </>
   );
