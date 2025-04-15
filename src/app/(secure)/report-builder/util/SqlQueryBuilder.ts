@@ -211,7 +211,7 @@ function generateSelectClause(selectedColumns: Field[], groupByFields: string[])
         } catch (error) {
           console.error(`Error translating formula "${formulaCol.formula}":`, error);
           // Fallback: return the formula as-is with the alias
-          return `  '${formulaCol.formula}' AS ${formulaCol.alias}`;
+          return `  ${formulaCol.formula} AS ${formulaCol.alias}`;
         }
       }
       // Regular column, just use the ID
@@ -245,7 +245,7 @@ function generateSelectClause(selectedColumns: Field[], groupByFields: string[])
       } catch (error) {
         console.error(`Error translating formula "${formulaCol.formula}":`, error);
         // Fallback: return the formula as-is with the alias
-        return `  '${formulaCol.formula}' AS ${formulaCol.alias}`;
+        return `  ${formulaCol.formula} AS ${formulaCol.alias}`;
       }
     }
     return `  ${column.duckDBColumnName}`;

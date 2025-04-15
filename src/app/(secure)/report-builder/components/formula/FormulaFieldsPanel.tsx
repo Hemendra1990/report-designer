@@ -11,7 +11,7 @@ type Field = {
 };
 
 interface FormulaFieldsPanelProps {
-  fieldsByCategory: Record<string, Field[]>;
+  fieldsByCategory: Record<string, ApiReportField[]>;
   expandedCategories: Record<string, boolean>;
   toggleCategory: (category: string) => void;
   searchTerm: string;

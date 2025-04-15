@@ -1,11 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { 
-  ChevronDownIcon,
   CrossIcon,
   InfoIcon,
   SearchIcon
@@ -49,7 +44,7 @@ interface FormulaBuilderProps {
     alias: string;
     isFormula: boolean;
   }) => void;
-  fieldsByCategory: Record<string, Field[]>;
+  fieldsByCategory: Record<string, ApiReportField[]>;
   formulaFunctions: FunctionCategory[];
   expandedCategories: Record<string, boolean>;
   toggleCategory: (category: string) => void;
@@ -195,10 +190,8 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
       // Regular formula validation with SQL translation
       // Create a field map from the available fields
       const fieldMap: Record<string, string> = {};
-      Object.entries(fieldsByCategory).forEach(([_, fields]) => {
-        fields.forEach(field => {
-          fieldMap[field.id] = field.id.toLowerCase();
-        });
+      reportFields.forEach((fields) => {
+        fieldMap[fields.duckDBColumnName] = fields.duckDBColumnName.toLowerCase();
       });
 
       // Translate the formula to SQL to check for syntax errors
@@ -238,12 +231,9 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
 
         // Create a field map from the available fields
         const fieldMap: Record<string, string> = {};
-        Object.entries(fieldsByCategory).forEach(([_, fields]) => {
-          fields.forEach(field => {
-            fieldMap[field.id] = field.id.toLowerCase();
-          });
+        reportFields.forEach((fields) => {
+          fieldMap[fields.duckDBColumnName] = fields.duckDBColumnName.toLowerCase();
         });
-
         // Translate the formula to SQL
         const sql = translateFormulaToDuckDBSQL(formulaEditorValue, fieldMap, formulaAlias);
         setSqlPreview(sql);
@@ -267,7 +257,6 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
         func.description.toLowerCase().includes(formulaSearchTerm.toLowerCase())
       )
     })).filter(category => category.functions.length > 0);
-
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
