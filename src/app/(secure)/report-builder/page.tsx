@@ -81,7 +81,7 @@ function ReportBuilderPage() {
   const router = useRouter();
   const { setSelectedReportTypeId, reportFields, isFieldsLoading, selectedReportTypeId } = useReportTypes();
   const { reportTypeResponse } = useReportTypeById(selectedReportTypeId || '');
-  const [showReportTypeModal, setShowReportTypeModal] = useState(true);
+  const [showReportTypeModal, setShowReportTypeModal] = useState(false);
   const [selectedReportType, setSelectedReportType] = useState<ReportTypeTemplate | null>(null);
   const createReportMutation = useCreatereport();
   const updateReportMutation = useUpdatereport();
