@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { DashboardData, DashboardWidget, Layout, ChartType } from '@/types/dashboard';
+import { DashboardData, DashboardWidget, Layout, ChartType, ChartConfig } from '@/types/dashboard';
 import { Report } from '@/types/report';
 import { fetchChartData } from '@/services/chartService';
 
@@ -40,7 +40,7 @@ interface DashboardContextType {
   handleLayoutChange: (layout: Layout[], layouts: { [key: string]: Layout[] }) => void;
   handleRemoveWidget: (id: string) => void;
   handleAddWidget: (type: 'chart' | 'text' | 'image') => void;
-  handleSaveWidget: () => void;
+  handleSaveWidget: (chartConfig?: ChartConfig) => void;
   handleSelectReport: (report: Report) => void;
   handleWidgetContentChange: (widgetId: string, content: string) => void;
 }
@@ -85,7 +85,7 @@ export function DashboardProvider({ children, initialDashboardId }: DashboardPro
   const [yAxisFields, setYAxisFields] = useState<string[]>([]);
   const [xAxisField, setXAxisField] = useState<string>('');
   const [displayUnits, setDisplayUnits] = useState<string>('');
-  const [activeTab, setActiveTab] = useState('To Do List');
+  const [activeTab, setActiveTab] = useState('data-chart');
   
   // Load dashboard data from localStorage on mount
   useEffect(() => {
@@ -179,7 +179,7 @@ export function DashboardProvider({ children, initialDashboardId }: DashboardPro
     setShowWidgetConfig(true);
   };
 
-  const handleSaveWidget = () => {
+  const handleSaveWidget = (chartConfig?: ChartConfig) => {
     if (selectedReport) {
       const id = Math.random().toString(36).substr(2, 9);
       const newLayout = {
@@ -201,7 +201,8 @@ export function DashboardProvider({ children, initialDashboardId }: DashboardPro
         chartType: chartType,
         yAxisFields,
         xAxisField,
-        displayUnits
+        displayUnits,
+        config: chartConfig
       };
 
       setDashboardData(prev => ({

@@ -11,6 +11,16 @@ import { DoughnutChart } from './charts/DoughnutChart';
 import { GaugeChart } from './charts/GaugeChart';
 import { MetricChart } from './charts/MetricChart';
 import { DataTable } from './charts/DataTable';
+import { 
+  ChartConfig, 
+  CartesianChartConfig,
+  PieChartConfig,
+  FunnelChartConfig,
+  ScatterChartConfig,
+  GaugeChartConfig,
+  MetricChartConfig,
+  DataTableConfig
+} from '@/types/dashboard';
 
 interface ChartData {
   labels: string[];
@@ -25,9 +35,10 @@ interface ChartPreviewProps {
   data?: ChartData;
   width?: number;
   height?: number;
+  config?: ChartConfig;
 }
 
-export function ChartPreview({ type, data, width = 400, height = 300 }: ChartPreviewProps) {
+export function ChartPreview({ type, data, width = 400, height = 300, config }: ChartPreviewProps) {
   // Create sample data if no data is provided
   const sampleData: ChartData = {
     labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
@@ -54,30 +65,60 @@ export function ChartPreview({ type, data, width = 400, height = 300 }: ChartPre
     );
   }
 
-  const renderChart = () => {
+  // Get appropriate config based on chart type
+  const getTypedConfig = () => {
+    if (!config) return undefined;
+    
     switch (type) {
       case 'bar':
-        return <BarChart data={chartData} />;
       case 'line':
-        return <LineChart data={chartData} />;
-      case 'pie':
-        return <PieChart data={chartData} />;
-      case 'doughnut':
-        return <DoughnutChart data={chartData} />;
-      case 'scatter':
-        return <ScatterChart data={chartData} />;
       case 'grouped-bar':
-        return <GroupedBarChart data={chartData} />;
       case 'stacked-bar':
-        return <StackedBarChart data={chartData} />;
+        return config as CartesianChartConfig;
+      case 'pie':
+      case 'doughnut':
+        return config as PieChartConfig;
       case 'funnel':
-        return <FunnelChart data={chartData} />;
+        return config as FunnelChartConfig;
+      case 'scatter':
+        return config as ScatterChartConfig;
       case 'gauge':
-        return <GaugeChart data={chartData} />;
+        return config as GaugeChartConfig;
       case 'metric':
-        return <MetricChart data={chartData} />;
+        return config as MetricChartConfig;
       case 'table':
-        return <DataTable data={chartData} />;
+        return config as DataTableConfig;
+      default:
+        return undefined;
+    }
+  };
+
+  const renderChart = () => {
+    const typedConfig = getTypedConfig();
+    
+    switch (type) {
+      case 'bar':
+        return <BarChart data={chartData} config={typedConfig as CartesianChartConfig} />;
+      case 'line':
+        return <LineChart data={chartData} config={typedConfig as CartesianChartConfig} />;
+      case 'pie':
+        return <PieChart data={chartData} config={typedConfig as PieChartConfig} />;
+      case 'doughnut':
+        return <DoughnutChart data={chartData} config={typedConfig as PieChartConfig} />;
+      case 'scatter':
+        return <ScatterChart data={chartData} config={typedConfig as ScatterChartConfig} />;
+      case 'grouped-bar':
+        return <GroupedBarChart data={chartData} config={typedConfig as CartesianChartConfig} />;
+      case 'stacked-bar':
+        return <StackedBarChart data={chartData} config={typedConfig as CartesianChartConfig} />;
+      case 'funnel':
+        return <FunnelChart data={chartData} config={typedConfig as FunnelChartConfig} />;
+      case 'gauge':
+        return <GaugeChart data={chartData} config={typedConfig as GaugeChartConfig} />;
+      case 'metric':
+        return <MetricChart data={chartData} config={typedConfig as MetricChartConfig} />;
+      case 'table':
+        return <DataTable data={chartData} config={typedConfig as DataTableConfig} />;
       default:
         return (
           <div className="flex items-center justify-center h-full">

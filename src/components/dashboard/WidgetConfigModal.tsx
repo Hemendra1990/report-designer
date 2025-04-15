@@ -1,305 +1,464 @@
 'use client';
 
-import { useRef } from 'react';
-import { 
-  X, 
-  Plus, 
-  BarChart3, 
-  LineChart, 
-  PieChart, 
-  Table2, 
-  BarChart2, 
-  BarChart4, 
-  TrendingUp, 
-  ScatterChart, 
-  Gauge, 
-  Calculator 
-} from 'lucide-react';
-import { useDashboard } from '@/contexts/DashboardContext';
-import { ChartType } from '@/types/dashboard';
-import { ChartPreview } from '@/components/ChartPreview';
+import React, {useState, useEffect} from 'react';
+import {Dialog, DialogContent, DialogHeader, DialogTitle} from '@/components/ui/dialog';
+import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs';
+import {Button} from '@/components/ui/button';
+import {Label} from '@/components/ui/label';
+import {Input} from '@/components/ui/input';
+import {Switch} from '@/components/ui/switch';
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select';
+import {ScrollArea} from '@/components/ui/scroll-area';
+import {useDashboard} from '@/contexts/DashboardContext';
+import {Report} from '@/types/report';
+import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
+import {
+    ChartType,
+    ChartConfig,
+    CartesianChartConfig,
+    PieChartConfig,
+    RadarChartConfig,
+    TooltipConfig,
+    LegendConfig
+} from '@/types/dashboard';
+import {HexColorPicker} from 'react-colorful';
+import {
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
+} from "@/components/ui/accordion"
+import {ChartPreview} from '@/components/ChartPreview';
+import {BarChart3, LineChart, PieChart, ScatterChart, AreaChart, CircleDot} from 'lucide-react';
 
-interface ChartOption {
-  type: ChartType;
-  icon: React.ElementType;
-  label: string;
+interface WidgetConfigModalProps {
+    // Remove props as we'll get them from context
 }
 
-// Chart type options for the configuration modal
-const chartOptions: ChartOption[] = [
-  { type: 'table', icon: Table2, label: 'Table' },
-  { type: 'bar', icon: BarChart3, label: 'Bar' },
-  { type: 'grouped-bar', icon: BarChart2, label: 'Grouped Bar' },
-  { type: 'stacked-bar', icon: BarChart4, label: 'Stacked Bar' },
-  { type: 'line', icon: LineChart, label: 'Line' },
-  { type: 'pie', icon: PieChart, label: 'Pie' },
-  { type: 'funnel', icon: TrendingUp, label: 'Funnel' },
-  { type: 'scatter', icon: ScatterChart, label: 'Scatter' },
-  { type: 'gauge', icon: Gauge, label: 'Gauge' },
-  { type: 'metric', icon: Calculator, label: 'Metric' }
-];
+const WidgetConfigModal: React.FC<WidgetConfigModalProps> = () => {
+    const {
+        selectedReport,
+        chartType,
+        setChartType,
+        yAxisFields,
+        toggleYAxisField,
+        xAxisField,
+        setXAxisField,
+        displayUnits,
+        setDisplayUnits,
+        availableFields,
+        activeTab,
+        setActiveTab,
+        handleSaveWidget,
+        showWidgetConfig,
+        toggleWidgetConfig
+    } = useDashboard();
 
-// Generate sample data for the chart preview
-const generateSampleData = (type: ChartType) => {
-  // Base sample data
-  const sampleData = {
-    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-    datasets: [
-      {
-        label: 'Sales',
-        data: [65, 59, 80, 81, 56, 55]
-      },
-      {
-        label: 'Revenue',
-        data: [28, 48, 40, 19, 86, 27]
-      }
-    ]
-  };
+    const [chartConfig, setChartConfig] = useState<ChartConfig>({
+        cartesian: {
+            grid: true,
+            margins: {top: 20, right: 20, bottom: 20, left: 20},
+            colors: ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088fe'],
+            strokeWidth: 2,
+            barSize: 20,
+            barGap: 4,
+        },
+        tooltip: {
+            show: true,
+            formatter: (value) => `${value}`,
+        },
+        legend: {
+            show: true,
+            position: 'bottom',
+            align: 'center',
+        },
+        pie: {
+            innerRadius: 0,
+            outerRadius: 80,
+            paddingAngle: 0,
+            cornerRadius: 0,
+            startAngle: 0,
+            endAngle: 360,
+        },
+        radar: {
+            outerRadius: 80,
+            startAngle: 90,
+            endAngle: 450,
+        },
+    });
 
-  // Customize data based on chart type
-  switch (type) {
-    case 'pie':
-    case 'doughnut':
-      return {
-        labels: ['Product A', 'Product B', 'Product C', 'Product D', 'Product E'],
-        datasets: [
-          {
-            label: 'Sales',
-            data: [300, 250, 200, 150, 100]
-          }
-        ]
-      };
-    case 'funnel':
-      return {
-        labels: ['Visits', 'Cart', 'Checkout', 'Purchase', 'Repeat'],
-        datasets: [
-          {
-            label: 'Conversion',
-            data: [1000, 750, 500, 300, 150]
-          }
-        ]
-      };
-    case 'gauge':
-    case 'metric':
-      return {
-        labels: ['Completion'],
-        datasets: [
-          {
-            label: 'Task Completion',
-            data: [75]
-          }
-        ]
-      };
-    case 'scatter':
-      return {
-        labels: ['Point A', 'Point B', 'Point C', 'Point D', 'Point E', 'Point F'],
-        datasets: [
-          {
-            label: 'Dataset 1',
-            data: [12, 34, 56, 23, 45, 67, 34, 56, 78, 45, 67, 89]
-          }
-        ]
-      };
-    default:
-      return sampleData;
-  }
+    const handleToggleYAxisField = (field: string) => {
+        toggleYAxisField(field);
+    };
+
+    const handleChartTypeChange = (type: ChartType) => {
+        setChartType(type);
+    };
+
+    const handleSave = () => {
+        handleSaveWidget(chartConfig);
+        toggleWidgetConfig(false);
+    };
+
+    const updateCartesianConfig = (key: keyof CartesianChartConfig, value: any) => {
+        setChartConfig(prev => ({
+            ...prev,
+            cartesian: {
+                ...prev.cartesian,
+                [key]: value
+            }
+        }));
+    };
+
+    const updateTooltipConfig = (key: keyof TooltipConfig, value: any) => {
+        setChartConfig(prev => ({
+            ...prev,
+            tooltip: {
+                ...prev.tooltip,
+                [key]: value
+            }
+        }));
+    };
+
+    const updateLegendConfig = (key: keyof LegendConfig, value: any) => {
+        setChartConfig(prev => ({
+            ...prev,
+            legend: {
+                ...prev.legend,
+                [key]: value
+            }
+        }));
+    };
+
+    const updatePieConfig = (key: keyof PieChartConfig, value: any) => {
+        setChartConfig(prev => ({
+            ...prev,
+            pie: {
+                ...prev.pie,
+                [key]: value
+            }
+        }));
+    };
+
+    const updateRadarConfig = (key: keyof RadarChartConfig, value: any) => {
+        setChartConfig(prev => ({
+            ...prev,
+            radar: {
+                ...prev.radar,
+                [key]: value
+            }
+        }));
+    };
+
+    const updateCartesianMargin = (margin: string, value: number) => {
+        setChartConfig(prev => ({
+            ...prev,
+            cartesian: {
+                ...prev.cartesian,
+                margins: {
+                    ...prev.cartesian?.margins,
+                    [margin]: value
+                }
+            }
+        }));
+    };
+
+    const updateColor = (index: number, color: string) => {
+        setChartConfig(prev => {
+            const newColors = [...(prev.cartesian?.colors || [])];
+            newColors[index] = color;
+            return {
+                ...prev,
+                cartesian: {
+                    ...prev.cartesian,
+                    colors: newColors
+                }
+            };
+        });
+    };
+
+    // Generate preview data based on selections
+    const getPreviewData = () => {
+        // Create sample data
+        const sampleLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+
+        // Generate datasets based on selected fields
+        let datasets = [];
+
+        if (yAxisFields.length > 0) {
+            // Create datasets based on selected y-axis fields
+            datasets = yAxisFields.map((field, index) => ({
+                label: field,
+                data: Array(6).fill(0).map(() => Math.floor(Math.random() * 90) + 10),
+            }));
+        } else {
+            // Default dataset if no fields selected
+            datasets = [
+                {
+                    label: 'Sample Data',
+                    data: [65, 59, 80, 81, 56, 55],
+                },
+                {
+                    label: 'Sample Series 2',
+                    data: [28, 48, 40, 19, 86, 27],
+                }
+            ];
+        }
+
+        return {
+            labels: sampleLabels,
+            datasets
+        };
+    };
+
+    // Handle formatter selection
+    const handleFormatterChange = (value: string) => {
+        let formatter;
+        switch (value) {
+            case 'percent':
+                formatter = (value: any) => `${value}%`;
+                break;
+            case 'currency':
+                formatter = (value: any) => `$${value.toLocaleString()}`;
+                break;
+            case 'custom':
+                formatter = (value: any) => `${value} units`;
+                break;
+            default:
+                formatter = (value: any) => `${value}`;
+        }
+
+        updateTooltipConfig('formatter', formatter);
+    };
+
+    return (
+        <Dialog open={showWidgetConfig} onOpenChange={() => toggleWidgetConfig(false)}>
+            <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+                <DialogHeader className="px-6 pt-6 pb-2">
+                    <DialogTitle>Configure Widget</DialogTitle>
+                </DialogHeader>
+
+                <div className="flex-1 flex overflow-hidden h-[80vh]">
+                    {/* Vertical Tabs Navigation */}
+                    <div className="w-52 border-r flex-shrink-0">
+                        <div className="p-3">
+                            <div className="flex flex-col space-y-1">
+                                <button
+                                    onClick={() => setActiveTab('data-chart')}
+                                    className={`px-4 py-2 text-left rounded-md transition-colors ${
+                                        activeTab === 'data-chart'
+                                            ? 'bg-blue-100 text-blue-700 font-medium'
+                                            : 'text-gray-700 hover:bg-gray-100'
+                                    }`}
+                                >
+                                    Data & Chart Type
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('style')}
+                                    className={`px-4 py-2 text-left rounded-md transition-colors ${
+                                        activeTab === 'style'
+                                            ? 'bg-blue-100 text-blue-700 font-medium'
+                                            : 'text-gray-700 hover:bg-gray-100'
+                                    }`}
+                                >
+                                    Styling & Appearance
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Main Content Area */}
+                    <div className="flex-1 overflow-auto p-6">
+                        {activeTab === 'data-chart' && (
+                            <div className="space-y-6">
+                                {/* Data Source (compact) */}
+                                <Card>
+                                    <CardHeader className="pb-3">
+                                        <CardTitle>Data Source</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="p-3 border rounded-md bg-gray-50">
+                                            <div
+                                                className="font-medium">{selectedReport?.name || 'No report selected'}</div>
+                                            {selectedReport && <div className="text-sm text-gray-500 mt-1">Created
+                                                by {selectedReport.createdBy}</div>}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                {/* Chart Type Selection with Icons */}
+                                <Card>
+                                    <CardHeader className="pb-3">
+                                        <CardTitle>Chart Type</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="grid grid-cols-5 gap-3">
+                                            <Button
+                                                variant={chartType === 'bar' ? "default" : "outline"}
+                                                onClick={() => handleChartTypeChange('bar')}
+                                                className="h-20 flex flex-col gap-2 justify-center"
+                                            >
+                                                <BarChart3 size={24}/>
+                                                <span>Bar</span>
+                                            </Button>
+                                            <Button
+                                                variant={chartType === 'line' ? "default" : "outline"}
+                                                onClick={() => handleChartTypeChange('line')}
+                                                className="h-20 flex flex-col gap-2 justify-center"
+                                            >
+                                                <LineChart size={24}/>
+                                                <span>Line</span>
+                                            </Button>
+                                            <Button
+                                                variant={chartType === 'area' ? "default" : "outline"}
+                                                onClick={() => handleChartTypeChange('area')}
+                                                className="h-20 flex flex-col gap-2 justify-center"
+                                            >
+                                                <AreaChart size={24}/>
+                                                <span>Area</span>
+                                            </Button>
+                                            <Button
+                                                variant={chartType === 'pie' ? "default" : "outline"}
+                                                onClick={() => handleChartTypeChange('pie')}
+                                                className="h-20 flex flex-col gap-2 justify-center"
+                                            >
+                                                <PieChart size={24}/>
+                                                <span>Pie</span>
+                                            </Button>
+                                            <Button
+                                                variant={chartType === 'scatter' ? "default" : "outline"}
+                                                onClick={() => handleChartTypeChange('scatter')}
+                                                className="h-20 flex flex-col gap-2 justify-center"
+                                            >
+                                                <ScatterChart size={24}/>
+                                                <span>Scatter</span>
+                                            </Button>
+                                            <Button
+                                                variant={chartType === 'radar' ? "default" : "outline"}
+                                                onClick={() => handleChartTypeChange('radar')}
+                                                className="h-20 flex flex-col gap-2 justify-center"
+                                            >
+                                                <CircleDot size={24}/>
+                                                <span>Radar</span>
+                                            </Button>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                {/* Axis Configuration */}
+                                <Card>
+                                    <CardHeader className="pb-3">
+                                        <CardTitle>Axis Configuration</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <Label htmlFor="xAxis">X-Axis Field</Label>
+                                                <Select
+                                                    value={xAxisField}
+                                                    onValueChange={setXAxisField}
+                                                >
+                                                    <SelectTrigger id="xAxis">
+                                                        <SelectValue placeholder="Select X-Axis Field"/>
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {availableFields.map(field => (
+                                                            <SelectItem key={field} value={field}>{field}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+
+                                            <div>
+                                                <Label>Y-Axis Fields</Label>
+                                                <ScrollArea className="h-[150px] border rounded p-2">
+                                                    {availableFields.map(field => (
+                                                        <div key={field}
+                                                             className="flex items-center justify-between py-1">
+                                                            <span>{field}</span>
+                                                            <Switch
+                                                                checked={yAxisFields.includes(field)}
+                                                                onCheckedChange={() => handleToggleYAxisField(field)}
+                                                            />
+                                                        </div>
+                                                    ))}
+                                                </ScrollArea>
+                                            </div>
+
+                                            <div>
+                                                <Label htmlFor="displayUnits">Display Units</Label>
+                                                <Input
+                                                    id="displayUnits"
+                                                    value={displayUnits}
+                                                    onChange={e => setDisplayUnits(e.target.value)}
+                                                    placeholder="e.g. $, %, kg"
+                                                />
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+
+                            </div>
+                        )}
+
+                        {activeTab === 'style' && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Color Palette</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                        {chartConfig.cartesian?.colors?.map((color, index) => (
+                                            <div key={index} className="space-y-2">
+                                                <Label className="block text-center">{`Color ${index + 1}`}</Label>
+                                                <div
+                                                    className="w-full h-8 rounded cursor-pointer border"
+                                                    style={{backgroundColor: color}}
+                                                />
+                                                <HexColorPicker
+                                                    color={color}
+                                                    onChange={(newColor) => updateColor(index, newColor)}
+                                                    className="w-full"
+                                                />
+                                                <Input
+                                                    value={color}
+                                                    onChange={(e) => updateColor(index, e.target.value)}
+                                                    className="mt-2"
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
+                    </div>
+
+                    {/* Preview Panel */}
+                    <div className="w-1/3 border-l flex-shrink-0 p-4 flex flex-col">
+                        <h3 className="text-sm font-medium mb-3">Chart Preview</h3>
+                        <div className="flex-1 border rounded-md p-4 bg-gray-50 flex items-center justify-center">
+                            <ChartPreview
+                                type={chartType === 'bar' ? 'bar' :
+                                    chartType === 'line' ? 'line' :
+                                        chartType === 'pie' ? 'pie' :
+                                            chartType === 'scatter' ? 'scatter' :
+                                                chartType === 'area' ? 'line' : 'bar'}
+                                config={chartConfig}
+                                data={getPreviewData()}
+                                height={300}
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex justify-end gap-2 p-4 border-t">
+                    <Button variant="outline" onClick={() => toggleWidgetConfig(false)}>Cancel</Button>
+                    <Button onClick={handleSave}>Save Widget</Button>
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
 };
 
-export const WidgetConfigModal = () => {
-  const {
-    showWidgetConfig,
-    toggleWidgetConfig,
-    selectedReport,
-    chartType,
-    setChartType,
-    yAxisFields,
-    toggleYAxisField,
-    xAxisField,
-    setXAxisField,
-    displayUnits,
-    setDisplayUnits,
-    handleSaveWidget,
-    toggleReportSelector,
-    availableFields
-  } = useDashboard();
-  
-  const widgetConfigRef = useRef<HTMLDivElement>(null);
-
-  if (!showWidgetConfig || !selectedReport) return null;
-
-  // Sample data for chart preview
-  const previewData = generateSampleData(chartType);
-
-  return (
-    <div className="fixed inset-0 flex items-center justify-center z-50">
-      <div className="fixed inset-0 bg-black/30" onClick={() => toggleWidgetConfig(false)} />
-      <div className="bg-white rounded-lg w-full max-w-[1100px] shadow-xl relative" ref={widgetConfigRef}>
-        <div className="p-4 border-b">
-          <h2 className="text-xl font-semibold">Add Widget Config</h2>
-        </div>
-
-        <div className="flex">
-          {/* Left Panel - Configuration */}
-          <div className="w-1/2 border-r p-6">
-            <div className="space-y-2">
-              <div>
-                <label className="block text-sm mb-2">Report</label>
-                <div className="flex items-center justify-between p-2 border rounded bg-white">
-                  <span>{selectedReport.name}</span>
-                  <button
-                    onClick={() => {
-                      toggleWidgetConfig(false);
-                      toggleReportSelector(true);
-                    }}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 text-blue-600 rounded border-gray-300"
-                  />
-                  <span>Use chart settings from report</span>
-                  <button className="text-gray-400 hover:text-gray-600">
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                      <circle cx="12" cy="12" r="10" strokeWidth="2" />
-                      <path d="M12 16v-4M12 8h.01" strokeWidth="2" strokeLinecap="round" />
-                    </svg>
-                  </button>
-                </label>
-              </div>
-
-              <div>
-                <label className="block text-sm mb-2">Display As</label>
-                <div className="grid grid-cols-5 gap-2">
-                  {chartOptions.map((chart) => {
-                    const Icon = chart.icon;
-                    return (
-                      <button
-                        key={chart.type}
-                        onClick={() => setChartType(chart.type)}
-                        className={`flex flex-col items-center justify-center py-2 px-1 rounded border ${
-                          chartType === chart.type 
-                            ? 'border-blue-500 bg-blue-50' 
-                            : 'border-gray-200'
-                        }`}
-                      >
-                        <Icon
-                          size={18}
-                          className={`mb-1 ${
-                            chartType === chart.type 
-                              ? 'text-blue-500' 
-                              : 'text-gray-600'
-                          }`}
-                        />
-                        <span className="text-xs">{chart.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm mb-2">Y-Axis</label>
-                <div className="space-y-2">
-                  {yAxisFields.map((field) => (
-                    <div
-                      key={field}
-                      className="flex items-center justify-between p-2 border rounded bg-white"
-                    >
-                      <span className="text-sm">{field}</span>
-                      <button
-                        onClick={() => toggleYAxisField(field)}
-                        className="text-gray-400 hover:text-gray-600"
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    onClick={() => {
-                      const field = availableFields.find(f => !yAxisFields.includes(f));
-                      if (field) toggleYAxisField(field);
-                    }}
-                    className="flex items-center justify-center w-full p-2 border rounded text-gray-500 hover:bg-gray-50 text-sm"
-                  >
-                    <Plus size={16} className="mr-1" />
-                    Add Field
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm mb-2">X-Axis</label>
-                <select
-                  value={xAxisField || 'Record Count'}
-                  onChange={(e) => setXAxisField(e.target.value)}
-                  className="w-full p-2 border rounded text-sm"
-                >
-                  <option value="Record Count">Record Count</option>
-                  {availableFields.map((field) => (
-                    <option key={field} value={field}>{field}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm mb-2">Display Units</label>
-                <select
-                  value={displayUnits || 'shortened'}
-                  onChange={(e) => setDisplayUnits(e.target.value)}
-                  className="w-full p-2 border rounded text-sm"
-                >
-                  <option value="shortened">Shortened Number</option>
-                  <option value="currency">Currency</option>
-                  <option value="percentage">Percentage</option>
-                  <option value="decimal">Decimal</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Panel - Preview */}
-          <div className="w-1/2 p-6 bg-gray-50">
-            <div className="mb-3">
-              <h3 className="text-sm font-medium">Preview</h3>
-            </div>
-            <div className="bg-white rounded p-6 flex flex-col min-h-[400px] border shadow-sm">
-              <h2 className="text-base font-medium mb-4 text-center text-gray-700">{selectedReport.name}</h2>
-              <div className="flex-1 flex items-center justify-center">
-                <div className="w-full h-[300px]">
-                  <ChartPreview type={chartType} data={previewData} />
-                </div>
-              </div>
-              <div className="mt-4 text-center">
-                <a href="#" className="text-sm text-blue-600 hover:underline">
-                  View Report ({selectedReport.name})
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-4 border-t flex justify-end gap-2">
-          <button
-            onClick={() => toggleWidgetConfig(false)}
-            className="px-4 py-2 border rounded text-sm text-gray-700 hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSaveWidget}
-            className="px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
-          >
-            Add
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}; 
+export default WidgetConfigModal; 

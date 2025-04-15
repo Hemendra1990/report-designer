@@ -10,6 +10,7 @@ import {
   Legend,
   Sector
 } from 'recharts';
+import { PieChartConfig } from '@/types/dashboard';
 
 interface ChartData {
   labels: string[];
@@ -21,9 +22,10 @@ interface ChartData {
 
 interface DoughnutChartProps {
   data: ChartData;
+  config?: PieChartConfig;
 }
 
-export function DoughnutChart({ data }: DoughnutChartProps) {
+export function DoughnutChart({ data, config }: DoughnutChartProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   
   // Transform data into Recharts format
@@ -35,8 +37,41 @@ export function DoughnutChart({ data }: DoughnutChartProps) {
   // Modern vibrant color palette
   const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
   
+  // Apply configuration options or use defaults
+  const responsiveConfig = config?.responsive || {};
+  const tooltipConfig = config?.tooltip || {};
+  const legendConfig = config?.legend || {};
+  const margin = config?.margin || { top: 10, right: 10, bottom: 10, left: 10 };
+  
+  // Animation settings
+  const animationDuration = config?.animationDuration ?? 800;
+  const animationEasing = config?.animationEasing || 'ease-out';
+  const isAnimationActive = config?.isAnimationActive ?? true;
+  
+  // Pie chart specific settings
+  const innerRadius = config?.innerRadius ?? 70;
+  const outerRadius = config?.outerRadius ?? 90;
+  const paddingAngle = config?.paddingAngle ?? 3;
+  const startAngle = config?.startAngle ?? 0;
+  const endAngle = config?.endAngle ?? 360;
+  const cx = config?.cx ?? '50%';
+  const cy = config?.cy ?? '50%';
+  const dataKey = config?.dataKey ?? 'value';
+  const nameKey = config?.nameKey ?? 'name';
+  
+  // Handle activeIndex from config if set
+  const configActiveIndex = config?.activeIndex;
+  const activeShape = config?.activeShape;
+  
   // Custom tooltip formatter
   const CustomTooltip = ({ active, payload }: any) => {
+    if (tooltipConfig.customContent) {
+      if (typeof tooltipConfig.customContent === 'function') {
+        return tooltipConfig.customContent({ active, payload });
+      }
+      return tooltipConfig.customContent;
+    }
+    
     if (active && payload && payload.length) {
       return (
         <div className="bg-white p-3 border rounded-md shadow-md">
@@ -54,7 +89,7 @@ export function DoughnutChart({ data }: DoughnutChartProps) {
   };
   
   // Active shape renderer for hover effect
-  const renderActiveShape = (props: any) => {
+  const defaultRenderActiveShape = (props: any) => {
     const { 
       cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, percent, value 
     } = props;
@@ -94,28 +129,57 @@ export function DoughnutChart({ data }: DoughnutChartProps) {
   };
 
   const onPieEnter = (_: any, index: number) => {
-    setActiveIndex(index);
+    if (configActiveIndex === undefined) {
+      setActiveIndex(index);
+    }
   };
+
+  const onPieLeave = () => {
+    if (configActiveIndex === undefined) {
+      setActiveIndex(null);
+    }
+  };
+
+  // Determine the final active index
+  const finalActiveIndex = configActiveIndex !== undefined
+    ? configActiveIndex
+    : activeIndex !== null ? activeIndex : undefined;
+
+  // Determine the active shape renderer
+  const finalActiveShape = activeShape || defaultRenderActiveShape;
 
   return (
     <div className="w-full h-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
+      <ResponsiveContainer 
+        width={responsiveConfig.width || '100%'}
+        height={responsiveConfig.height || '100%'}
+        aspect={responsiveConfig.aspect}
+        minWidth={responsiveConfig.minWidth}
+        minHeight={responsiveConfig.minHeight}
+        maxHeight={responsiveConfig.maxHeight}
+        debounce={responsiveConfig.debounce}
+      >
+        <PieChart margin={margin}>
           <Pie
-            activeIndex={activeIndex !== null ? activeIndex : undefined}
-            activeShape={renderActiveShape}
+            activeIndex={finalActiveIndex}
+            activeShape={finalActiveShape}
             data={chartData}
-            cx="50%"
-            cy="50%"
-            innerRadius={70}
-            outerRadius={90}
-            paddingAngle={3}
-            dataKey="value"
+            cx={cx}
+            cy={cy}
+            innerRadius={innerRadius}
+            outerRadius={outerRadius}
+            paddingAngle={paddingAngle}
+            dataKey={dataKey}
+            nameKey={nameKey}
+            startAngle={startAngle}
+            endAngle={endAngle}
             onMouseEnter={onPieEnter}
-            onMouseLeave={() => setActiveIndex(null)}
-            animationDuration={800}
-            animationEasing="ease-out"
-            isAnimationActive
+            onMouseLeave={onPieLeave}
+            animationDuration={isAnimationActive ? animationDuration : 0}
+            animationEasing={animationEasing}
+            isAnimationActive={isAnimationActive}
+            label={config?.label}
+            labelLine={config?.labelLine}
           >
             {chartData.map((entry, index) => (
               <Cell 
@@ -126,12 +190,35 @@ export function DoughnutChart({ data }: DoughnutChartProps) {
               />
             ))}
           </Pie>
-          <Tooltip content={<CustomTooltip />} />
+          <Tooltip 
+            content={<CustomTooltip />}
+            position={tooltipConfig.position}
+            offset={tooltipConfig.offset}
+            allowEscapeViewBox={tooltipConfig.allowEscapeViewBox}
+            cursor={tooltipConfig.cursor}
+            active={tooltipConfig.active}
+            isAnimationActive={tooltipConfig.isAnimationActive ?? isAnimationActive}
+            animationDuration={tooltipConfig.animationDuration ?? animationDuration}
+            animationEasing={tooltipConfig.animationEasing ?? animationEasing}
+            formatter={tooltipConfig.formatter}
+            labelFormatter={tooltipConfig.labelFormatter}
+            contentStyle={tooltipConfig.contentStyle}
+            itemStyle={tooltipConfig.itemStyle}
+            labelStyle={tooltipConfig.labelStyle}
+            wrapperStyle={tooltipConfig.wrapperStyle}
+          />
           <Legend 
-            layout="horizontal" 
-            verticalAlign="bottom" 
-            align="center"
-            wrapperStyle={{ paddingTop: 20 }}
+            align={legendConfig.align || 'center'}
+            verticalAlign={legendConfig.verticalAlign || 'bottom'}
+            layout={legendConfig.layout || 'horizontal'}
+            iconSize={legendConfig.iconSize || 10}
+            iconType={legendConfig.iconType || 'circle'}
+            wrapperStyle={legendConfig.wrapperStyle || { paddingTop: 20 }}
+            formatter={legendConfig.formatter}
+            onClick={legendConfig.onClick}
+            onMouseEnter={legendConfig.onMouseEnter}
+            onMouseLeave={legendConfig.onMouseLeave}
+            content={legendConfig.content}
           />
         </PieChart>
       </ResponsiveContainer>

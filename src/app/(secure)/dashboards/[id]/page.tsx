@@ -5,7 +5,7 @@ import { DashboardProvider } from '@/contexts/DashboardContext';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { DashboardGrid } from '@/components/dashboard/DashboardGrid';
 import { ReportSelector } from '@/components/dashboard/ReportSelector';
-import { WidgetConfigModal } from '@/components/dashboard/WidgetConfigModal';
+import WidgetConfigModal from '@/components/dashboard/WidgetConfigModal';
 import { useDashboard } from '@/contexts/DashboardContext';
 import Todo from '@/components/Todo';
 
