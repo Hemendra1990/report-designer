@@ -1,4 +1,4 @@
-export type ChartType = 'bar' | 'line' | 'pie' | 'grouped-bar' | 'stacked-bar' | 'funnel' | 'scatter' | 'gauge' | 'metric' | 'table';
+export type ChartType = 'bar' | 'line' | 'pie' | 'grouped-bar' | 'stacked-bar' | 'funnel' | 'scatter' | 'gauge' | 'metric' | 'table' | 'doughnut';
 
 export interface Layout {
   i: string;

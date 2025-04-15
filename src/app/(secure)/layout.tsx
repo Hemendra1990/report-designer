@@ -6,6 +6,7 @@ import ClientQueryProviders from "@/contexts/query-client-provider";
 import { ReportTypeFormProvider } from "@/contexts/report-type-form-context";
 import ClientIdProviders from "@/contexts/client-id-provider";
 import { AuthProvider } from "@/contexts/auth-provider";
+import { TodoProvider } from "@/contexts/TodoContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -37,8 +38,10 @@ export default function RootLayout({
             <ClientIdProviders>
               <AuthProvider>
                 <ReportTypeFormProvider>
-                  <Navbar />
-                  <main>{children}</main>
+                  <TodoProvider>
+                    <Navbar />
+                    <main>{children}</main>
+                  </TodoProvider>
                 </ReportTypeFormProvider>
               </AuthProvider>
             </ClientIdProviders>
