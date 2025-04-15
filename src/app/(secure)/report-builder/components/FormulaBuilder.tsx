@@ -16,6 +16,7 @@ import FormulaFunctionsPanel from './formula/FormulaFunctionsPanel';
 import FormulaEditor from './formula/FormulaEditor';
 import FormulaSettings from './formula/FormulaSettings';
 import SqlPreview from './formula/SqlPreview';
+import {ApiReportField} from "@/app/(secure)/report-builder/services/api-types";
 
 // Define the types needed
 type Field = {
@@ -68,6 +69,7 @@ interface FormulaBuilderProps {
   };
   isSummaryFormula?: boolean;
   title?: string;
+  reportFields: ApiReportField[];
 }
 
 const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
@@ -84,7 +86,8 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
   onFormulaSearchTermChange,
   editFormulaColumn,
   isSummaryFormula = false,
-  title = "Add Formula"
+  title = "Add Formula",
+  reportFields
 }) => {
   // Local state
   const [formulaName, setFormulaName] = useState(editFormulaColumn?.name || "");
@@ -113,11 +116,11 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
 
   // Get all fields as a flat array
   const getAllFields = () => {
-    const fields: Field[] = [];
+    /*const fields: Field[] = [];
     Object.values(fieldsByCategory).forEach(categoryFields => {
       fields.push(...categoryFields);
-    });
-    return fields;
+    });*/
+    return reportFields;
   };
 
   // Handle form submission
@@ -319,9 +322,10 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
                     onFieldSelect={(field) => {
                       // Insert field at the current cursor position
                       setFormulaEditorValue(prev => {
-                        return prev + field.id;
+                        return prev + field.duckDBColumnName || field.columnName || field.id;
                       });
                     }}
+                    reportFields={reportFields}
                   />
                 ) : (
                   <FormulaFunctionsPanel 

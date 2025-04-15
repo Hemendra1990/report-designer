@@ -1669,6 +1669,7 @@ function ReportBuilderPage() {
           onSearchTermChange={setSearchTerm}
           onFormulaSearchTermChange={setFormulaSearchTerm}
           editFormulaColumn={editingFormulaColumn || undefined}
+          reportFields={reportFields}
         />
 
         {/* Summary Formula Builder */}
@@ -1690,6 +1691,7 @@ function ReportBuilderPage() {
           editFormulaColumn={editingSummaryFormula || undefined}
           isSummaryFormula={true}
           title="Summary Formula"
+          reportFields={reportFields}
         />
 
         {/* Filter Field Selector */}
