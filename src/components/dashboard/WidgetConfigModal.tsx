@@ -265,7 +265,7 @@ const WidgetConfigModal = ({
 
                 <div className="flex flex-1 overflow-hidden space-x-4">
                     {/* Left side - Configuration */}
-                    <div className="w-2/3 overflow-hidden flex flex-col">
+                    <div className="w-1/2 overflow-hidden flex flex-col">
                         <Tabs 
                             defaultValue="data" 
                             value={activeTab}
@@ -330,106 +330,106 @@ const WidgetConfigModal = ({
 
                                         <div className="space-y-1.5">
                                             <Label className="text-xs font-medium">Chart Type</Label>
-                                            <div className="grid grid-cols-5 gap-1.5">
+                                            <div className="grid grid-cols-10 gap-1">
                                                 <Button
                                                     type="button"
                                                     variant={chartConfig.type === 'bar' ? 'default' : 'outline'}
                                                     onClick={() => setChartConfig({...chartConfig, type: 'bar'})}
-                                                    className="flex flex-col items-center justify-center h-16 px-1 py-1"
+                                                    className="flex items-center justify-center h-10 w-10 p-2"
                                                     size="sm"
+                                                    title="Bar Chart"
                                                 >
-                                                    <BarChart3 className="h-3.5 w-3.5 mb-1" />
-                                                    <span className="text-[10px]">Bar</span>
+                                                    <BarChart3 className="h-5 w-5" />
                                                 </Button>
                                                 <Button
                                                     type="button"
                                                     variant={chartConfig.type === 'line' ? 'default' : 'outline'}
                                                     onClick={() => setChartConfig({...chartConfig, type: 'line'})}
-                                                    className="flex flex-col items-center justify-center h-16 px-1 py-1"
+                                                    className="flex items-center justify-center h-10 w-10 p-2"
                                                     size="sm"
+                                                    title="Line Chart"
                                                 >
-                                                    <LineChart className="h-3.5 w-3.5 mb-1" />
-                                                    <span className="text-[10px]">Line</span>
+                                                    <LineChart className="h-5 w-5" />
                                                 </Button>
                                                 <Button
                                                     type="button"
                                                     variant={chartConfig.type === 'pie' ? 'default' : 'outline'}
                                                     onClick={() => setChartConfig({...chartConfig, type: 'pie'})}
-                                                    className="flex flex-col items-center justify-center h-16 px-1 py-1"
+                                                    className="flex items-center justify-center h-10 w-10 p-2"
                                                     size="sm"
+                                                    title="Pie Chart"
                                                 >
-                                                    <PieChart className="h-3.5 w-3.5 mb-1" />
-                                                    <span className="text-[10px]">Pie</span>
+                                                    <PieChart className="h-5 w-5" />
                                                 </Button>
                                                 <Button
                                                     type="button"
                                                     variant={chartConfig.type === 'doughnut' ? 'default' : 'outline'}
                                                     onClick={() => setChartConfig({...chartConfig, type: 'doughnut'})}
-                                                    className="flex flex-col items-center justify-center h-16 px-1 py-1"
+                                                    className="flex items-center justify-center h-10 w-10 p-2"
                                                     size="sm"
+                                                    title="Doughnut Chart"
                                                 >
-                                                    <Donut className="h-3.5 w-3.5 mb-1" />
-                                                    <span className="text-[10px]">Doughnut</span>
+                                                    <Donut className="h-5 w-5" />
                                                 </Button>
                                                 <Button
                                                     type="button"
                                                     variant={chartConfig.type === 'area' ? 'default' : 'outline'}
                                                     onClick={() => setChartConfig({...chartConfig, type: 'area'})}
-                                                    className="flex flex-col items-center justify-center h-16 px-1 py-1"
+                                                    className="flex items-center justify-center h-10 w-10 p-2"
                                                     size="sm"
+                                                    title="Area Chart"
                                                 >
-                                                    <ChartArea className="h-3.5 w-3.5 mb-1" />
-                                                    <span className="text-[10px]">Area</span>
+                                                    <ChartArea className="h-5 w-5" />
                                                 </Button>
                                                 <Button
                                                     type="button"
                                                     variant={chartConfig.type === 'scatter' ? 'default' : 'outline'}
                                                     onClick={() => setChartConfig({...chartConfig, type: 'scatter'})}
-                                                    className="flex flex-col items-center justify-center h-16 px-1 py-1"
+                                                    className="flex items-center justify-center h-10 w-10 p-2"
                                                     size="sm"
+                                                    title="Scatter Chart"
                                                 >
-                                                    <ScatterChart className="h-3.5 w-3.5 mb-1" />
-                                                    <span className="text-[10px]">Scatter</span>
+                                                    <ScatterChart className="h-5 w-5" />
                                                 </Button>
                                                 <Button
                                                     type="button"
                                                     variant={chartConfig.type === 'radar' ? 'default' : 'outline'}
                                                     onClick={() => setChartConfig({...chartConfig, type: 'radar'})}
-                                                    className="flex flex-col items-center justify-center h-16 px-1 py-1"
+                                                    className="flex items-center justify-center h-10 w-10 p-2"
                                                     size="sm"
+                                                    title="Radar Chart"
                                                 >
-                                                    <CircleDot className="h-3.5 w-3.5 mb-1" />
-                                                    <span className="text-[10px]">Radar</span>
+                                                    <CircleDot className="h-5 w-5" />
                                                 </Button>
                                                 <Button
                                                     type="button"
                                                     variant={chartConfig.type === 'radialBar' ? 'default' : 'outline'}
                                                     onClick={() => setChartConfig({...chartConfig, type: 'radialBar'})}
-                                                    className="flex flex-col items-center justify-center h-16 px-1 py-1"
+                                                    className="flex items-center justify-center h-10 w-10 p-2"
                                                     size="sm"
+                                                    title="Radial Bar Chart"
                                                 >
-                                                    <Gauge className="h-3.5 w-3.5 mb-1" />
-                                                    <span className="text-[10px]">Radial</span>
+                                                    <Gauge className="h-5 w-5" />
                                                 </Button>
                                                 <Button
                                                     type="button"
                                                     variant={chartConfig.type === 'grid' ? 'default' : 'outline'}
                                                     onClick={() => setChartConfig({...chartConfig, type: 'grid'})}
-                                                    className="flex flex-col items-center justify-center h-16 px-1 py-1"
+                                                    className="flex items-center justify-center h-10 w-10 p-2"
                                                     size="sm"
+                                                    title="Grid/Table"
                                                 >
-                                                    <Grid3x3 className="h-3.5 w-3.5 mb-1" />
-                                                    <span className="text-[10px]">Grid</span>
+                                                    <Grid3x3 className="h-5 w-5" />
                                                 </Button>
                                                 <Button
                                                     type="button"
                                                     variant={chartConfig.type === 'funnel' ? 'default' : 'outline'}
                                                     onClick={() => setChartConfig({...chartConfig, type: 'funnel'})}
-                                                    className="flex flex-col items-center justify-center h-16 px-1 py-1"
+                                                    className="flex items-center justify-center h-10 w-10 p-2"
                                                     size="sm"
+                                                    title="Funnel Chart"
                                                 >
-                                                    <Funnel className="h-3.5 w-3.5 mb-1" />
-                                                    <span className="text-[10px]">Funnel</span>
+                                                    <Funnel className="h-5 w-5" />
                                                 </Button>
                                             </div>
                                         </div>
@@ -665,7 +665,7 @@ const WidgetConfigModal = ({
                     </div>
 
                     {/* Right side - Preview */}
-                    <div className="w-1/3">
+                    <div className="w-1/2 h-[50vh]">
                         <Card className="h-full flex flex-col overflow-hidden">
                             <CardHeader className="py-2">
                                 <CardTitle className="text-xs font-medium">Chart Preview</CardTitle>
