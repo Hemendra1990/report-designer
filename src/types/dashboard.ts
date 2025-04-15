@@ -1,6 +1,6 @@
 export type LayoutSize = 'sm' | 'md' | 'lg' | 'xl';
 
-export type ChartType = 'bar' | 'line' | 'area' | 'pie' | 'radar' | 'scatter';
+export type ChartType = 'bar' | 'line' | 'area' | 'pie' | 'radar' | 'scatter' | 'doughnut' | 'funnel' | 'radialBar' | 'grid';
 
 export interface Layout {
   i: string;

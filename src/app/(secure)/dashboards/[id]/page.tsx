@@ -8,6 +8,7 @@ import { ReportSelector } from '@/components/dashboard/ReportSelector';
 import WidgetConfigModal from '@/components/dashboard/WidgetConfigModal';
 import { useDashboard } from '@/contexts/DashboardContext';
 import Todo from '@/components/Todo';
+import { reports } from '@/services/chartService';
 
 // Main content component of the dashboard
 function DashboardContent() {
@@ -17,7 +18,9 @@ function DashboardContent() {
     handleRemoveWidget, 
     isPreviewMode, 
     setCurrentBreakpoint,
-    handleWidgetContentChange
+    handleWidgetContentChange,
+    showWidgetConfig,
+    toggleWidgetConfig
   } = useDashboard();
   
   const [activeTab, setActiveTab] = useState<'dashboard' | 'todo'>('dashboard');
@@ -77,7 +80,11 @@ function DashboardContent() {
 
       {/* Modals */}
       <ReportSelector />
-      <WidgetConfigModal />
+      <WidgetConfigModal 
+        isOpen={showWidgetConfig}
+        onClose={() => toggleWidgetConfig(false)}
+        reports={reports}
+      />
     </>
   );
 }
