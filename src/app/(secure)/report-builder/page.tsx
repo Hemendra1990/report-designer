@@ -36,7 +36,7 @@ import {useReportTypeById} from "@/hooks/report-type-hook";
 import {executeQuery, executeQueryOnDuckDB} from "@/services/crm/dml-service";
 import {buildSqlQuery} from "@/app/(secure)/report-builder/util/SqlQueryBuilder";
 import {useCreatereport, useReportById, useUpdatereport} from "@/hooks/report-hook";
-import { generateReportPayload } from "@/helper/report/report-helper";
+import { generateFilterJson, generateReportPayload } from "@/helper/report/report-helper";
 import ToastMessage from "../report-types/summary/summary-helper";
 
 
@@ -101,11 +101,16 @@ function ReportBuilderPage() {
 
   useEffect(() => {
     if (reportResponse?.data) {
-      console.log('Report data:', reportResponse.data);
       setSelectedReportTypeId(reportResponse?.data?.reportType?.id);
       setSelectedColumns(reportResponse?.data?.columns as any || []);
     }
   }, [reportResponse.data])
+
+  useEffect(() => {
+    if (reportResponse.data && reportFields?.length) {
+      setFilters(generateFilterJson(reportResponse?.data?.filters, reportFields));
+    }
+  }, [reportResponse.data, reportFields])
 
   useEffect(() => {
     if (reportTypeResponse?.data) {
