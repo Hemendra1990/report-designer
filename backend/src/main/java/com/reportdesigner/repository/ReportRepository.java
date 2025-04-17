@@ -12,8 +12,11 @@ import java.util.List;
 public interface ReportRepository extends JpaRepository<Report, String> {
     @Query("""
         SELECT new com.reportdesigner.dto.ReportDTO(
-            r.id, r.name, r.label, r.reportType.name, r.reportType.primaryTable, r.reportType.usedTables)
+            r.id, r.name, r.label, r.reportType.name, r.reportType.primaryTable, r.reportType.usedTables,r.createdOn,r.updatedOn)
         FROM Report r
     """)
     List<ReportDTO> findBasicDetails();
+
+    boolean existsByNameAndIdNot(String name, String id);
+    boolean existsByName(String name);
 }

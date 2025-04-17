@@ -44,7 +44,7 @@ function buildPivotSqlQueries(selectedColumns: Field[], groupByFields: string[],
     const sqlColumnName = column?.duckDBColumnName || column?.columnName || id;
     const displayName = column?.duckDBColumnDisplayName || column?.columnDisplayName || column?.name || id;
     // sql += `    ${column.duckDBColumnName}${index < allNeededColumns.length - 1 ? ',' : ''}\n`;
-    sql += `    ${sqlColumnName} as "${displayName}"${index < allNeededColumns.length - 1 ? ',' : ''}\n`;
+    sql += `    ${sqlColumnName}${index < allNeededColumns.length - 1 ? ',' : ''}\n`;
   });
 
   // FROM clause
@@ -73,18 +73,18 @@ function buildPivotSqlQueries(selectedColumns: Field[], groupByFields: string[],
  * Builds a valid DuckDB SQL query based on the report configuration
  */
 export function buildSqlQuery(options: {
-  selectedReportType: ReportTypeTemplate;
+  selectedReportType?: ReportTypeTemplate;
   reportType: string;
   selectedColumns: (Field | FormulaColumn)[];
   groupByFields: string[];
   filters: Filter[];
   filterLogic: "and" | "or" | "custom";
   customFilterFormula: string;
-  isPivotActive: boolean;
-  pivotColumnIds: string[];
-  pivotValues: string[];
-  selectedAggregations: Record<string, string>;
-  cteQuery: any
+  isPivotActive?: boolean;
+  pivotColumnIds?: string[];
+  pivotValues?: string[];
+  selectedAggregations?: Record<string, string>;
+  cteQuery?: any
 }): string {
   const {
     selectedReportType,
@@ -101,6 +101,15 @@ export function buildSqlQuery(options: {
     cteQuery
   } = options;
   
+  // Debug the grouping fields and columns
+  console.log('SQL Builder - Group By Fields:', groupByFields);
+  console.log('SQL Builder - Selected Columns:', selectedColumns.map(col => ({
+    id: col.id,
+    duckDBColumnName: col.duckDBColumnName,
+    columnName: col.columnName,
+    name: col.name
+  })));
+  
   // Check if we're building a pivot query
   if (isPivotActive && pivotColumnIds && pivotColumnIds.length > 0 && pivotValues && pivotValues.length > 0) {
     const sql = buildPivotSqlQueries(selectedColumns, groupByFields, pivotColumnIds, pivotValues, reportType,
@@ -113,9 +122,13 @@ export function buildSqlQuery(options: {
   const filteredColumns = selectedColumns.filter(column => 
     !('isSummaryFormula' in column && column.isSummaryFormula === true)
   );
+
+  const filteredColumnsForSummary = selectedColumns.filter(column => 
+    ('isSummaryFormula' in column && column.isSummaryFormula === true)
+  );
   
   // Generate the SELECT clause
-  const selectClause = generateSelectClause(filteredColumns, groupByFields);
+  const selectClause = generateSelectClause(filteredColumns, filteredColumnsForSummary, groupByFields);
   
   // Generate the FROM clause
   const fromClause = `FROM ${selectedReportType.name}`;
@@ -127,7 +140,16 @@ export function buildSqlQuery(options: {
   
   // Generate the GROUP BY clause if there are group by fields
   const groupByClause = groupByFields.length > 0
-    ? `GROUP BY ${groupByFields.join(', ')}`
+    ? `GROUP BY ${groupByFields.map(fieldId => {
+        // Find the corresponding column to get the correct column name
+        const column = selectedColumns.find(col => 
+          col.id === fieldId || 
+          col.duckDBColumnName === fieldId || 
+          col.columnName === fieldId
+        );
+        // Use the appropriate column name
+        return column ? (column.duckDBColumnName || column.columnName || fieldId) : fieldId;
+      }).join(', ')}`
     : '';
   
   // Combine all clauses into the final SQL query
@@ -149,124 +171,106 @@ export function buildSqlQuery(options: {
 /**
  * Generates the SELECT clause based on selected columns and group by fields
  */
-function generateSelectClause(selectedColumns: Field[], groupByFields: string[]): string {
-  // Skip summary formula fields - these should already be filtered out, but this is a safeguard
-  const columnsToInclude = selectedColumns.filter(column => 
-    !('isSummaryFormula' in column && column.isSummaryFormula === true)
+function generateSelectClause(selectedColumns: Field[], filteredColumnsForSummary: Field[], groupByFields: string[]): string {
+  // Filter out summary formulas from selectedColumns
+  const columnsToInclude = selectedColumns.filter(
+    column => !('isSummaryFormula' in column && column.isSummaryFormula === true)
   );
-  
-  // Early return if no columns are left after filtering
-  if (columnsToInclude.length === 0) {
-    return '  1 as dummy_column'; // Fallback to ensure valid SQL
+  const columnsToIncludeSummaryFormula = filteredColumnsForSummary;
+  if (columnsToInclude.length === 0 && columnsToIncludeSummaryFormula.length === 0) {
+    return '  1 as dummy_column';
   }
-  
-  // Create a field map for formula translation that includes ALL available fields
-  // This ensures formulas can reference fields not in the current selection
+
   const fieldMap: Record<string, string> = {};
-  
-  // First add all available fields from the system
-  /*accountFields.forEach(field => {
-    fieldMap[field.id] = field.id;
-  });*/
 
   selectedColumns.forEach(field => {
-    fieldMap[field.id] = field.duckDBColumnName;
+    fieldMap[field.duckDBColumnName] = field.duckDBColumnName;
   });
-  
-  // Then add any custom fields from the selected columns that might not be in selectedColumns
+
   columnsToInclude.forEach(column => {
-    if (!fieldMap[column.id]) {
-      fieldMap[column.id] = column.duckDBColumnName;
+    if (!fieldMap[column.duckDBColumnName]) {
+      fieldMap[column.duckDBColumnName] = column.duckDBColumnName;
     }
   });
 
-  // If no grouping fields are specified, just return all columns without aggregation
-  if (groupByFields.length === 0) {
-    return columnsToInclude.map(column => {
-      // Check if this is a formula column
-      if ('isFormula' in column && column.isFormula) {
-        // For formula columns, use the translated SQL expression instead of raw formula
-        const formulaCol = column as any; // Type assertion to access formula properties
-        try {
-          // Translate the formula to SQL
-          return `  ${translateFormulaToDuckDBSQL(formulaCol.formula, fieldMap, formulaCol.alias)}`;
-        } catch (error) {
-          console.error(`Error translating formula "${formulaCol.formula}":`, error);
-          // Fallback: return the formula as-is with the alias
-          return `  '${formulaCol.formula}' AS ${formulaCol.alias}`;
-        }
-      }
-      // Regular column, just use the ID
-      return `  ${column.duckDBColumnName}`;
-    }).join(',\n');
-  }
+  // Helper for rendering formula fields
+  const renderFormulaColumn = (column: any): string => {
+    try {
+      // Check if it's already a valid formula like MAX(x), AVG(x), etc.
+      const trimmedFormula = column.formula?.trim();
 
-  // Otherwise, apply appropriate aggregation based on whether the column is in the GROUP BY
-  // First, get all columns that are in the GROUP BY clause
-  const groupedColumns = columnsToInclude.filter(column => groupByFields.includes(column.id));
-  
-  // Then, get all columns that are NOT in the GROUP BY clause
-  const nonGroupedColumns = columnsToInclude.filter(column => !groupByFields.includes(column.id));
-  
-  // Generate the SELECT clause with grouped columns first, then non-grouped columns with aggregation
-  const groupedPart = groupedColumns.map(column => {
-    // Check if this is a formula column
-    if ('isFormula' in column && column.isFormula) {
-      const formulaCol = column as any; // Type assertion to access formula properties
-      try {
-        // Translate the formula to SQL
-        return `  ${translateFormulaToDuckDBSQL(formulaCol.formula, fieldMap, formulaCol.alias)}`;
-      } catch (error) {
-        console.error(`Error translating formula "${formulaCol.formula}":`, error);
-        // Fallback: return the formula as-is with the alias
-        return `  '${formulaCol.formula}' AS ${formulaCol.alias}`;
+      // Basic safe fallback for alias
+      const alias = column.alias || column.id || 'formula_column';
+
+      // If the formula looks like MAX(...), AVG(...), MIN(...), SUM(...), COUNT(...)
+      if (/^(MAX|MIN|AVG|SUM|COUNT)\s*\(.*\)$/i.test(trimmedFormula)) {
+        return `  ${trimmedFormula} AS ${alias}`;
       }
+
+      // Otherwise, try translating it using your custom function
+      const sqlExpr = translateFormulaToDuckDBSQL(column.formula, fieldMap, alias);
+      return `  ${sqlExpr}`;
+    } catch (error) {
+      console.error(`Error parsing formula "${column.formula}":`, error);
+      return `  ${column.formula} AS ${column.alias}`;
+    }
+  };
+  // If there's no GROUP BY
+  if (groupByFields.length === 0) {
+    const regularColumns = columnsToInclude.map(column => {
+      if ('isFormula' in column && column.isFormula) {
+        return renderFormulaColumn(column);
+      }
+      return `  ${column.duckDBColumnName}`;
+    });
+
+    const summaryColumns = columnsToIncludeSummaryFormula.map(column => renderFormulaColumn(column));
+
+    return [...regularColumns, ...summaryColumns].join(',\n');
+  }
+  // With GROUP BY
+  const groupedColumns = columnsToInclude.filter(column =>
+    groupByFields.includes(column.id) ||
+    groupByFields.includes(column.duckDBColumnName || '') ||
+    groupByFields.includes(column.columnName || '')
+  );
+
+  const nonGroupedColumns = columnsToInclude.filter(column =>
+    !groupByFields.includes(column.id) &&
+    !groupByFields.includes(column.duckDBColumnName || '') &&
+    !groupByFields.includes(column.columnName || '')
+  );
+
+  const groupedPart = groupedColumns.map(column => {
+    if ('isFormula' in column && column.isFormula) {
+      return renderFormulaColumn(column);
     }
     return `  ${column.duckDBColumnName}`;
   });
-  
-  const nonGroupedPart = nonGroupedColumns.map(column => {
-    // Check if this is a formula column
-    if ('isFormula' in column && column.isFormula) {
-      const formulaCol = column as any; // Type assertion to access formula properties
-      
-      // For formula columns, we'll still apply aggregation but use the translated SQL expression
-      let aggregateFunction = 'COUNT';
-      
-      if (formulaCol.type === 'number' || formulaCol.type === 'currency') {
-        aggregateFunction = 'SUM';
-      } else if (formulaCol.type === 'datetime' || formulaCol.type === 'date') {
-        aggregateFunction = 'MAX';
-      }
 
-      try {
-        // Translate the formula without an alias, as we'll add the aggregation suffix
-        const translatedFormula = translateFormulaToDuckDBSQL(formulaCol.formula, fieldMap);
-        return `  ${aggregateFunction}(${translatedFormula}) AS ${formulaCol.alias}_${aggregateFunction.toLowerCase()}`;
-      } catch (error) {
-        console.error(`Error translating formula "${formulaCol.formula}":`, error);
-        // Fallback: use a placeholder
-        return `  NULL AS ${formulaCol.alias}_${aggregateFunction.toLowerCase()}`;
-      }
-    }
-    
-    // Regular column with aggregation
+  const nonGroupedPart = nonGroupedColumns.map(column => {
     const columnId = column.duckDBColumnName;
-    
-    // Apply an appropriate aggregate function based on the column type
     let aggregateFunction = 'COUNT';
-    
+
     if (column.type === 'number' || column.type === 'currency') {
       aggregateFunction = 'SUM';
     } else if (column.type === 'datetime' || column.type === 'date') {
       aggregateFunction = 'MAX';
     }
-    
+
+    if ('isFormula' in column && column.isFormula) {
+      try {
+        const expr = translateFormulaToDuckDBSQL((column as any).formula, fieldMap);
+        return `  ${aggregateFunction}(${expr}) AS ${(column as any).alias}_${aggregateFunction.toLowerCase()}`;
+      } catch (error) {
+        console.error(`Error translating formula "${(column as any).formula}":`, error);
+        return `  NULL AS ${(column as any).alias}_${aggregateFunction.toLowerCase()}`;
+      }
+    }
     return `  ${aggregateFunction}(${columnId}) AS ${columnId}_${aggregateFunction.toLowerCase()}`;
   });
-  
-  // Combine the parts and return
-  return [...groupedPart, ...nonGroupedPart].join(',\n');
+  const summaryPart = columnsToIncludeSummaryFormula.map(column => renderFormulaColumn(column));
+  return [...groupedPart, ...nonGroupedPart, ...summaryPart].join(',\n');
 }
 
 /**

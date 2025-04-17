@@ -30,6 +30,8 @@ public class ReportMapper implements BaseMapper<ReportDTO, Report> {
                 .description(entity.getDescription())
                 .sqlQuery(entity.getSqlQuery())
                 .sqlQueryWithGrouping(entity.getSqlQueryWithGrouping())
+                .createdOn(entity.getCreatedOn())
+                .updatedOn(entity.getUpdatedOn())
                 .columns(columnMapper.toDtoList(entity.getColumns()))
                 .groups(groupMapper.toDtoList(entity.getGroups()))
                 .filters(filterMapper.toDtoList(entity.getFilters()))

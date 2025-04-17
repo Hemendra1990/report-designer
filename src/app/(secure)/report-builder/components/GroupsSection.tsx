@@ -6,7 +6,7 @@ import {GroupingState} from "@tanstack/react-table";
 import {Field, FormulaColumn} from "@/app/(secure)/report-builder/model/Field";
 
 interface GroupsSectionProps {
-  selectedColumns: Array<Field | FormulaColumn>;
+  selectedColumns: (Field | FormulaColumn | any)[];
   groupSearchTerm: string;
   setGroupSearchTerm: (value: string) => void;
   showGroupDropdown: boolean;
@@ -81,12 +81,21 @@ const GroupsSection: React.FC<GroupsSectionProps> = ({
                 .filter(col =>
                   !groupSearchTerm.trim() || col.name.toLowerCase().includes(groupSearchTerm.toLowerCase())
                 )
-                .map(column => (
+                .map((column, columnIndex) => (
                   <div
-                    key={column.id}
+                    key={columnIndex}
                     className="px-3 py-2 hover:bg-accent cursor-pointer flex items-center gap-2 text-sm"
                     onClick={() => {
-                      setSelectedGroup(column.id);
+                      // Debug the column being selected
+                      console.log('Selected column for grouping:', {
+                        id: column.id,
+                        duckDBColumnName: column.duckDBColumnName,
+                        columnName: column.columnName,
+                        name: column.name
+                      });
+                      // Use duckDBColumnName as the identifier for grouping
+                      const columnId = column.duckDBColumnName || column.columnName || column.id;
+                      setSelectedGroup(columnId);
                       setGroupSearchTerm(column.name);
                       setShowGroupDropdown(false);
                       handleGroupBy(column);
@@ -111,17 +120,36 @@ const GroupsSection: React.FC<GroupsSectionProps> = ({
       {grouping.length > 0 && (
         <div className="mt-2 space-y-2">
           {grouping.map((groupId, index) => {
-            const groupColumn = selectedColumns.find(col => col.duckDBColumnName === groupId);
-            if (!groupColumn) return null;
+            console.log('Looking for group column with ID:', groupId);
+            // Look for columns based on multiple properties to handle any ID format
+            const groupColumn = selectedColumns.find(col => 
+              col.id === groupId || col.duckDBColumnName === groupId || col.columnName === groupId
+            );
+            
+            if (!groupColumn) {
+              console.error('Could not find column for group ID:', groupId);
+              return null;
+            }
+            
+            console.log('Found group column:', {
+              id: groupColumn.id,
+              duckDBColumnName: groupColumn.duckDBColumnName,
+              columnName: groupColumn.columnName,
+              name: groupColumn.name,
+              groupId
+            });
+            
             return (
               <div key={groupId} className="bg-accent/50 border rounded-md p-2 text-sm flex justify-between items-center">
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{groupColumn.name}</span>
                   <span className="text-muted-foreground">Ascending</span>
+                  {/* Add debug info - can remove this later */}
+                  <span className="text-xs text-red-500 hidden">{`ID: ${groupId}`}</span>
                 </div>
                 <button
                   onClick={() => {
-                    handleGroupBy(groupId);
+                    handleGroupBy(groupColumn);
                   }}
                   className="text-muted-foreground hover:text-foreground"
                 >

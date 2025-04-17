@@ -1,20 +1,16 @@
 import React from 'react';
 import { ChevronDownIcon } from "@/components/icons";
+import {ApiReportField} from "@/app/(secure)/report-builder/services/api-types";
+import { Field } from '../../model/Field';
 
-type Field = {
-  id: string;
-  name: string;
-  type: string;
-  category: string;
-  icon: React.ReactNode;
-};
 
 interface FormulaFieldsPanelProps {
   fieldsByCategory: Record<string, Field[]>;
   expandedCategories: Record<string, boolean>;
   toggleCategory: (category: string) => void;
   searchTerm: string;
-  onFieldSelect: (field: Field) => void;
+  onFieldSelect: (field: ApiReportField) => void;
+  reportFields: ApiReportField[];
 }
 
 const FormulaFieldsPanel: React.FC<FormulaFieldsPanelProps> = ({
@@ -22,7 +18,8 @@ const FormulaFieldsPanel: React.FC<FormulaFieldsPanelProps> = ({
   expandedCategories,
   toggleCategory,
   searchTerm,
-  onFieldSelect
+  onFieldSelect,
+  reportFields
 }) => {
   return (
     <div>
@@ -43,12 +40,12 @@ const FormulaFieldsPanel: React.FC<FormulaFieldsPanelProps> = ({
 
           {expandedCategories[category] && (
             <div className="pl-1.5">
-              {fields
-                .filter(field =>
+              {reportFields
+                .filter((field:ApiReportField) =>
                   !searchTerm.trim() ||
-                  field.name.toLowerCase().includes(searchTerm.toLowerCase())
+                  field.columnDisplayName.toLowerCase().includes(searchTerm.toLowerCase())
                 )
-                .map(field => (
+                .map((field: ApiReportField )=> (
                   <div
                     key={field.id}
                     className="pl-1.5 pr-2 py-1 text-xs hover:bg-blue-50 flex items-center justify-between cursor-pointer"
@@ -60,9 +57,9 @@ const FormulaFieldsPanel: React.FC<FormulaFieldsPanelProps> = ({
                           ? 'bg-purple-100 text-purple-700' 
                           : 'bg-indigo-100 text-indigo-700'
                       }`}>
-                        {field.icon}
+                        {field.columnDisplayName.charAt(0).toUpperCase()}
                       </span>
-                      <span className="truncate">{field.name}</span>
+                      <span className="truncate">{field.columnDisplayName}</span>
                     </div>
                   </div>
                 ))}

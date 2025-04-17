@@ -1,9 +1,8 @@
-"use client";
+'use client';
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useReportTypeFormContext } from "@/contexts/report-type-form-context";
@@ -15,13 +14,7 @@ interface SelectRelationshipsFormProps {
 }
 
 export default function SelectRelationshipsForm(props: SelectRelationshipsFormProps) {
-  console.log("Create SelectRelationshipsForm page form------------------------");
-  /* const searchParams = useSearchParams();
-  const reportType = searchParams.get("type") || "";
-  const primaryObject = searchParams.get("object") || "";
-  const displayLabel = searchParams.get("label") || "";
-  const apiName = searchParams.get("api") || "";
-  const description = searchParams.get("desc") || ""; */
+
   const [relatedObjects, setRelatedObjects] = useState<string[]>([]);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 

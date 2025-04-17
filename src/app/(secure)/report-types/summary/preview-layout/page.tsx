@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
@@ -100,7 +100,14 @@ interface RelatedObject {
   parentId: string | null;
 }
 
-export default function PreviewLayout() {
+export default function PreviewLayoutPage() {
+  return <Suspense fallback={<div>Loading...</div>}>
+    <PreviewLayout />
+  </Suspense>
+}
+
+
+function PreviewLayout() {
   const searchParams = useSearchParams();
   const reportType = searchParams.get("type") || "tabular";
   const primaryObjectId = searchParams.get("object") || "account";

@@ -19,7 +19,7 @@ const data = [
   { name: 'Jun 2024', visitors: 72100 },
 ];
 
-export function LineChart() {
+export function LineChart({ data, config }) {
   return (
     <ResponsiveContainer width="100%" height={300}>
       <RechartsLineChart data={data}>

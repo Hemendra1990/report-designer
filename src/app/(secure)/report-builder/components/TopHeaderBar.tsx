@@ -1,12 +1,12 @@
-import React, {useState} from 'react';
-import {Button} from "@/components/ui/button";
-import {AccountIcon, NavigationIcon} from "@/components/icons/ReportIcons";
-import {PrintIcon} from "@/components/icons";
+import React, { useState } from 'react';
+import { Button } from "@/components/ui/button";
+import { AccountIcon, NavigationIcon } from "@/components/icons/ReportIcons";
+import { PrintIcon } from "@/components/icons";
 import SaveReportModal from './SaveReportModal';
-import {Field} from '../model/Field';
-import {Filter} from '../model/Filter';
-import {buildSqlQuery} from '../util/SqlQueryBuilder';
-import {ReportTypeTemplate} from "@/app/(secure)/report-builder/model/ReportType";
+import { Field } from '../model/Field';
+import { Filter } from '../model/Filter';
+import { buildSqlQuery } from '../util/SqlQueryBuilder';
+import { ReportTypeTemplate } from "@/app/(secure)/report-builder/model/ReportType";
 
 interface TopHeaderBarProps {
     reportName?: string,
@@ -31,26 +31,26 @@ interface TopHeaderBarProps {
 }
 
 const TopHeaderBar: React.FC<TopHeaderBarProps> = ({
-                                                       reportName = "New Accounts Report",
-                                                       reportType = "Accounts",
-                                                       showShortcuts,
-                                                       onToggleShortcuts,
-                                                       onRun,
-                                                       onClose,
-                                                       selectedColumns,
-                                                       groupByFields,
-                                                       filters,
-                                                       filterLogic,
-                                                       customFilterFormula,
-                                                       isPivotActive = false,
-                                                       pivotColumnIds = [],
-                                                       pivotValues = [],
-                                                       selectedAggregations = {},
-                                                       generateReportSQL,
-                                                       onSaveReport,
-                                                       selectedReportType,
-                                                       reportTypeResponse
-                                                   }) => {
+    reportName,
+    reportType,
+    showShortcuts,
+    onToggleShortcuts,
+    onRun,
+    onClose,
+    selectedColumns,
+    groupByFields,
+    filters,
+    filterLogic,
+    customFilterFormula,
+    isPivotActive = false,
+    pivotColumnIds = [],
+    pivotValues = [],
+    selectedAggregations = {},
+    generateReportSQL,
+    onSaveReport,
+    selectedReportType,
+    reportTypeResponse
+}) => {
     const [saveModalOpen, setSaveModalOpen] = useState(false);
     const [generatedSql, setGeneratedSql] = useState('');
 
@@ -95,7 +95,7 @@ const TopHeaderBar: React.FC<TopHeaderBarProps> = ({
                     </div>
                     <div
                         className="bg-white text-gray-700 px-3 py-1 rounded-full text-sm border border-gray-300 flex items-center gap-1">
-                        <AccountIcon size={14}/>
+                        <AccountIcon size={14} />
                         <span>{reportType}</span>
                     </div>
                 </div>
@@ -117,10 +117,10 @@ const TopHeaderBar: React.FC<TopHeaderBarProps> = ({
                     </div>
 
                     <Button variant="outline" size="sm" className="flex items-center gap-1">
-                        <NavigationIcon size={16}/>
+                        <NavigationIcon size={16} />
                     </Button>
                     <Button variant="outline" size="sm" className="text-gray-400 bg-gray-100">
-                        <PrintIcon size={16}/>
+                        <PrintIcon size={16} />
                     </Button>
                     <Button
                         variant="secondary"

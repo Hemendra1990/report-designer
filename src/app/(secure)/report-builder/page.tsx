@@ -1,7 +1,7 @@
 "use client";
 
 import {QueryClient, QueryClientProvider, useQuery, useQueryClient} from "@tanstack/react-query";
-import {useRouter} from "next/navigation";
+import {useRouter, useSearchParams} from "next/navigation";
 import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {ReportTypesProvider, useReportTypes} from "./context/ReportTypesContext";
 import {getFieldTypeIcon, mapColumnTypeToFieldType} from "./utils/fieldUtils";
@@ -33,8 +33,11 @@ import {Filter} from "./model/Filter";
 import {ReportTypeTemplate} from "./model/ReportType";
 import {formulaFunctions} from "./util/ReportBuilderUtil";
 import {useReportTypeById} from "@/hooks/report-type-hook";
-import {executeQuery} from "@/services/crm/dml-service";
 import {buildSqlQuery} from "@/app/(secure)/report-builder/util/SqlQueryBuilder";
+import {useCreatereport, useReportById, useUpdatereport} from "@/hooks/report-hook";
+import { generateFilterJson, generateReportPayload } from "@/helper/report/report-helper";
+import ToastMessage from "../report-types/summary/summary-helper";
+import { executeQueryOnDuckDB } from "@/services/rd/http-rd-service";
 
 
 // Replace the static initialSelectedColumns with a more dynamic approach
@@ -78,11 +81,47 @@ function ReportBuilderPage() {
   const router = useRouter();
   const { setSelectedReportTypeId, reportFields, isFieldsLoading, selectedReportTypeId } = useReportTypes();
   const { reportTypeResponse } = useReportTypeById(selectedReportTypeId || '');
-  const [showReportTypeModal, setShowReportTypeModal] = useState(true);
+  const [showReportTypeModal, setShowReportTypeModal] = useState(false);
   const [selectedReportType, setSelectedReportType] = useState<ReportTypeTemplate | null>(null);
+  const createReportMutation = useCreatereport();
+  const updateReportMutation = useUpdatereport();
 
   // Initialize with sample columns, will be updated when report type is selected
-  const [selectedColumns, setSelectedColumns] = useState<(Field | FormulaColumn)[]>(initialSampleColumns);
+  const [selectedColumns, setSelectedColumns] = useState<(Field | FormulaColumn)[]>(initialSampleColumns);  //MARKED: selected columns
+  const searchParams = useSearchParams();
+  const reportId = searchParams.get('reportId');
+  const { reportResponse } = useReportById(reportId);
+
+
+  useEffect(() => {
+    if(!reportId) {
+      setShowReportTypeModal(true);
+    }
+  }, [reportId])
+
+  useEffect(() => {
+    if (reportResponse?.data) {
+      setSelectedReportTypeId(reportResponse?.data?.reportType?.id);
+      setSelectedColumns(reportResponse?.data?.columns as any || []);
+    }
+  }, [reportResponse.data])
+
+  useEffect(() => {
+    if (reportResponse.data && reportFields?.length) {
+      setFilters(generateFilterJson(reportResponse?.data?.filters, reportFields));
+      const duckColumns: string[] = reportResponse?.data?.groups
+      .map((group: any) => group.duckDBColumnName)
+      .filter(Boolean); // filters out undefined/null
+ 
+    setGrouping(duckColumns);
+    }
+  }, [reportResponse.data, reportFields])
+
+  useEffect(() => {
+    if (reportTypeResponse?.data) {
+      setSelectedReportType(reportTypeResponse?.data as any);
+    }
+  }, [reportTypeResponse])
 
   // Effect to update selectedColumns when reportFields change
   useEffect(() => {
@@ -114,7 +153,7 @@ function ReportBuilderPage() {
             tableId: field.tableId
           }));
       
-      setSelectedColumns(initialColumns);
+      //setSelectedColumns(initialColumns); //TODO: Enable it if the edit report is clicked
     }
   }, [reportFields]);
 
@@ -237,6 +276,8 @@ function ReportBuilderPage() {
   const [selectedAggregations, setSelectedAggregations] = useState<Record<string, string>>({});
 
   const [fieldsByCategory, setfieldsByCategory] = useState<Record<string, Field[]>>({});
+  const [showErrorToast, setShowErrorToast] = useState<string>('');
+  const [showSuccessToast, setShowSuccessToast] = useState<string>('');
 
   useEffect(() => {
     if (reportFields) {
@@ -310,18 +351,17 @@ function ReportBuilderPage() {
   };
 
   // Handle adding a column to the report
-  //const addColumn = (field: { id: string; name: string; type: string; category: string; icon?: string; isFormula?: boolean; isSummaryFormula?: boolean; formula?: string; }) => {
-    const addColumn = (field: Field) => {
-    if (!selectedColumns.some(col => col.id === field.id)) {
-      // Ensure the field being added has the proper structure
-      /* const newColumn: Field = {
-        id: field.id,
-        name: field.name,
-        type: field.type as unknown as FieldType,
-        category: field.category,
-        icon: field.icon || '•' // Provide default icon if missing
-      }; */
+  const addColumn = (field: Field) => {
+    console.log('Adding column:', field);
+    //if already exists in selectedColumns, do nothing
+    const isFieldSelected = selectedColumns.some(
+      (col) => col.columnName === field.columnName && col.tableName === field.tableName
+    );
+    if (isFieldSelected){
+      return;
+    }
 
+    if (!selectedColumns.some(col => col.id === field.id)) {
       const newColumn: Field = {...field};
       
       // Add formula properties if needed
@@ -331,15 +371,31 @@ function ReportBuilderPage() {
         if (field.isSummaryFormula) newColumn.isSummaryFormula = field.isSummaryFormula;
       }
       setSelectedColumns(prevColumns => [...prevColumns, newColumn]);
-      if (autoUpdatePreview) {
-        fetchData();
+      console.log('Column added, checking if data fetch is needed');
+      
+      // Only fetch data if autoUpdatePreview is enabled
+      if (autoUpdatePreview && reportTypeResponse?.data?.cteQuery) {
+        console.log('Auto-fetching data after adding column');
+        setTimeout(() => fetchData(), 0); // Use setTimeout to ensure state is updated first
+      } else {
+        console.log('Automatic updates disabled - use Run button to fetch data');
       }
     }
   };
 
   // Handle removing a column from the report
   const removeColumn = (fieldId: string) => {
+    console.log('Removing column:', fieldId);
     setSelectedColumns(selectedColumns.filter(col => col.id !== fieldId));
+    console.log('Column removed, checking if data fetch is needed');
+    
+    // Only fetch data if autoUpdatePreview is enabled
+    if (autoUpdatePreview && reportTypeResponse?.data?.cteQuery) {
+      console.log('Auto-fetching data after removing column');
+      setTimeout(() => fetchData(), 0); // Use setTimeout to ensure state is updated first
+    } else {
+      console.log('Automatic updates disabled - use Run button to fetch data');
+    }
   };
 
   // Handle dragging start
@@ -495,12 +551,28 @@ function ReportBuilderPage() {
       selectedOptions: []
     };
 
-    setFilters([...filters, newFilter]);
+    setFilters(prevFilters => [...prevFilters, newFilter]);
+    
+    // Only fetch if auto-update is enabled
+    if (autoUpdatePreview && reportTypeResponse?.data?.cteQuery && selectedColumns.length > 0) {
+      console.log('Auto-fetching data after adding filter');
+      setTimeout(() => fetchData(), 0);
+    } else {
+      console.log('Automatic updates disabled - use Run button to apply filter');
+    }
   };
 
   // Function to remove a filter
   const removeFilter = (filterId: string) => {
     setFilters(filters.filter(filter => filter.id !== filterId));
+    
+    // Only fetch if auto-update is enabled
+    if (autoUpdatePreview && reportTypeResponse?.data?.cteQuery && selectedColumns.length > 0) {
+      console.log('Auto-fetching data after removing filter');
+      setTimeout(() => fetchData(), 0);
+    } else {
+      console.log('Automatic updates disabled - use Run button to apply filter changes');
+    }
   };
 
   // Function to update a filter
@@ -508,23 +580,86 @@ function ReportBuilderPage() {
     setFilters(filters.map(filter =>
       filter.id === filterId ? { ...filter, ...updates } : filter
     ));
+    
+    // Only fetch if auto-update is enabled
+    if (autoUpdatePreview && reportTypeResponse?.data?.cteQuery && selectedColumns.length > 0) {
+      console.log('Auto-fetching data after updating filter');
+      setTimeout(() => fetchData(), 0);
+    } else {
+      console.log('Automatic updates disabled - use Run button to apply filter updates');
+    }
   };
 
   // Use the query client
   const queryClient = useQueryClient();
 
+  // Create a stable query key that doesn't create a new array reference each time
+  const queryKeyBase = 'reportData';
+  
   // Create a query key based on all relevant parameters
   const createQueryKey = useCallback(() => {
     return [
-      'reportData',
+      queryKeyBase,
       pagination.pageIndex,
       pagination.pageSize,
-      sorting,
-      grouping,
-      selectedColumns,
-      filters,
+      JSON.stringify(sorting),
+      JSON.stringify(grouping),
+      JSON.stringify(selectedColumns.map(col => col.id)), // Only use IDs to reduce size
+      JSON.stringify(filters.map(f => f.id)),
     ];
-  }, [pagination.pageIndex, pagination.pageSize, sorting, grouping, selectedColumns, filters]);
+  }, [pagination.pageIndex, pagination.pageSize, sorting, grouping, selectedColumns, filters, selectedColumns]);
+
+  // Function to manually trigger a refresh of the data
+  const fetchData = useCallback(() => {
+    console.log('Manually triggering data fetch');
+    // Force a refetch regardless of autoUpdatePreview setting
+    queryClient.invalidateQueries({ queryKey: [queryKeyBase] });
+    
+    // If autoUpdatePreview is disabled, we need to manually execute the query
+    if (!autoUpdatePreview) {
+      const sqlQuery = buildSqlQuery({
+        selectedReportType: selectedReportType,
+        reportType: selectedReportType?.name || "", 
+        selectedColumns: selectedColumns,
+        groupByFields: groupByFields,
+        filters: filters,
+        filterLogic: filterLogic,
+        customFilterFormula: "",
+        isPivotActive: isPivotActive,
+        pivotColumnIds: pivotColumnIds,
+        pivotValues: pivotValues,
+        selectedAggregations: selectedAggregations,
+        cteQuery: reportTypeResponse?.data?.cteQuery
+      });
+      
+      // Remove newlines from the SQL query
+      const cleanSqlQuery = sqlQuery.replace(/\n/g, ' ');
+      console.log('Manual execution SQL Query:', sqlQuery);
+      
+      // Set loading state
+      setIsLoading(true);
+      
+      // Execute query directly
+      const queryPromise = isPivotActive
+        ? executeQueryOnDuckDB({"sql": `${cleanSqlQuery} limit 20`})
+        : executeQueryOnDuckDB({"sql": `${reportTypeResponse?.data?.cteQuery} ${cleanSqlQuery} limit 20`});
+        
+      queryPromise
+        .then(result => {
+          console.log("Manual query result", result);
+          setRowData(result.data || []);
+          setTotalRows(result.data?.length || 0);
+        })
+        .catch(error => {
+          console.error('Error fetching report data:', error);
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+    }
+  }, [queryClient, queryKeyBase, autoUpdatePreview, selectedReportType, selectedColumns, 
+      groupByFields, filters, filterLogic, isPivotActive, pivotColumnIds, 
+      pivotValues, selectedAggregations, reportTypeResponse?.data?.cteQuery, selectedColumns?.length]);
 
   // Use React Query instead of manually fetching
   const {
@@ -534,11 +669,11 @@ function ReportBuilderPage() {
     error
   } = useQuery({
     queryKey: createQueryKey(),
-    //queryFn: () => executeQuery({"query": `${reportTypeResponse?.data?.cteQuery} ${generateReportSQL()} limit 20`}),
     queryFn: () => {
+      console.log('Executing automatic query function');
       const sqlQuery = buildSqlQuery({
         selectedReportType: selectedReportType,
-        reportType: selectedReportType?.name || "", // Convert "Report Type" to "report_type"
+        reportType: selectedReportType?.name || "", 
         selectedColumns: selectedColumns,
         groupByFields: groupByFields,
         filters: filters,
@@ -552,25 +687,56 @@ function ReportBuilderPage() {
       });
       // Remove newlines from the SQL query
       const cleanSqlQuery = sqlQuery.replace(/\n/g, ' ');
-      console.log('SQL Query:', sqlQuery);
-      return executeQuery({"query": `${reportTypeResponse?.data?.cteQuery} ${cleanSqlQuery} limit 20`})
+      console.log('Automatic SQL Query:', sqlQuery);
+      if (isPivotActive) {
+        return executeQueryOnDuckDB({"sql": `${cleanSqlQuery} limit 20`})
+      }
+      return executeQueryOnDuckDB({"sql": `${reportTypeResponse?.data?.cteQuery} ${cleanSqlQuery} limit 20`})
     },
-    enabled: autoUpdatePreview && selectedColumns.length > 0,
+    enabled: autoUpdatePreview && selectedColumns.length > 0 && !!reportTypeResponse?.data?.cteQuery,
+    staleTime: 0, // Always consider data stale to force refetch
+    refetchOnWindowFocus: false,
   });
 
   // Update state when data changes
   useEffect(() => {
     if (queryResult) {
-      setRowData(queryResult.data.data || []);
+      console.log("Query Result Data:", queryResult);
+      console.log("Selected Columns:", selectedColumns.map(col => ({ 
+        id: col.id, 
+        name: col.name, 
+        duckDBColumnName: col.duckDBColumnName,
+        columnName: col.columnName 
+      })));
+      console.log("Grouping State:", grouping);
+      console.log("Group By Fields:", groupByFields);
+      
+      // Handle different response formats
+      let dataToProcess = [];
+      if (queryResult.data && Array.isArray(queryResult.data)) {
+        dataToProcess = queryResult.data;
+      } else if (queryResult.data && queryResult.data.data && Array.isArray(queryResult.data.data)) {
+        dataToProcess = queryResult.data.data;
+      }
+      
+      // Make sure data has all the properties needed for grouping
+      const processedData = dataToProcess.map((item: any) => {
+        // For debugging, check if grouping keys exist in the data
+        if (groupByFields.length > 0) {
+          console.log("Group field check for item:", groupByFields.map(field => ({ 
+            field, 
+            exists: field in item,
+            value: item[field]
+          })));
+        }
+        return item;
+      });
+      
+      setRowData(processedData);
       setPageCount(0);
-      setTotalRows(queryResult?.data?.data?.length || 0);
+      setTotalRows(processedData.length || 0);
     }
-  }, [queryResult]);
-
-  // Function to manually trigger a refresh of the data
-  const fetchData = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: createQueryKey() });
-  }, [queryClient, createQueryKey]);
+  }, [queryResult, selectedColumns, grouping, groupByFields]);
 
   // Combine loading states
   const isDataLoading = queryLoading || isFetching;
@@ -692,8 +858,10 @@ function ReportBuilderPage() {
 
   // Function to handle grouping by a field
   const handleGroupBy = (field: Field) => {
-    console.log('Grouping by:', field.id);
+    console.log('Grouping by:', field);
+    // Get the column ID that matches the table definition
     const fieldId = field.duckDBColumnName || field.columnName || field.id;
+    console.log('Using fieldId for grouping:', fieldId);
 
     const updateGrouping: OnChangeFn<GroupingState> = (updater) => {
       const prevGrouping = typeof updater === 'function' ? updater(grouping) : updater;
@@ -718,17 +886,38 @@ function ReportBuilderPage() {
       return newGroups;
     });
 
-    // Update expanded groups for the new grouping
-    if (!expandedRowGroups[fieldId]) {
-      setExpandedRowGroups(prev => ({
-        ...prev,
-        [fieldId]: true
-      }));
-    }
+    // Wait for data to load, then auto-expand all groups for better visibility
+    setTimeout(() => {
+      if (rowData.length > 0) {
+        console.log('Auto-expanding groups for new field:', fieldId);
+        
+        // Create a new object to avoid unexpected state conflicts
+        const newExpandedState = {};
+        
+        // Get all unique values for this field to expand them
+        const uniqueValues = new Set();
+        rowData.forEach(row => {
+          if (row[fieldId] !== undefined && row[fieldId] !== null) {
+            uniqueValues.add(String(row[fieldId]));
+          }
+        });
+        
+        // Set each unique value to expanded
+        uniqueValues.forEach(value => {
+          newExpandedState[value as string] = true;
+        });
+        
+        console.log('Setting expanded groups:', newExpandedState);
+        setExpandedRowGroups(newExpandedState);
+      }
+    }, 500); // Small delay to ensure data is processed
 
-    // Fetch new data with updated grouping
-    if (autoUpdatePreview) {
+    // Fetch new data with updated grouping only if automatic updates are enabled
+    if (autoUpdatePreview && reportTypeResponse?.data?.cteQuery) {
+      console.log('Auto-fetching data after grouping change');
       fetchData();
+    } else {
+      console.log('Automatic updates disabled - use Run button to update grouping');
     }
   };
 
@@ -889,9 +1078,9 @@ function ReportBuilderPage() {
       const originalField = field;
       
       // Get the appropriate column name for SQL and data access
-      const accessorKey = field.duckDBColumnName || field.columnName || field.id;
-      // Get the appropriate display name
-      const headerName = field.duckDBColumnDisplayName || field.columnDisplayName || field.name;
+     const accessorKey = isFormula ? (field as FormulaColumn).alias : field.duckDBColumnName || field.columnName || field.id;
+     // Get the appropriate display name
+     const headerName = isFormula ? (field as FormulaColumn).alias || field.name : field.name || field.columnDisplayName || field.duckDBColumnDisplayName;
       
       // Extract formula for summary formulas
       let formula = '';
@@ -942,7 +1131,7 @@ function ReportBuilderPage() {
       
       // Create the column definition while maintaining original field properties
       return {
-        id: field.id,
+        id: accessorKey,  // Use accessorKey as the id to match with the grouping data
         accessorKey: accessorKey,
         header: headerName,
         cell: info => {
@@ -1029,17 +1218,25 @@ function ReportBuilderPage() {
     [selectedColumns]
   );
 
+  const handleOnSuccess = (data: any) => {
+    setShowSuccessToast(`Report ${reportId ? 'updated' : 'created'} successfully`);
+    router.push('/reports');
+  }
+
+  const handleOnError = (err: any) => {
+    setShowErrorToast(err?.response?.data?.message || 'Something went wrong. Please try again.');
+    setTimeout(() => setShowErrorToast(''), 3000);
+  }
+
   // Handle saving the report with generated SQL
   const handleSaveReport = (sql: string, reportName: string) => {
-    console.log(`Saving report '${reportName}' with SQL:`, sql);
-    // Here you would typically persist this data to your backend
-    // For example, using an API call
-    
-    // Provide feedback to the user
-    alert(`Report "${reportName}" has been saved successfully!`);
-    
-    // Optionally navigate to reports list page
-    // router.push('/reports');
+    let payload = generateReportPayload(reportId || null, reportName, reportTypeResponse?.data, generatedSql, selectedColumns, groupByFields, filters);
+    if (reportId) {
+      updateReportMutation.mutate({payload: payload, onSuccess: handleOnSuccess, onError: handleOnError});
+    } else {
+      createReportMutation.mutate({payload: payload, onSuccess: handleOnSuccess, onError: handleOnError});
+    }
+
   };
 
   // Toggle preview expanded state
@@ -1058,10 +1255,18 @@ function ReportBuilderPage() {
 
   // Function to handle applying the pivot configuration
   const handleApplyPivot = useCallback(() => {
-    if (isPivotActive && autoUpdatePreview) {
+    console.log('Applying pivot with configuration:', {
+      isPivotActive,
+      pivotColumnIds,
+      pivotValues,
+      groupByFields,
+      selectedAggregations
+    });
+    
+    if (isPivotActive) {
       const pivotSql = buildSqlQuery({
         selectedReportType: selectedReportType,
-        reportType: selectedReportType?.name || "", // Convert "Report Type" to "report_type"
+        reportType: selectedReportType?.name || "",
         selectedColumns: selectedColumns,
         groupByFields: groupByFields,
         filters: filters,
@@ -1074,14 +1279,14 @@ function ReportBuilderPage() {
         cteQuery: reportTypeResponse?.data?.cteQuery
       });
       console.log('Generated PIVOT SQL using buildSqlQuery:', pivotSql);
-      //const sql = generatePivotSQL();
       setGeneratedSql(pivotSql);
-      //console.log('Generated PIVOT SQL using page.tsx:', sql);
-
-      // In a real implementation, we would execute this SQL and update the rowData
+      
+      // Always fetch data, even if autoUpdatePreview is false
+      console.log('Triggering data refresh for pivot');
       fetchData();
     }
-  }, [isPivotActive, autoUpdatePreview, fetchData]); //generatePivotSQL,
+  }, [isPivotActive, selectedReportType, selectedColumns, groupByFields, filters, filterLogic, 
+      pivotColumnIds, pivotValues, selectedAggregations, reportTypeResponse?.data?.cteQuery, fetchData]);
 
   // Update the fieldsForPanel construction to create a proper Record<string, any[]> structure
   // Group fields by category to match the expected format
@@ -1223,6 +1428,74 @@ function ReportBuilderPage() {
     return sql;
   }, [selectedColumns, filters, filterLogic, customFormula, groupByFields, sorting, reportTypeResponse?.data]);
 
+  // Effect to trigger data fetching when report type changes
+  useEffect(() => {
+    if (reportTypeResponse?.data?.cteQuery && selectedColumns.length > 0) {
+      console.log('Report type loaded or changed, fetching data...');
+      fetchData();
+    }
+  }, [reportTypeResponse?.data?.cteQuery, selectedColumns.length, fetchData]);
+
+  // Effect to trigger data fetching when filters change
+  useEffect(() => {
+    if (autoUpdatePreview && filters.length > 0 && selectedColumns.length > 0) {
+      console.log('Filters changed, fetching data...');
+      fetchData();
+    }
+  }, [filters, autoUpdatePreview, selectedColumns.length, fetchData]);
+
+  // Update useEffect for filters to respect autoUpdatePreview
+  useEffect(() => {
+    // DO NOT fetch data here anymore - this should only update the available data options
+    // We've moved the fetchData call to the individual filter functions above
+    if (selectedColumns.length > 0) {
+      // Apply filters to sample data
+      let filteredData = [...allSampleData];
+
+      // Apply filters based on the filter state
+      if (filters.length > 0) {
+        filteredData = filteredData.filter(item => {
+          // For demo purposes, we'll check if the item matches all filters based on the filterLogic
+          if (filterLogic === 'and') {
+            return filters.every(filter => matchesFilter(item, filter));
+          } else if (filterLogic === 'or') {
+            return filters.some(filter => matchesFilter(item, filter));
+          }
+          // For custom logic, we'd need more complex processing
+          return true;
+        });
+      }
+
+      // Sort data by group field if one is selected
+      if (groupByFields.length > 0) {
+        filteredData.sort((a, b) => {
+          const aValues = groupByFields.map(field => a[field]?.toString() || 'undefined');
+          const bValues = groupByFields.map(field => b[field]?.toString() || 'undefined');
+          return aValues.join(' | ').localeCompare(bValues.join(' | '));
+        });
+      }
+
+      // We don't need to manually set row data here anymore as React Query handles this
+      // setRowData(filteredData);
+    }
+  }, [filters, selectedColumns, allSampleData, groupByFields, filterLogic]);
+
+  // When filter logic changes
+  useEffect(() => {
+    if (autoUpdatePreview && filters.length > 0 && selectedColumns.length > 0 && reportTypeResponse?.data?.cteQuery) {
+      console.log('Filter logic changed, fetching data...');
+      fetchData();
+    }
+  }, [filterLogic, autoUpdatePreview, filters.length, selectedColumns.length, fetchData, reportTypeResponse?.data?.cteQuery]);
+
+  // Add logging before rendering PreviewPanel
+  console.log('Report builder passing to PreviewPanel:', {
+    isPivotActive,
+    pivotColumnIds,
+    pivotValues,
+    groupByFields
+  });
+
   return (
     <>
       {/* Report Type Selection Modal */}
@@ -1234,11 +1507,11 @@ function ReportBuilderPage() {
       <div className="min-h-screen bg-gray-50 flex flex-col">
         <TopHeaderBar
           selectedReportType={selectedReportType}
-          reportName={selectedReportType?.name || "New Accounts Report"}
-          reportType={selectedReportType?.type || "Accounts"}
+          reportName={reportResponse?.data?.label || selectedReportType?.name || "New Report"}
+          reportType={selectedReportType?.type || "report"}
           showShortcuts={showShortcuts}
           onToggleShortcuts={() => setShowShortcuts(!showShortcuts)}
-          onRun={() => fetchData()}
+          onRun={fetchData}
           onClose={() => router.push('/reports')}
           // Pass SQL generation props
           selectedColumns={selectedColumns}
@@ -1322,7 +1595,7 @@ function ReportBuilderPage() {
             setFilterLogic={setFilterLogic}
             customFormula={customFormula}
             setCustomFormula={setCustomFormula}
-            accountFields={fieldsForPanel}
+            // accountFields={fieldsForPanel}
             addFilter={addFilter}
             removeFilter={removeFilter}
             updateFilter={updateFilter}
@@ -1372,6 +1645,15 @@ function ReportBuilderPage() {
             isPivotTable={isPivotActive}
             pivotColumns={pivotColumnIds}
             pivotValues={pivotValues}
+            groupByFields={groupByFields}
+            generatedSql={generatedSql}
+            cteQuery={reportTypeResponse?.data?.cteQuery}
+            // Add report context properties
+            selectedReportType={selectedReportType}
+            selectedColumns={selectedColumns}
+            filters={filters}
+            filterLogic={filterLogic}
+            selectedAggregations={selectedAggregations}
           />
         </div>
 
@@ -1392,6 +1674,7 @@ function ReportBuilderPage() {
           onSearchTermChange={setSearchTerm}
           onFormulaSearchTermChange={setFormulaSearchTerm}
           editFormulaColumn={editingFormulaColumn || undefined}
+          reportFields={reportFields}
         />
 
         {/* Summary Formula Builder */}
@@ -1413,6 +1696,7 @@ function ReportBuilderPage() {
           editFormulaColumn={editingSummaryFormula || undefined}
           isSummaryFormula={true}
           title="Summary Formula"
+          reportFields={reportFields}
         />
 
         {/* Filter Field Selector */}
@@ -1426,6 +1710,18 @@ function ReportBuilderPage() {
           onFilterSearchTermChange={setFilterSearchTerm}
           addFilter={addFilter}
         />
+        <>
+          {
+            showErrorToast && (
+              <ToastMessage type="error" message={showErrorToast} />
+            )
+          }
+          {
+            showSuccessToast && (
+              <ToastMessage type="success" message={showSuccessToast} />
+            )
+          }
+        </>
       </div>
     </>
   );

@@ -1,13 +1,12 @@
-"use client";
+'use client';
 import DefineRelationshipsForm from "@/components/report-type/define-relationship-form";
-import { useParams } from "next/navigation";
+import { Suspense, use } from "react";
 
-export default function SelectRelationshipPage() {
-
-  const { reportTypeId } = useParams()
-  
-    if (!reportTypeId) {
-      return <div>Loading...</div> // or handle gracefully
-    }
-  return <DefineRelationshipsForm reportTypeId={reportTypeId as string } ></DefineRelationshipsForm>
+export default function DefineRelationshipsFormWrapper({ params }: { params: Promise<any> }) {
+  const resolvedParams = use(params);
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <DefineRelationshipsForm reportTypeId={resolvedParams.reportTypeId}  />
+    </Suspense>
+  );
 }

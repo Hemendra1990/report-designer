@@ -1,15 +1,15 @@
-import { crmHttpService } from "./http-crm-service";
+import { httpCrmClient } from "./http-crm-client";
 
-const BASE_URL = "/metadata";
+const BASE_URL = "/api/metadata";
 
 export const findAllTableMetaData = () => {
-    return crmHttpService.get(`${BASE_URL}/all-table`)
+    return httpCrmClient.get(`${BASE_URL}/all-table`)
 }
 
 export const findColumnMetaDataByTableName = (tableName: string) => {
-    return crmHttpService.get(`${BASE_URL}/table/${tableName}`);
+    return httpCrmClient.get(`${BASE_URL}/table/${tableName}`);
 }
 
 export const getRelatedData = (tableName: string) => {
-    return crmHttpService.get(`${BASE_URL}/table/${tableName}/related-tables`);
+    return httpCrmClient.get(`${BASE_URL}/table/${tableName}/related-tables`);
 }

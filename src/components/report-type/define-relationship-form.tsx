@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import VennDiagram from "@/components/VennDiagram";
@@ -16,6 +16,7 @@ import { useReportTypeConfigGeneration } from "@/helper/report-type/report-type-
 import { useCreatereportType } from "@/hooks/report-type-hook";
 import ToastMessage from "@/app/(secure)/report-types/summary/summary-helper";
 import isEqual from "lodash/isEqual";
+import { Skeleton } from '@/components/ui/skeleton';
 
 // Define letters for objects
 const letters = ["A", "B", "C", "D", "E", "F", "G", "H"];
@@ -66,7 +67,7 @@ export default function DefineRelationships(props: DefineRelationshipsProps) {
   const { reportType, setReportType, setReportTypeId } = useReportTypeFormContext();
   
   const [primaryObject, setPrimaryObject] = useState<AvailableObject | null>(null);
-  const [relatedObjects, setRelatedObjects] = useState<RelatedObject[]>(reportType.objectTree ? JSON.parse(reportType.objectTree) : []);
+  const [relatedObjects, setRelatedObjects] = useState<RelatedObject[]>([]);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [availableObjects, setAvailableObjects] = useState<AvailableObject[]>([]);
   const [relatedTables, setRelatedTables] = useState<TableMetadata[]>([]);
@@ -78,48 +79,65 @@ export default function DefineRelationships(props: DefineRelationshipsProps) {
   const router = useRouter();
   const [showErrorToast, setShowErrorToast] = useState<string>('');
   const [relatedTableInformationMap, setRelatedTableInformationMap] = useState<Record<string, iTableMetaData[]>>({});
+  const [isLoadingComponent,setIsLoadingComponent] = useState(false);
 
   useEffect(() => {
     if (reportTypeId) {
       setReportTypeId(reportTypeId);
     }
   }, [reportTypeId])
+
+  useEffect(() => {
+    if (reportType?.objectTree) {
+      const parsed = JSON.parse(reportType.objectTree);
+      if (!isEqual(parsed, relatedObjects)) {
+        setRelatedObjects(parsed);
+      }
+    }
+  }, [reportType?.objectTree]);
   
   // Fetch available objects and initialize primary object
   useEffect(() => {
     const fetchData = async () => {
       try {
+        setIsLoadingComponent(true);
         const response = allTableMetaData || [];
         const mappedObjects = response?.map((table: TableMetadata) => ({
           id: table.tableName,
           name: table.tableName,
           displayName: table.displayName,
           schema: table.schema,
-          letter: "A", // Will be assigned dynamically
+          letter: "A",
           description: `Table in schema ${table.schema}`,
           color: "#1E88E5",
-          relatedTo: [], // Will be populated based on foreign key relationships
-          icon: "/icons/database.svg" // Default icon for all tables
+          relatedTo: [],
+          icon: "/icons/database.svg"
         }));
         
         setAvailableObjects(mappedObjects);
-        
-        // Find the primary object
-        const foundObject = mappedObjects.find((obj: AvailableObject) => 
-          // obj.id === primaryObjectId && obj.schema === primaryObjectSchema
-          obj.id === reportType?.primaryTable
-        );
-        
-        if (foundObject) {
-          setPrimaryObject(foundObject);
+        // Check if reportType?.primaryTable exists before trying to find it
+        if (reportType?.primaryTable) {
+          const foundObject = mappedObjects.find((obj: AvailableObject) =>
+            obj.id === reportType.primaryTable
+          );
+
+          if (foundObject) {
+            setPrimaryObject(foundObject);
+          } else {
+            console.warn(`Primary table "${reportType.primaryTable}" not found in available objects`);
+          }
+        } else {
+          console.log("Primary table not yet defined in reportType");
         }
       } catch (error) {
         console.error("Error fetching tables:", error);
+      } finally {
+        setIsLoadingComponent(false);
       }
     };
     
     fetchData();
-  }, [reportType?.primaryTable, reportType?.schema]);
+  }, [reportType?.primaryTable, reportType?.schema, allTableMetaData]);
 
   // Fetch related tables when primary object changes
   useEffect(() => {
@@ -147,6 +165,38 @@ export default function DefineRelationships(props: DefineRelationshipsProps) {
 
     fetchRelatedTables();
   }, [primaryObject]);
+
+  const ObjectTreeSkeleton = () => {
+    return (
+      <div className="space-y-4">
+        {/* Primary Object Skeleton */}
+        <div className="flex items-center space-x-4 border rounded-md p-4 bg-slate-50">
+          <Skeleton className="h-10 w-10 rounded-md bg-slate-200" />
+          <div className="space-y-2 flex-1">
+            <Skeleton className="h-5 w-32 bg-slate-200" />
+            <Skeleton className="h-4 w-40 bg-slate-200" />
+          </div>
+          <Skeleton className="h-9 w-36 rounded-md bg-slate-200" />
+        </div>
+        
+        {/* Related Objects Skeletons */}
+        {[1, 2].map((item) => (
+          <div key={item} className="flex items-center space-x-4 border rounded-md p-4 ml-6">
+            <Skeleton className="h-10 w-10 rounded-md bg-slate-200" />
+            <div className="space-y-2 flex-1">
+              <Skeleton className="h-5 w-24 bg-slate-200" />
+              <Skeleton className="h-4 w-28 bg-slate-200" />
+            </div>
+            <div className="flex space-x-2">
+              <Skeleton className="h-8 w-8 rounded-md bg-slate-200" />
+              <Skeleton className="h-8 w-8 rounded-md bg-slate-200" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+  
 
   // Fetch available objects for a specific parent
   const fetchAvailableObjectsForParent = async (parentId: string | null) => {
@@ -380,17 +430,25 @@ export default function DefineRelationships(props: DefineRelationshipsProps) {
                 <CardTitle>Select Objects</CardTitle>
               </CardHeader>
               <CardContent>
-                {primaryObject && (
-                  <ObjectTree 
-                    availableObjects={availableObjects}
-                    primaryObject={primaryObject}
-                    relatedObjects={relatedObjects}
-                    onAddRelatedObject={handleAddRelatedObject}
-                    onRemoveRelatedObject={handleRemoveRelatedObject}
-                    onChangeRelationshipType={handleChangeRelationshipType}
-                    onOpenObjectSelector={handleOpenObjectSelector}
-                    isLoadingAvailableObjects={isLoadingAvailableObjects}
-                  />
+                {(primaryObject || isLoading) ? (
+                  primaryObject ? (
+                    <ObjectTree
+                      availableObjects={availableObjects}
+                      primaryObject={primaryObject}
+                      relatedObjects={relatedObjects}
+                      onAddRelatedObject={handleAddRelatedObject}
+                      onRemoveRelatedObject={handleRemoveRelatedObject}
+                      onChangeRelationshipType={handleChangeRelationshipType}
+                      onOpenObjectSelector={handleOpenObjectSelector}
+                      isLoadingAvailableObjects={isLoadingAvailableObjects}
+                    />
+                  ) : (
+                    <ObjectTreeSkeleton />
+                  )
+                ) : (
+                  <div className="flex justify-center items-center h-40">
+                    <p>No primary object selected. Please select a primary object first.</p>
+                  </div>
                 )}
               </CardContent>
             </Card>

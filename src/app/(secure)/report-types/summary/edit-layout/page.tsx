@@ -12,6 +12,7 @@ import { useCallback } from 'react';
 import { useUpdateReportTypeLayoutStatus } from "@/hooks/report-type-hook";
 import { useRouter } from "next/navigation";
 import ToastMessage from "../summary-helper";
+import { useAllTableMetadata } from "@/hooks/metadata-hook";
 
 
 export default function EditLayout() {
@@ -26,6 +27,7 @@ export default function EditLayout() {
   const updateReportTypeLayoutStatus = useUpdateReportTypeLayoutStatus();
   const [showErrorToast, setShowErrorToast] = useState<string>('');
   // Get column details for the selected tab
+  const {data:allTableNames} = useAllTableMetadata();
 
   useEffect(() => {
     if (!selectedTab && reportType?.layoutList?.length && reportType?.layoutList[0].tableName) {
@@ -44,7 +46,6 @@ export default function EditLayout() {
 
   let selectedTabColumns: ReportTypeLayout[] = useMemo(() => {
     if (!selectedTab || !reportType?.layoutList?.length) return [];
-    debugger
     return reportType.layoutList
       .filter(col => col.tableName === selectedTab);
   }, [selectedTab]);
@@ -88,7 +89,7 @@ export default function EditLayout() {
   // Handle save
   const handleSave = () => {
     updateReportTypeLayoutStatus.mutate(
-      { payload: reportType || [] },
+      { payload: reportType },
       {
         onSuccess: () => {
           setShowSuccessMessage(true);
@@ -129,11 +130,9 @@ export default function EditLayout() {
     return colors[index];
   };
 
-  const formatDisplayText = (str: string) => {
-    if (!str) return "";
-    return str
-      .replace(/_/g, ' ')                         // Replace underscores with space
-      .replace(/\b\w/g, (char) => char.toUpperCase()); // Capitalize first letter of each word
+  const formatDisplayText = (str: string): string => {
+    const match = allTableNames?.find(e => e.tableName === str);
+    return match?.displayName || str;
   };
 
 

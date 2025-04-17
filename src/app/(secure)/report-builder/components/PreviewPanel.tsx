@@ -17,6 +17,7 @@ import {
   ArrowRightIcon,
   CollapseIcon
 } from "@/components/icons";
+import { Switch } from "@/components/ui/switch";
 
 interface PreviewPanelProps {
   rowData: any[];
@@ -46,8 +47,19 @@ interface PreviewPanelProps {
   isExpanded?: boolean;
   // Pivot-related properties
   isPivotTable?: boolean;
+  isPivotActive?: boolean;
   pivotColumns?: string[];
   pivotValues?: string[];
+  groupByFields?: string[];
+  // Query-related properties
+  generatedSql?: string;
+  cteQuery?: string;
+  // Report context properties for SQL generation
+  selectedReportType?: any;
+  selectedColumns?: any[];
+  filters?: any[];
+  filterLogic?: 'and' | 'or' | 'custom';
+  selectedAggregations?: Record<string, string>;
 }
 
 const getColumnKey = (column: { id: string; meta?: { duckDBColumnName?: string; columnName?: string; } }) => {
@@ -83,8 +95,19 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
   isExpanded = false,
   // Pivot-related properties
   isPivotTable,
+  isPivotActive,
   pivotColumns,
-  pivotValues
+  pivotValues,
+  groupByFields,
+  // Query-related properties
+  generatedSql,
+  cteQuery,
+  // Report context properties for SQL generation
+  selectedReportType,
+  selectedColumns,
+  filters,
+  filterLogic,
+  selectedAggregations
 }) => {
   return (
     <div className="flex-1 bg-accent/10 flex flex-col min-w-0" style={{ height: 'calc(100vh - 130px)' }}>
@@ -116,18 +139,15 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
               <TableIcon />
             </button>
           </div>
-          <div className="flex items-center gap-2">
+          <label className="flex items-center gap-2 cursor-pointer">
             <span className="text-sm text-muted-foreground">Update Automatically</span>
-            <div className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                className="sr-only peer"
-                checked={autoUpdatePreview}
-                onChange={() => setAutoUpdatePreview(!autoUpdatePreview)}
-              />
-              <div className="w-9 h-5 bg-muted rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-background after:border-muted-foreground after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
-            </div>
-          </div>
+            <Switch
+              checked={autoUpdatePreview}
+              onCheckedChange={() => setAutoUpdatePreview(!autoUpdatePreview)}
+              aria-label="Toggle automatic preview updates"
+              className="data-[state=checked]:bg-indigo-600 data-[state=unchecked]:bg-slate-200"
+            />
+          </label>
         </div>
       </div>
 
@@ -155,8 +175,17 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
               totalRows={totalRows}
               isLoading={isLoading}
               isPivotTable={isPivotTable}
+              isPivotActive={isPivotActive}
               pivotColumns={pivotColumns || []}
               pivotValues={pivotValues || []}
+              groupByFields={groupByFields || []}
+              generatedSql={generatedSql}
+              cteQuery={cteQuery}
+              selectedReportType={selectedReportType}
+              selectedColumns={selectedColumns}
+              filters={filters}
+              filterLogic={filterLogic}
+              selectedAggregations={selectedAggregations}
             />
           </div>
         </div>

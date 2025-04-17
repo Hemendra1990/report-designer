@@ -123,7 +123,7 @@ export function Widget({ widget, onRemove, isPreview = false, onContentChange }:
               ) : chartData ? (
                 <div className="w-full h-full">
                   <ChartPreview 
-                    type={widget.chartType || 'bar'} 
+                    type={widget.chartType || 'bar' as any} 
                     data={chartData}
                     width={dimensions.width}
                     height={dimensions.height}

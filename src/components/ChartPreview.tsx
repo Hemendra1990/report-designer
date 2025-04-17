@@ -6,6 +6,16 @@ import { PieChart } from './charts/PieChart';
 import { ScatterChart } from './charts/ScatterChart';
 import { GroupedBarChart } from './charts/GroupedBarChart';
 import { StackedBarChart } from './charts/StackedBarChart';
+import { FunnelChart } from './charts/FunnelChart';
+import { DoughnutChart } from './charts/DoughnutChart';
+import { GaugeChart } from './charts/GaugeChart';
+import { MetricChart } from './charts/MetricChart';
+import { DataTable } from './charts/DataTable';
+import { 
+  ChartConfig, 
+  CartesianChartConfig,
+  PieChartConfig,
+} from '@/types/dashboard';
 
 interface ChartData {
   labels: string[];
@@ -16,14 +26,33 @@ interface ChartData {
 }
 
 interface ChartPreviewProps {
-  type: 'bar' | 'line' | 'pie' | 'grouped-bar' | 'stacked-bar' | 'funnel' | 'scatter' | 'gauge' | 'metric' | 'table';
+  type: 'bar' | 'line' | 'pie' | 'grouped-bar' | 'stacked-bar' | 'funnel' | 'scatter' | 'gauge' | 'metric' | 'table' | 'doughnut';
   data?: ChartData;
   width?: number;
   height?: number;
+  config?: ChartConfig;
 }
 
-export function ChartPreview({ type, data, width = 400, height = 300 }: ChartPreviewProps) {
-  if (!data) {
+export function ChartPreview({ type, data, width = 400, height = 300, config }: ChartPreviewProps) {
+  // Create sample data if no data is provided
+  const sampleData: ChartData = {
+    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+    datasets: [
+      {
+        label: 'Sales',
+        data: [65, 59, 80, 81, 56, 55]
+      },
+      {
+        label: 'Revenue',
+        data: [28, 48, 40, 19, 86, 27]
+      }
+    ]
+  };
+
+  // Use provided data or fallback to sample data
+  const chartData = data || sampleData;
+
+  if (!chartData) {
     return (
       <div className="flex items-center justify-center h-full">
         <p className="text-gray-500">No data available</p>
@@ -31,20 +60,60 @@ export function ChartPreview({ type, data, width = 400, height = 300 }: ChartPre
     );
   }
 
-  const renderChart = () => {
+  // Get appropriate config based on chart type
+  const getTypedConfig = () => {
+    if (!config) return undefined;
+    
     switch (type) {
       case 'bar':
-        return <BarChart data={data} />;
       case 'line':
-        return <LineChart data={data} />;
-      case 'pie':
-        return <PieChart data={data} />;
-      case 'scatter':
-        return <ScatterChart data={data} />;
       case 'grouped-bar':
-        return <GroupedBarChart data={data} />;
       case 'stacked-bar':
-        return <StackedBarChart data={data} />;
+        return config as CartesianChartConfig;
+      case 'pie':
+      case 'doughnut':
+        return config as PieChartConfig;
+      case 'funnel':
+        return config as any;
+      case 'scatter':
+        return config as any;
+      case 'gauge':
+        return config as any;
+      case 'metric':
+        return config as any;
+      case 'table':
+        return config as any;
+      default:
+        return undefined;
+    }
+  };
+
+  const renderChart = () => {
+    const typedConfig = getTypedConfig();
+    
+    switch (type) {
+      case 'bar':
+        return <BarChart data={chartData} config={typedConfig as CartesianChartConfig} />;
+      case 'line':
+        return <LineChart data={chartData} config={typedConfig as CartesianChartConfig} />;
+      case 'pie':
+        return <PieChart data={chartData} config={typedConfig as PieChartConfig} />;
+      case 'doughnut':
+        return <DoughnutChart data={chartData} config={typedConfig as PieChartConfig} />;
+      case 'scatter':
+        return <ScatterChart data={chartData} config={typedConfig as any} />;
+      case 'grouped-bar':
+        return <GroupedBarChart data={chartData} config={typedConfig as CartesianChartConfig} />;
+      case 'stacked-bar':
+        return <StackedBarChart data={chartData} config={typedConfig as CartesianChartConfig} />;
+      case 'funnel':
+        return <FunnelChart data={chartData} config={typedConfig as any} />;
+      case 'gauge':
+        return <GaugeChart data={chartData} config={typedConfig as any} />;
+      case 'metric':
+        return <MetricChart data={chartData} config={typedConfig as any} />;
+      case 'table':
+        return <DataTable data={chartData} config={typedConfig as any} />;
       default:
         return (
           <div className="flex items-center justify-center h-full">

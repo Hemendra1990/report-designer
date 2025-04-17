@@ -39,7 +39,13 @@ public class ReportService {
     private final ReportTypeRepository reportTypeRepository;
 
     public ReportDTO create(ReportDTO reportDTO) throws ValidationException {
+        String reportId = reportDTO.getId();
         try {
+            if (StringUtils.isNotBlank(reportId)) {
+                Preconditions.checkArgument(!reportRepository.existsByNameAndIdNot(reportDTO.getName(), reportId), "Report with same name exist");
+            } else {
+                Preconditions.checkArgument(!reportRepository.existsByName(reportDTO.getName()), "Report with same name exist");
+            }
             Preconditions.checkArgument(StringUtils.isNotBlank(reportDTO.getName()), "Report name is required");
             Preconditions.checkNotNull(reportDTO.getReportType(), "Report should belongs to a Report type");
             Preconditions.checkArgument(StringUtils.isNotBlank(reportDTO.getReportType().getId()), "Invalid report type");
@@ -71,5 +77,13 @@ public class ReportService {
 
     public List<ReportDTO> findBasicDetails() {
         return reportRepository.findBasicDetails();
+    }
+
+
+    public void deleteReportById(String id) throws ValidationException {
+        if (!reportRepository.existsById(id)) {
+            throw new ValidationException("Report not found", ErrorCode.EMPTY_OR_NULL_VALUE_FOUND, "ReportService.deleteById");
+        }
+        reportRepository.deleteById(id);
     }
 }

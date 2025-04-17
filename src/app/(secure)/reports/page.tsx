@@ -8,113 +8,47 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { motion } from "framer-motion";
+import { useAllReport, useDeleteReportById, useInvalidateAllReport } from "@/hooks/report-hook";
+import ToastMessage from "../report-types/summary/summary-helper";
+import { useRouter } from "next/navigation";
 
-// Generate a larger sample list of report types for demo pagination
-const generateSampleReports = (count = 30) => {
+// Transform report data function remains the same
+const transformReportData = (reportDataArray) => {
   const reportTypes = ["tabular", "summary", "matrix", "joined"];
   const statuses = ["active", "inactive"];
-  const primaryObjects = ["Account", "Contact", "Opportunity", "Case", "Campaign", "Lead", "Product", "Order"];
-  const relatedObjectOptions = [
-    ["Contact", "Opportunity"],
-    ["Account"],
-    ["Account", "Contact"],
-    ["Contact", "Account"],
-    ["Lead"],
-    ["Campaign", "Opportunity"],
-    ["Order"],
-    ["Product", "Account"]
-  ];
-  const users = ["John Doe", "Jane Smith", "Alex Johnson", "Sarah Wilson", "Michael Brown", "Emily Davis"];
-  
-  // Report name templates for variety
-  const reportNameTemplates = [
-    "{Object} Performance Analysis",
-    "{Object} with Related {Related}",
-    "{Object} Summary Report",
-    "Monthly {Object} Statistics",
-    "Quarterly {Object} Review",
-    "{Object} by Region",
-    "{Related} per {Object}",
-    "Top {Object} Report",
-    "{Object} Growth Metrics",
-    "Trending {Object} Data"
-  ];
-  
-  // Description templates
-  const descriptionTemplates = [
-    "Analyzes {object} performance with detailed metrics",
-    "Shows all {objects} with their related {related}",
-    "Provides a summary view of {object} data",
-    "Monthly statistics for {objects} across departments",
-    "Quarterly review of {object} performance",
-    "Regional breakdown of {object} metrics",
-    "Tracks {related} metrics associated with each {object}",
-    "Highlights top performing {objects}",
-    "Analyzes growth trends for {objects}",
-    "Shows trending data for {objects}"
-  ];
-  
-  // Generate reports
-  const reports = [];
-  
-  for (let i = 1; i <= count; i++) {
-    const primaryObject = primaryObjects[Math.floor(Math.random() * primaryObjects.length)];
-    const relatedObjects = relatedObjectOptions[Math.floor(Math.random() * relatedObjectOptions.length)];
-    const reportType = reportTypes[Math.floor(Math.random() * reportTypes.length)];
-    const status = statuses[Math.floor(Math.random() * statuses.length)];
-    const creator = users[Math.floor(Math.random() * users.length)];
-    
-    // Generate dates
-    const currentDate = new Date();
-    const createdDate = new Date(currentDate);
-    createdDate.setDate(createdDate.getDate() - Math.floor(Math.random() * 90)); // Random date in last 90 days
-    const modifiedDate = new Date(createdDate);
-    modifiedDate.setDate(modifiedDate.getDate() + Math.floor(Math.random() * 30)); // Random date after created
-    
-    // Format dates
-    const createdDateStr = new Intl.DateTimeFormat('en-US', { 
-      month: 'long', day: 'numeric', year: 'numeric' 
+
+  return reportDataArray?.map(report => {
+    const createdDate = new Date(report.createdOn);
+    const modifiedDate = new Date(report.updatedOn);
+
+    const createdDateStr = new Intl.DateTimeFormat('en-US', {
+      month: 'long', day: 'numeric', year: 'numeric'
     }).format(createdDate);
-    
-    const modifiedDateStr = new Intl.DateTimeFormat('en-US', { 
+
+    const modifiedDateStr = new Intl.DateTimeFormat('en-US', {
       month: 'long', day: 'numeric', year: 'numeric'
     }).format(modifiedDate);
-    
-    // Generate report name
-    const nameTemplate = reportNameTemplates[Math.floor(Math.random() * reportNameTemplates.length)];
-    const name = nameTemplate
-      .replace('{Object}', primaryObject)
-      .replace('{Related}', relatedObjects[0] || '');
-    
-    // Generate description
-    const descTemplate = descriptionTemplates[Math.floor(Math.random() * descriptionTemplates.length)];
-    const description = descTemplate
-      .replace('{object}', primaryObject.toLowerCase())
-      .replace('{objects}', primaryObject.toLowerCase() + 's')
-      .replace('{related}', relatedObjects[0]?.toLowerCase() || 'related data');
-    
-    // Create report object
-    reports.push({
-      id: `RT-${Math.floor(10000 + Math.random() * 90000)}`,
-      name,
-      description,
+
+    const primaryObject = report.primaryTable[0].toUpperCase() + report.primaryTable.slice(1); // Capitalize
+    const relatedObjects = report.usedTables.filter(table => table.toLowerCase() !== report.primaryTable.toLowerCase());
+
+    return {
+      id: report.id || `RT-${Math.floor(10000 + Math.random() * 90000)}`,
+      name: report.name || report.label || `${primaryObject} Report`,
+      description: `Auto-generated report for ${primaryObject.toLowerCase()} and related data.`,
       primaryObject,
       relatedObjects,
       createdDate: createdDateStr,
-      createdBy: creator,
       lastModified: modifiedDateStr,
-      type: reportType,
-      status,
+      type: reportTypes[Math.floor(Math.random() * reportTypes.length)],
+      status: statuses[Math.floor(Math.random() * statuses.length)],
       views: Math.floor(Math.random() * 1000),
-      starred: Math.random() > 0.7 // 30% chance to be starred
-    });
-  }
-  
-  return reports;
+      starred: Math.random() > 0.7
+    };
+  });
 };
-
-const sampleReportTypes = generateSampleReports(50);
 
 // Helper function to format the date
 const formatDate = (dateString: string) => {
@@ -134,45 +68,66 @@ export default function ReportsPage() {
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [typeFilter, setTypeFilter] = useState<"all" | "tabular" | "summary" | "matrix" | "joined">("all");
   const [sortBy, setSortBy] = useState<"recent" | "name" | "popular">("recent");
+  const [showDeleteToast, setShowDeleteToast] = useState(false);
   const [showStarredOnly, setShowStarredOnly] = useState(false);
   const [isClient, setIsClient] = useState(false);
-  
+  const router = useRouter();
+
+  // State for delete confirmation dialog
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [reportToDelete, setReportToDelete] = useState<string | null>(null);
+  const { allReportResponse } = useAllReport();
+  let sampleReportTypes = transformReportData(allReportResponse?.data);
+  const { invalidateAllReport } = useInvalidateAllReport();
+  const [showErrorToast, setShowErrorToast] = useState<string>('');
+
+  const deleteReportTypeById = useDeleteReportById();
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(8);
-  
+
   // Use useEffect to mark when client-side rendering is active
   useEffect(() => {
     setIsClient(true);
+    invalidateAllReport()
   }, []);
-  
+
   // Filter report types based on all filters
-  const filteredReportTypes = sampleReportTypes.filter(reportType => {
+  const filteredReportTypes = (sampleReportTypes || []).filter(reportType => {
+    const name = reportType?.name?.toLowerCase() || '';
+    const description = reportType?.description?.toLowerCase() || '';
+    const primaryObject = reportType?.primaryObject?.toLowerCase() || '';
+    const id = reportType?.id?.toLowerCase() || '';
+    const status = reportType?.status || '';
+    const type = reportType?.type || '';
+    const starred = reportType?.starred ?? false;
+
+    const search = searchTerm?.toLowerCase() || '';
+
     // Search filter
-    const matchesSearch = 
-      reportType.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      reportType.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      reportType.primaryObject.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      reportType.id.toLowerCase().includes(searchTerm.toLowerCase());
-    
+    const matchesSearch =
+      name.includes(search) ||
+      description.includes(search) ||
+      primaryObject.includes(search) ||
+      id.includes(search);
+
     // Status filter
-    const matchesStatus = 
-      statusFilter === "all" || 
-      (statusFilter === "active" && reportType.status === "active") ||
-      (statusFilter === "inactive" && reportType.status === "inactive");
-    
+    const matchesStatus =
+      statusFilter === "all" ||
+      (statusFilter === "active" && status === "active") ||
+      (statusFilter === "inactive" && status === "inactive");
+
     // Type filter
     const matchesType =
-      typeFilter === "all" ||
-      reportType.type === typeFilter;
-    
+      typeFilter === "all" || type === typeFilter;
+
     // Starred filter
     const matchesStarred =
-      !showStarredOnly || reportType.starred;
-    
+      !showStarredOnly || starred;
+
     return matchesSearch && matchesStatus && matchesType && matchesStarred;
   });
-  
+
   // Sort reports
   const sortedReports = [...filteredReportTypes].sort((a, b) => {
     if (sortBy === "name") {
@@ -186,13 +141,13 @@ export default function ReportsPage() {
       return dateB.getTime() - dateA.getTime();
     }
   });
-  
+
   // Calculate pagination
   const totalPages = Math.ceil(sortedReports.length / itemsPerPage);
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = sortedReports.slice(indexOfFirstItem, indexOfLastItem);
-  
+
   // Page navigation
   const goToPage = (pageNumber: number) => {
     setCurrentPage(pageNumber);
@@ -202,17 +157,17 @@ export default function ReportsPage() {
       behavior: 'smooth'
     });
   };
-  
+
   // When filters change, reset to first page
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, statusFilter, typeFilter, showStarredOnly, sortBy]);
-  
+
   // Create array of page numbers for pagination
   const getPageNumbers = () => {
     const pageNumbers = [];
     const maxPagesToShow = 5;
-    
+
     if (totalPages <= maxPagesToShow) {
       // Show all pages if there are few
       for (let i = 1; i <= totalPages; i++) {
@@ -245,16 +200,50 @@ export default function ReportsPage() {
         pageNumbers.push(totalPages);
       }
     }
-    
+
     return pageNumbers;
+  };
+
+  // Function to handle delete button click
+  const handleDeleteClick = (reportId: string) => {
+    setReportToDelete(reportId);
+    setDeleteDialogOpen(true);
+  };
+
+  // Function to confirm deletion
+  const confirmDelete = () => {
+    if (reportToDelete) {
+      deleteReportTypeById.mutate(
+        { reportId: reportToDelete },
+        {
+          onSuccess: () => {
+            invalidateAllReport();
+            setShowDeleteToast(true);
+            setTimeout(() => setShowDeleteToast(false), 3000);
+          },
+          onError: (error) => {
+            setShowErrorToast(error?.message || 'Something went wrong. Please try again.');
+            setTimeout(() => setShowErrorToast(''), 3000);
+          },
+        }
+      );
+    }
+    setDeleteDialogOpen(false);
+    setReportToDelete(null);
+  };
+
+  // Function to cancel deletion
+  const cancelDelete = () => {
+    setDeleteDialogOpen(false);
+    setReportToDelete(null);
   };
 
   return (
     <div className="min-h-screen bg-muted/40">
       {/* Main Content */}
       <main className="container mx-auto py-8 px-4">
-       {/* Page Header */}
-       <div className="mb-2 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+        {/* Page Header */}
+        <div className="mb-2 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
           <div>
             <h1 className="text-xl font-bold mb-2">Reports</h1>
             <p className="text-muted-foreground">Manage and create custom report types</p>
@@ -301,29 +290,29 @@ export default function ReportsPage() {
               <circle cx="11" cy="11" r="8" />
               <path d="m21 21-4.3-4.3" />
             </svg>
-            <Input 
-              className="pl-10" 
-              placeholder="Search report types..." 
+            <Input
+              className="pl-10"
+              placeholder="Search report types..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           <div className="flex gap-2">
-            <Button 
+            <Button
               variant={statusFilter === "all" ? "default" : "outline"}
               onClick={() => setStatusFilter("all")}
               size="sm"
             >
               All
             </Button>
-            <Button 
+            <Button
               variant={statusFilter === "active" ? "default" : "outline"}
               onClick={() => setStatusFilter("active")}
               size="sm"
             >
               Active
             </Button>
-            <Button 
+            <Button
               variant={statusFilter === "inactive" ? "default" : "outline"}
               onClick={() => setStatusFilter("inactive")}
               size="sm"
@@ -340,7 +329,7 @@ export default function ReportsPage() {
               <Label className="flex items-center text-sm font-medium">
                 Type:
               </Label>
-              <Button 
+              <Button
                 variant={typeFilter === "all" ? "default" : "outline"}
                 onClick={() => setTypeFilter("all")}
                 size="sm"
@@ -348,7 +337,7 @@ export default function ReportsPage() {
               >
                 All
               </Button>
-              <Button 
+              <Button
                 variant={typeFilter === "tabular" ? "default" : "outline"}
                 onClick={() => setTypeFilter("tabular")}
                 size="sm"
@@ -358,7 +347,7 @@ export default function ReportsPage() {
                 <span className="w-2 h-2 rounded-full mr-1.5" style={{ backgroundColor: typeColors.tabular }}></span>
                 Tabular
               </Button>
-              <Button 
+              <Button
                 variant={typeFilter === "summary" ? "default" : "outline"}
                 onClick={() => setTypeFilter("summary")}
                 size="sm"
@@ -368,7 +357,7 @@ export default function ReportsPage() {
                 <span className="w-2 h-2 rounded-full mr-1.5" style={{ backgroundColor: typeColors.summary }}></span>
                 Summary
               </Button>
-              <Button 
+              <Button
                 variant={typeFilter === "matrix" ? "default" : "outline"}
                 onClick={() => setTypeFilter("matrix")}
                 size="sm"
@@ -378,7 +367,7 @@ export default function ReportsPage() {
                 <span className="w-2 h-2 rounded-full mr-1.5" style={{ backgroundColor: typeColors.matrix }}></span>
                 Matrix
               </Button>
-              <Button 
+              <Button
                 variant={typeFilter === "joined" ? "default" : "outline"}
                 onClick={() => setTypeFilter("joined")}
                 size="sm"
@@ -404,22 +393,22 @@ export default function ReportsPage() {
                   <SelectItem value="popular">Most Viewed</SelectItem>
                 </SelectContent>
               </Select>
-              <Button 
+              <Button
                 variant={showStarredOnly ? "default" : "outline"}
                 onClick={() => setShowStarredOnly(!showStarredOnly)}
                 size="sm"
                 className="h-8 flex items-center"
                 title={showStarredOnly ? "Show all reports" : "Show starred only"}
               >
-                <svg 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  width="14" 
-                  height="14" 
-                  viewBox="0 0 24 24" 
-                  fill={showStarredOnly ? "currentColor" : "none"} 
-                  stroke="currentColor" 
-                  strokeWidth="2" 
-                  strokeLinecap="round" 
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill={showStarredOnly ? "currentColor" : "none"}
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
                   strokeLinejoin="round"
                 >
                   <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
@@ -452,11 +441,11 @@ export default function ReportsPage() {
                 <circle cx="10" cy="13" r="2" />
                 <path d="m20 17-1.09-1.09a2 2 0 0 0-2.82 0L10 22" />
               </svg>
-              <h3 className="text-lg font-medium mb-2">No report types found</h3>
+              <h3 className="text-lg font-medium mb-2">No reports found</h3>
               <p className="text-muted-foreground mb-4">
                 {searchTerm || typeFilter !== "all" || statusFilter !== "all" || showStarredOnly
                   ? "Try a different search term or clear your filters."
-                  : "Create your first report type to get started."}
+                  : "Create your first report to get started."}
               </p>
               {(searchTerm || typeFilter !== "all" || statusFilter !== "all" || showStarredOnly) ? (
                 <Button variant="outline" onClick={() => {
@@ -468,8 +457,8 @@ export default function ReportsPage() {
                   Clear All Filters
                 </Button>
               ) : (
-                <Link href="/report-types">
-                  <Button>Create Report Type</Button>
+                <Link href="/report-builder">
+                  <Button>Create Report</Button>
                 </Link>
               )}
             </div>
@@ -499,7 +488,6 @@ export default function ReportsPage() {
                                   height="20"
                                   viewBox="0 0 24 24"
                                   fill="none"
-                                  // stroke={typeColors[reportType.type]}
                                   strokeWidth="2"
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
@@ -525,7 +513,6 @@ export default function ReportsPage() {
                               </div>
                               <div className="text-xs font-medium px-2 py-0.5 rounded-full capitalize" style={{
                                 backgroundColor: `${typeColors[reportType.type]}20`,
-                                // color: typeColors[reportType.type]
                               }}>
                                 {reportType.type}
                               </div>
@@ -536,12 +523,11 @@ export default function ReportsPage() {
                               <div className="flex flex-wrap items-center gap-2">
                                 <h3 className="text-base font-semibold truncate">{reportType.name}</h3>
                                 <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${reportType.status === "active"
-                                    ? "bg-green-100 text-green-700"
-                                    : "bg-gray-100 text-gray-700"
+                                  ? "bg-green-100 text-green-700"
+                                  : "bg-gray-100 text-gray-700"
                                   }`}>
                                   {reportType.status}
                                 </span>
-                                <span className="text-xs text-muted-foreground">{reportType.id}</span>
                               </div>
                               <p className="text-sm text-muted-foreground line-clamp-2">{reportType.description}</p>
                               <div className="flex flex-col text-xs text-muted-foreground gap-1">
@@ -549,7 +535,6 @@ export default function ReportsPage() {
                                 <span><strong>Related:</strong> {reportType.relatedObjects.join(", ")}</span>
                                 <span><strong>Created:</strong> {formatDate(reportType.createdDate)}</span>
                                 <span><strong>Modified:</strong> {formatDate(reportType.lastModified)}</span>
-                                <span><strong>Views:</strong> {reportType.views.toLocaleString()}</span>
                               </div>
                             </div>
 
@@ -558,11 +543,15 @@ export default function ReportsPage() {
                               <Link href={`/report-types/summary?id=${reportType.id}`}>
                                 <Button variant="ghost" size="sm" className="justify-start">View</Button>
                               </Link>
-                              <Link href={`/report-types/summary/edit-layout?id=${reportType.id}`}>
-                                <Button variant="ghost" size="sm" className="justify-start">Edit</Button>
-                              </Link>
-                              <Button variant="ghost" size="sm" className="justify-start">Share</Button>
-                              <Button variant="ghost" size="sm" className="justify-start text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20">Delete</Button>
+                              <Button variant="ghost" size="sm" className="justify-start" onClick={() => router.push(`report-builder?reportId=${reportType?.id}`)}>Edit</Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="justify-start text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                onClick={() => handleDeleteClick(reportType?.id)}
+                              >
+                                Delete
+                              </Button>
                             </div>
                           </div>
                         </CardContent>
@@ -579,6 +568,15 @@ export default function ReportsPage() {
                 )}
               </div>
 
+                {showDeleteToast && (
+                  <ToastMessage type="success" message="Report Deleted Successfully" />
+                )}
+                {
+                  showErrorToast && (
+                    <ToastMessage type="error" message={showErrorToast} />
+                  )
+                }
+
               {/* Pagination */}
               <div className="mt-6 flex flex-col items-center gap-4">
                 <div className="text-sm text-muted-foreground">
@@ -593,7 +591,9 @@ export default function ReportsPage() {
                     className="h-8 w-8 p-0"
                     aria-label="Previous"
                   >
-                    <svg width="16" height="16" fill="none" stroke="currentColor"><path d="M15 18L9 12l6-6" /></svg>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path d="M15 18L9 12l6-6" />
+                    </svg>
                   </Button>
                   {getPageNumbers().map((pageNumber, index) =>
                     pageNumber === 'ellipsis' ? (
@@ -618,7 +618,9 @@ export default function ReportsPage() {
                     className="h-8 w-8 p-0"
                     aria-label="Next"
                   >
-                    <svg width="16" height="16" fill="none" stroke="currentColor"><path d="M9 18l6-6-6-6" /></svg>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path d="M9 18l6-6-6-6" />
+                    </svg>
                   </Button>
                 </div>
 
@@ -647,6 +649,24 @@ export default function ReportsPage() {
           )}
         </div>
       </main>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this report? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelDelete}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-500 hover:bg-red-600 text-white">
+              Yes, Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

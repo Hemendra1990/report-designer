@@ -482,10 +482,11 @@ function parseIdentifier(context: ParserContext): string {
     if (upperName === 'FALSE') return 'FALSE';
     if (upperName === 'NULL') return 'NULL';
 
-    // Check if it's a field name that wasn't enclosed in brackets
-    const columnName = context.fieldMap[name];
-    if (columnName) {
-        return columnName;
+    // Fallback check if it's a field not in fieldMap yet
+    if (name.endsWith('__c')) {
+        console.warn(`Field '${name}' was not found in fieldMap. Auto-adding it.`);
+        context.fieldMap[name] = name;
+        return name;
     }
 
     throw new FormulaError(`Unknown identifier: ${name}`);

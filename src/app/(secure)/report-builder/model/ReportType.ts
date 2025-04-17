@@ -10,8 +10,9 @@ export interface ReportTypeTemplate {
 
   // Update the RecentReportType interface to include additional fields
 export interface RecentReportType {
-    id?:string;
+    id?: string;
     name: string;
+    label?:string;
     category: string;
     lastUsed: string;
     status: "Active" | "Draft";
@@ -19,15 +20,15 @@ export interface RecentReportType {
     type: "tabular" | "summary" | "matrix" | "joined";
     createdBy?: string;
     objects?: Array<{
-    name: string;
-icon?: string;
-color?: string;
-relatedObjects?: Array<{
         name: string;
-        icon: string;
-        color: string;
-        relation: string;
-}>;
+        icon?: string;
+        color?: string;
+        relatedObjects?: Array<{
+            name: string;
+            icon: string;
+            color: string;
+            relation: string;
+        }>;
     }>;
     fieldsCount?: number;
 }

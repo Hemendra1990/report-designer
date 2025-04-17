@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 
 @Getter
@@ -27,6 +28,8 @@ public class ReportDTO {
     private List<ReportColumnDTO> columns;
     private List<ReportGroupDTO> groups;
     private List<ReportFilterDTO> filters;
+    private OffsetDateTime createdOn;
+    private OffsetDateTime updatedOn;
 
     private String filterRule;
     private String reportTypeName;
@@ -35,12 +38,14 @@ public class ReportDTO {
     
     //private List<ReportPivot> pivots;
 
-    public ReportDTO(String id, String name, String label, String reportTypeName, String primaryTable, List<String> usedTables) {
+    public ReportDTO(String id, String name, String label, String reportTypeName, String primaryTable, List<String> usedTables,OffsetDateTime createdOn,OffsetDateTime updatedOn) {
         this.id = id;
         this.name = name;
         this.label = label;
         this.reportTypeName = reportTypeName;
         this.primaryTable = primaryTable;
         this.usedTables = usedTables;
+        this.createdOn = createdOn;
+        this.updatedOn = updatedOn;
     }
 }

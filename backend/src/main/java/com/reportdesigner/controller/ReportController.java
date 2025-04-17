@@ -6,6 +6,7 @@ import com.reportdesigner.exception.ValidationException;
 import com.reportdesigner.service.ReportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -63,4 +64,14 @@ public class ReportController {
                 .message("Report details")
                 .build();
     }
+
+    @DeleteMapping("/{reportId}")
+    public ApiResponse deleteById(@PathVariable String reportId) throws ValidationException {
+        reportService.deleteReportById(reportId);
+        return ApiResponse.builder()
+                .status(HttpStatus.OK.toString())
+                .message("Report deleted successfully")
+                .build();
+    }
+
 }

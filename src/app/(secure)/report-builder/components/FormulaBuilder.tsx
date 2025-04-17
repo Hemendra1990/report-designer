@@ -1,11 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { 
-  ChevronDownIcon,
   CrossIcon,
   InfoIcon,
   SearchIcon
@@ -16,15 +11,9 @@ import FormulaFunctionsPanel from './formula/FormulaFunctionsPanel';
 import FormulaEditor from './formula/FormulaEditor';
 import FormulaSettings from './formula/FormulaSettings';
 import SqlPreview from './formula/SqlPreview';
+import {ApiReportField} from "@/app/(secure)/report-builder/services/api-types";
+import { Field } from '../model/Field';
 
-// Define the types needed
-type Field = {
-  id: string;
-  name: string;
-  type: string;
-  category: string;
-  icon: React.ReactNode;
-};
 
 type Function = {
   name: string;
@@ -68,6 +57,7 @@ interface FormulaBuilderProps {
   };
   isSummaryFormula?: boolean;
   title?: string;
+  reportFields: ApiReportField[];
 }
 
 const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
@@ -84,7 +74,8 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
   onFormulaSearchTermChange,
   editFormulaColumn,
   isSummaryFormula = false,
-  title = "Add Formula"
+  title = "Add Formula",
+  reportFields
 }) => {
   // Local state
   const [formulaName, setFormulaName] = useState(editFormulaColumn?.name || "");
@@ -113,11 +104,11 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
 
   // Get all fields as a flat array
   const getAllFields = () => {
-    const fields: Field[] = [];
+    /*const fields: Field[] = [];
     Object.values(fieldsByCategory).forEach(categoryFields => {
       fields.push(...categoryFields);
-    });
-    return fields;
+    });*/
+    return reportFields;
   };
 
   // Handle form submission
@@ -192,10 +183,8 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
       // Regular formula validation with SQL translation
       // Create a field map from the available fields
       const fieldMap: Record<string, string> = {};
-      Object.entries(fieldsByCategory).forEach(([_, fields]) => {
-        fields.forEach(field => {
-          fieldMap[field.id] = field.id.toLowerCase();
-        });
+      reportFields.forEach((fields) => {
+        fieldMap[fields.duckDBColumnName] = fields.duckDBColumnName.toLowerCase();
       });
 
       // Translate the formula to SQL to check for syntax errors
@@ -235,12 +224,9 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
 
         // Create a field map from the available fields
         const fieldMap: Record<string, string> = {};
-        Object.entries(fieldsByCategory).forEach(([_, fields]) => {
-          fields.forEach(field => {
-            fieldMap[field.id] = field.id.toLowerCase();
-          });
+        reportFields.forEach((fields) => {
+          fieldMap[fields.duckDBColumnName] = fields.duckDBColumnName.toLowerCase();
         });
-
         // Translate the formula to SQL
         const sql = translateFormulaToDuckDBSQL(formulaEditorValue, fieldMap, formulaAlias);
         setSqlPreview(sql);
@@ -264,7 +250,6 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
         func.description.toLowerCase().includes(formulaSearchTerm.toLowerCase())
       )
     })).filter(category => category.functions.length > 0);
-
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
@@ -319,9 +304,10 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
                     onFieldSelect={(field) => {
                       // Insert field at the current cursor position
                       setFormulaEditorValue(prev => {
-                        return prev + field.id;
+                        return prev + field.duckDBColumnName || field.columnName || field.id;
                       });
                     }}
+                    reportFields={reportFields}
                   />
                 ) : (
                   <FormulaFunctionsPanel 

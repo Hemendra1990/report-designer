@@ -22,6 +22,17 @@ export interface DataTableProps<TData extends Record<string, any>> {
     isLoading: boolean;
     // Pivot-related properties
     isPivotTable?: boolean;
+    isPivotActive?: boolean;
     pivotColumns?: string[];
     pivotValues?: string[];
+    groupByFields?: string[];
+    // Query-related properties for dynamic data loading
+    generatedSql?: string;
+    cteQuery?: string;
+    // Report context properties for SQL generation
+    selectedReportType?: any;
+    selectedColumns?: any[];
+    filters?: any[];
+    filterLogic?: 'and' | 'or' | 'custom';
+    selectedAggregations?: Record<string, string>;
 }

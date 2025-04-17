@@ -19,7 +19,7 @@ import { groupFieldsByTable, mapColumnTypeToFieldType } from "../utils/fieldUtil
 import { AxiosError } from 'axios';
 import { Field, FieldType } from "../model/Field";
 import { ApiReportField } from "../services/api-types";
-import { useAllReportTypeSummary, useLayoutColumnListByReportId } from "@/hooks/report-type-hook";
+import { useActiveLayoutColumnListByReportId, useAllReportTypeSummary } from "@/hooks/report-type-hook";
 import { ReportTypeLayout } from "@/components/model/report-type";
 
 // Define an extended Field type that includes ApiReportField properties
@@ -45,7 +45,7 @@ export function ReportTypeSelectionModal({
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [selectedReport, setSelectedReport] = useState<RecentReportType | null>(null);
-    const { layoutColumnByReportIdResponse } = useLayoutColumnListByReportId(selectedReport?.id as string);
+    const { activeLayoutColumnByReportIdResponse } = useActiveLayoutColumnListByReportId(selectedReport?.id as string);
     const [activeTab, setActiveTab] = useState<"details" | "fields">("details");
     const [fieldSearchTerm, setFieldSearchTerm] = useState("");
     const { allReportTypeSummaryResponse } = useAllReportTypeSummary();
@@ -58,6 +58,7 @@ export function ReportTypeSelectionModal({
                 let type:RecentReportType =  {
                     id: reportType.id,
                     name: reportType?.name,
+                    label:reportType?.label,
                     category: '',
                     description: reportType?.description,
                     objects: reportType?.usedTables?.map(table => ({name: table})),
@@ -113,7 +114,7 @@ export function ReportTypeSelectionModal({
 
     const getFieldCategoryMap = (): Record<string, ReportTypeLayout[]> => {
         if (allReportTypeSummaryResponse?.data) {
-            const fieldCategoryMap: Record<string, ReportTypeLayout[]> = layoutColumnByReportIdResponse?.data.reduce((acc: any, layout: any) => {
+            const fieldCategoryMap: Record<string, ReportTypeLayout[]> = activeLayoutColumnByReportIdResponse?.data.reduce((acc: any, layout: any) => {
                 const table = layout.tableName;
                 if (!acc[table]) {
                   acc[table] = [];
@@ -292,7 +293,7 @@ export function ReportTypeSelectionModal({
                         selectedReport ? "flex-1 border-r border-gray-100" : "flex-1"
                     )}>
                         <DialogHeader className="px-0 mb-2">
-                            <DialogTitle className="text-lg font-semibold text-slate-800">Select a Report Type</DialogTitle>
+                            <DialogTitle className="text-lg font-semibold text-slate-800">Select a Report</DialogTitle>
                         </DialogHeader>
 
                         <div className="relative mb-3">
@@ -349,7 +350,7 @@ export function ReportTypeSelectionModal({
 
                                                 <div className="flex-1">
                                                     <h4 className="font-medium text-sm text-slate-800 group-hover:text-primary flex items-center gap-2">
-                                                        {report.name}
+                                                        {report?.label}
                                                         <Badge variant={report.status === "Active" ? "default" : "secondary"} className="ml-1.5 px-1 py-0 h-4 text-[0.65rem]">
                                                             {report.status}
                                                         </Badge>
@@ -422,7 +423,7 @@ export function ReportTypeSelectionModal({
                                     <FileText className="h-5 w-5 text-green-600" />
                                 </div>
                                 <div>
-                                    <h3 className="text-sm font-semibold text-slate-800">{selectedReport.name}</h3>
+                                    <h3 className="text-sm font-semibold text-slate-800">{selectedReport?.label}</h3>
                                     <p className="text-xs text-slate-500">{selectedReport.category} Report Type</p>
                                 </div>
                             </div>
@@ -519,12 +520,12 @@ export function ReportTypeSelectionModal({
                                             />
                                         </div>
 
-                                        {layoutColumnByReportIdResponse?.isLoading ? (
+                                        {activeLayoutColumnByReportIdResponse?.isLoading ? (
                                             // Loading skeleton for fields
                                             <ScrollArea className="flex-1 pr-3 -mr-3">
                                                 <FieldsSkeletonList />
                                             </ScrollArea>
-                                        ) : layoutColumnByReportIdResponse?.isError ? (
+                                        ) : activeLayoutColumnByReportIdResponse?.isError ? (
                                             // Error state for fields
                                             <div className="flex-1 flex items-center justify-center">
                                                 <div className="text-center">
