@@ -25,6 +25,10 @@ export const generateReportPayload = (reportId: string, reportName: string, repo
         return reportFilter;
     })
 
+    const groupsByColumnName = updatedGroups.map(duckDBColumnName => ({
+        duckDBColumnName
+      }));
+      
     let reportPayload: Report = {
         id: reportId,
         name: reportName,
@@ -35,7 +39,7 @@ export const generateReportPayload = (reportId: string, reportName: string, repo
         },
         sqlQuery: sqlQuery,
         columns: updatedColumns,
-        groups: updatedGroups,
+        groups: groupsByColumnName,
         filters: updatedFilters
     }
     return reportPayload;

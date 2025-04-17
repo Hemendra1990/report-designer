@@ -293,9 +293,9 @@ export function DataTable<TData extends Record<string, any>>(props: DataTablePro
               <thead className="bg-slate-50 text-slate-600 sticky top-0 z-10 shadow-sm">
                 {table.getHeaderGroups().map((headerGroup) => (
                   <tr key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => (
+                    {headerGroup.headers.map((header,index) => (
                       <th 
-                        key={header.id} 
+                        key={index} 
                         className="px-4 py-2.5 text-left text-xs font-medium tracking-wide whitespace-nowrap border-b border-slate-200"
                         style={{ width: header.getSize() }}
                       >
@@ -442,7 +442,7 @@ export function DataTable<TData extends Record<string, any>>(props: DataTablePro
                       <tr 
                         className={`${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'} hover:bg-blue-50/40 transition-colors duration-150 ${row.getIsGrouped() ? 'font-medium bg-slate-100/80' : ''}`}
                     >
-                      {row.getVisibleCells().map(cell => {
+                      {row.getVisibleCells().map((cell,index) => {
                         const cellValue = cell.getValue();
                         const isNumber = typeof cellValue === 'number' && !isNaN(cellValue);
                         const isCurrency = cell.column.id.includes('amount') || 
@@ -486,7 +486,7 @@ export function DataTable<TData extends Record<string, any>>(props: DataTablePro
                         
                         return (
                           <td
-                            key={cell.id}
+                            key={index}
                             className={className.trim()}
                           >
                             {cell.getIsGrouped() ? (
