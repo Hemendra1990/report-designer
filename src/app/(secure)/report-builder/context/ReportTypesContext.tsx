@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { RecentReportType } from '../model/ReportType';
 import { getReportTypes, getReportTypeFields } from '../services/reportTypeService';
 import { ApiReportField } from '../services/api-types';
-import { activeLayoutColumnListByReportId, getAllReportTypes, layoutColumnListByReportId } from '@/services/report-type/report-type-service';
+import { activeLayoutColumnListByReportId, getAllReportTypes, layoutColumnListByReportId } from '@/services/rd/report-type/report-type-service';
 import { ReportType } from '@/components/model/report-type';
 
 interface ReportTypesContextType {

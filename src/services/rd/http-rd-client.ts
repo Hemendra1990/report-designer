@@ -1,9 +1,9 @@
 import { AxiosRequestConfig } from "axios";
 import { httpClient } from "../http-service";
 
-const BASE_URL = 'crm';
+const BASE_URL = 'rd';
 
-export const httpCrmClient = {
+export const httpRDClient = {
     get<T = any>(url: string, config?: AxiosRequestConfig) {
         return httpClient.get<T>(`${BASE_URL}${url}`, config);
     },

@@ -44,7 +44,6 @@ export default function EditLayout() {
 
   let selectedTabColumns: ReportTypeLayout[] = useMemo(() => {
     if (!selectedTab || !reportType?.layoutList?.length) return [];
-    debugger
     return reportType.layoutList
       .filter(col => col.tableName === selectedTab);
   }, [selectedTab]);

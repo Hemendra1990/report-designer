@@ -1,6 +1,6 @@
 import { QueryKeys } from "@/components/enum/query-keys";
 import { Report } from "@/components/model/report";
-import { createReport, deleteReportById, getAllReports, getReportById, updateReport } from "@/services/report/report-service";
+import { createReport, deleteReportById, getAllReports, getReportById, updateReport } from "@/services/rd/report/report-service";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 

@@ -1,6 +1,6 @@
 // Service to fetch group detail records by group value
-import { executeQueryOnDuckDB } from "@/services/crm/dml-service";
 import { buildSqlQuery } from "@/app/(secure)/report-builder/util/SqlQueryBuilder";
+import { executeQueryOnDuckDB } from "@/services/rd/http-rd-service";
 
 export async function fetchGroupDetailRecords(
   groupField: string,

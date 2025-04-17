@@ -1,6 +1,6 @@
 import { QueryKeys } from "@/components/enum/query-keys";
 import { ReportType, ReportTypeLayout, ReportTypeSummary } from "@/components/model/report-type";
-import { activeLayoutColumnListByReportId, createReportType, deleteReportTypeById, getAllReportTypes, getAllReportTypeSummary, getReportTypeById, layoutColumnListByReportId, updateReportTypeLayoutStatus } from "@/services/report-type/report-type-service";
+import { activeLayoutColumnListByReportId, createReportType, deleteReportTypeById, getAllReportTypes, getAllReportTypeSummary, getReportTypeById, layoutColumnListByReportId, updateReportTypeLayoutStatus } from "@/services/rd/report-type/report-type-service";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { on } from "process";

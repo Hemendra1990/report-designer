@@ -33,11 +33,11 @@ import {Filter} from "./model/Filter";
 import {ReportTypeTemplate} from "./model/ReportType";
 import {formulaFunctions} from "./util/ReportBuilderUtil";
 import {useReportTypeById} from "@/hooks/report-type-hook";
-import {executeQuery, executeQueryOnDuckDB} from "@/services/crm/dml-service";
 import {buildSqlQuery} from "@/app/(secure)/report-builder/util/SqlQueryBuilder";
 import {useCreatereport, useReportById, useUpdatereport} from "@/hooks/report-hook";
 import { generateFilterJson, generateReportPayload } from "@/helper/report/report-helper";
 import ToastMessage from "../report-types/summary/summary-helper";
+import { executeQueryOnDuckDB } from "@/services/rd/http-rd-service";
 
 
 // Replace the static initialSelectedColumns with a more dynamic approach
