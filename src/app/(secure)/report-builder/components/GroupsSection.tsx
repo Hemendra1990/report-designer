@@ -81,9 +81,9 @@ const GroupsSection: React.FC<GroupsSectionProps> = ({
                 .filter(col =>
                   !groupSearchTerm.trim() || col.name.toLowerCase().includes(groupSearchTerm.toLowerCase())
                 )
-                .map(column => (
+                .map((column, columnIndex) => (
                   <div
-                    key={column.id}
+                    key={columnIndex}
                     className="px-3 py-2 hover:bg-accent cursor-pointer flex items-center gap-2 text-sm"
                     onClick={() => {
                       // Debug the column being selected

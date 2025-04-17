@@ -109,6 +109,11 @@ function ReportBuilderPage() {
   useEffect(() => {
     if (reportResponse.data && reportFields?.length) {
       setFilters(generateFilterJson(reportResponse?.data?.filters, reportFields));
+      const duckColumns: string[] = reportResponse?.data?.groups
+      .map((group: any) => group.duckDBColumnName)
+      .filter(Boolean); // filters out undefined/null
+ 
+    setGrouping(duckColumns);
     }
   }, [reportResponse.data, reportFields])
 
@@ -602,7 +607,7 @@ function ReportBuilderPage() {
       JSON.stringify(selectedColumns.map(col => col.id)), // Only use IDs to reduce size
       JSON.stringify(filters.map(f => f.id)),
     ];
-  }, [pagination.pageIndex, pagination.pageSize, sorting, grouping, selectedColumns, filters]);
+  }, [pagination.pageIndex, pagination.pageSize, sorting, grouping, selectedColumns, filters, selectedColumns]);
 
   // Function to manually trigger a refresh of the data
   const fetchData = useCallback(() => {
@@ -654,7 +659,7 @@ function ReportBuilderPage() {
     }
   }, [queryClient, queryKeyBase, autoUpdatePreview, selectedReportType, selectedColumns, 
       groupByFields, filters, filterLogic, isPivotActive, pivotColumnIds, 
-      pivotValues, selectedAggregations, reportTypeResponse?.data?.cteQuery]);
+      pivotValues, selectedAggregations, reportTypeResponse?.data?.cteQuery, selectedColumns?.length]);
 
   // Use React Query instead of manually fetching
   const {
@@ -1073,9 +1078,9 @@ function ReportBuilderPage() {
       const originalField = field;
       
       // Get the appropriate column name for SQL and data access
-      const accessorKey = field.duckDBColumnName || field.columnName || field.id;
-      // Get the appropriate display name
-      const headerName = field.duckDBColumnDisplayName || field.columnDisplayName || field.name;
+     const accessorKey = isFormula ? (field as FormulaColumn).alias : field.duckDBColumnName || field.columnName || field.id;
+     // Get the appropriate display name
+     const headerName = isFormula ? (field as FormulaColumn).alias || field.name : field.name || field.columnDisplayName || field.duckDBColumnDisplayName;
       
       // Extract formula for summary formulas
       let formula = '';

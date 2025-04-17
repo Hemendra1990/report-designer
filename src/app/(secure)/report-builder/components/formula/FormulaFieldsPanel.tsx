@@ -57,7 +57,7 @@ const FormulaFieldsPanel: React.FC<FormulaFieldsPanelProps> = ({
                           ? 'bg-purple-100 text-purple-700' 
                           : 'bg-indigo-100 text-indigo-700'
                       }`}>
-                        {field.icon}
+                        {field.columnDisplayName.charAt(0).toUpperCase()}
                       </span>
                       <span className="truncate">{field.columnDisplayName}</span>
                     </div>
