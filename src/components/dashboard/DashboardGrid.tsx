@@ -63,13 +63,55 @@ export const DashboardGrid = ({
           position: relative;
           transition: height 200ms ease;
           min-height: 100vh;
-          /* More refined, professional grid background */
-          background-color: #f9fafc; /* Very light blue-gray background */
+          /* Precisely match the grid background to React Grid Layout's actual grid */
+          background-color: white;
           background-image: 
-            linear-gradient(to right, rgba(210, 220, 240, 0.4) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(210, 220, 240, 0.4) 1px, transparent 1px);
-          background-size: 50px 50px;
+            /* Grid cell lines */
+            linear-gradient(
+              to right,
+              rgba(210, 220, 240, 0.5) 1px,
+              transparent 1px
+            ),
+            linear-gradient(
+              to bottom,
+              rgba(210, 220, 240, 0.5) 1px,
+              transparent 1px
+            );
+          /* Exact size calculations based on React Grid Layout's positioning system */
+          background-size: 
+            /* Width of cell (100%/cols) + horizontal margin */
+            calc(${100 / gridProps.cols}%),
+            /* Height of cell (rowHeight) + vertical margin */
+            calc(${gridProps.rowHeight}px + ${gridProps.margin[1]}px);
+          /* Position the grid lines precisely */
+          background-position: 0px 0px;
         }
+        
+        /* Add a subtle fill to grid cells with repeating pattern */
+        .react-grid-layout::before {
+          content: "";
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background-image: 
+            /* Cell fill pattern */
+            linear-gradient(
+              45deg,
+              rgba(240, 245, 250, 0.5) 25%,
+              transparent 25%,
+              transparent 75%,
+              rgba(240, 245, 250, 0.5) 75%
+            );
+          background-size: 
+            calc(${100 / gridProps.cols}% - ${gridProps.margin[0]}px)
+            calc(${gridProps.rowHeight}px);
+          background-position: ${gridProps.margin[0] / 2}px ${gridProps.margin[1] / 2}px;
+          pointer-events: none; /* Ensure clicks pass through to actual grid */
+          z-index: 0;
+        }
+        
         .react-grid-item {
           transition: none;
           cursor: ${isPreviewMode ? 'default' : 'move'};
