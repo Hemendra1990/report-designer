@@ -1,20 +1,19 @@
 'use client';
 
 import React from 'react';
-import { Responsive, WidthProvider, Layout as RGLLayout } from 'react-grid-layout';
+import RGL, { WidthProvider, Layout as RGLLayout } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import { DashboardWidget as WidgetType, Layout } from '@/types/dashboard';
 import { DashboardWidget } from '@/components/dashboard/DashboardWidget';
 
-const ResponsiveGridLayout = WidthProvider(Responsive);
+const WrappedGridLayout = WidthProvider(RGL);
 
 interface DashboardGridProps {
   widgets: WidgetType[];
   layouts: { [key: string]: Layout[] };
   isPreviewMode: boolean;
-  onLayoutChange: (layout: Layout[], layouts: { [key: string]: Layout[] }) => void;
-  onBreakpointChange: (breakpoint: string) => void;
+  onLayoutChange: (layout: Layout[]) => void;
   onRemoveWidget: (id: string) => void;
   onWidgetContentChange?: (widgetId: string, content: string) => void;
 }
@@ -24,26 +23,28 @@ export const DashboardGrid = ({
   layouts,
   isPreviewMode,
   onLayoutChange,
-  onBreakpointChange,
   onRemoveWidget,
   onWidgetContentChange
 }: DashboardGridProps) => {
-  // Grid layout configuration - same for both preview and edit modes
+  const currentLayout = layouts.sm || [];
+
+  const handleLayoutChange = (newLayout: Layout[]) => {
+    onLayoutChange(newLayout);
+  };
+
   const gridProps = {
     className: "layout",
-    layouts,
-    breakpoints: { lg: 2560, md: 1920, sm: 1280, xs: 768, xxs: 480 },
-    cols: { lg: 48, md: 36, sm: 24, xs: 12, xxs: 6 },
+    layout: currentLayout,
+    cols: 24,
     rowHeight: 30,
     margin: [10, 10] as [number, number],
     containerPadding: [0, 0] as [number, number],
-    onLayoutChange,
-    onBreakpointChange,
+    onLayoutChange: handleLayoutChange,
     isDraggable: !isPreviewMode,
     isResizable: !isPreviewMode,
     useCSSTransforms: false,
-    compactType: null,
-    preventCollision: false,
+    compactType: null as 'vertical' | 'horizontal' | null,
+    preventCollision: true,
     resizeHandles: ['se'] as Array<'se'>,
     draggableHandle: ".widget-drag-handle",
     isBounded: false,
@@ -62,10 +63,19 @@ export const DashboardGrid = ({
           position: relative;
           transition: height 200ms ease;
           min-height: 100vh;
+          /* More refined, professional grid background */
+          background-color: #f9fafc; /* Very light blue-gray background */
+          background-image: 
+            linear-gradient(to right, rgba(210, 220, 240, 0.4) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(210, 220, 240, 0.4) 1px, transparent 1px);
+          background-size: 50px 50px;
         }
         .react-grid-item {
           transition: none;
           cursor: ${isPreviewMode ? 'default' : 'move'};
+          box-shadow: ${isPreviewMode ? 'none' : '0 1px 3px rgba(0,0,0,0.1)'};
+          border-radius: 4px;
+          background-color: white;
         }
         .react-grid-item.cssTransforms {
           transition: none;
@@ -137,7 +147,7 @@ export const DashboardGrid = ({
       `}</style>
       <div className="min-h-screen w-full overflow-x-auto overflow-y-hidden">
         <div className="min-w-[1280px]">
-          <ResponsiveGridLayout {...gridProps}>
+          <WrappedGridLayout {...gridProps}>
             {widgets.map((widget) => (
               <div key={widget.id} data-grid={widget.layout} className="group">
                 <DashboardWidget 
@@ -148,7 +158,7 @@ export const DashboardGrid = ({
                 />
               </div>
             ))}
-          </ResponsiveGridLayout>
+          </WrappedGridLayout>
         </div>
       </div>
     </>

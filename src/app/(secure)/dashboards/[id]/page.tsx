@@ -29,16 +29,15 @@ function DashboardContent() {
     <>
       <DashboardHeader />
 
-      {/* Content Container */}
-      <div className="max-w-[1400px] mx-auto px-4 py-6">
+      {/* Content Container - Remove max-width, horizontal margin/padding */}
+      <div className="py-2">
         {activeTab === 'dashboard' ? (
-          <div className={`bg-white rounded-lg shadow-sm border min-h-[600px] relative ${isPreviewMode ? 'p-4' : 'p-4'}`}>
+          <div className={`bg-white rounded-lg shadow-sm border min-h-[600px] relative`}>
             <DashboardGrid
               widgets={dashboardData.widgets}
               layouts={dashboardData.layouts}
               isPreviewMode={isPreviewMode}
               onLayoutChange={handleLayoutChange}
-              onBreakpointChange={setCurrentBreakpoint}
               onRemoveWidget={handleRemoveWidget}
               onWidgetContentChange={handleWidgetContentChange}
             />

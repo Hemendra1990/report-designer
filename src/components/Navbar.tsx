@@ -38,12 +38,17 @@ export default function Navbar() {
       href: '/dashboards',
       icon: LayoutDashboard,
     },
+    {
+      name: 'Options',
+      href: '/settings',
+      icon: Settings,
+    },
   ];
 
   return (
     <header className="bg-white border-b sticky top-0 z-50">
       <div className="mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+        <div className="flex justify-between items-center h-12">
           {/* Left: Logo + Navigation */}
           <div className="flex items-center space-x-6">
             <div className="flex items-center">
@@ -98,9 +103,6 @@ export default function Navbar() {
             </div>
             <button className="p-2 hover:bg-gray-100 rounded-full">
               <Bell size={20} className="text-gray-600" />
-            </button>
-            <button className="p-2 hover:bg-gray-100 rounded-full">
-              <Settings size={20} className="text-gray-600" />
             </button>
             <button className="p-2 hover:bg-gray-100 rounded-full">
               <HelpCircle size={20} className="text-gray-600" />

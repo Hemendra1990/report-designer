@@ -37,7 +37,7 @@ interface DashboardContextType {
   setActiveTab: (tab: string) => void;
   
   // Dashboard operations
-  handleLayoutChange: (layout: Layout[], layouts: { [key: string]: Layout[] }) => void;
+  handleLayoutChange: (layout: Layout[]) => void;
   handleRemoveWidget: (id: string) => void;
   handleAddWidget: (type: 'chart' | 'text' | 'image') => void;
   handleSaveWidget: (chartConfig?: ChartConfig) => void;
@@ -104,24 +104,34 @@ export function DashboardProvider({ children, initialDashboardId }: DashboardPro
     }
   }, [dashboardData, initialDashboardId, isNew]);
 
-  const handleLayoutChange = (layout: Layout[], layouts: { [key: string]: Layout[] }) => {
-    setDashboardData(prev => ({
-      ...prev,
-      layouts: {
-        ...prev.layouts,
-        ...layouts
-      },
-      widgets: prev.widgets.map(widget => {
-        const newLayout = layout.find(l => l.i === widget.id);
-        if (newLayout) {
-          return {
-            ...widget,
-            layout: newLayout
-          };
-        }
-        return widget;
-      })
-    }));
+  const handleLayoutChange = (layout: Layout[]) => {
+    setDashboardData(prev => {
+      const currentSmLayout = prev.layouts?.sm || [];
+      const updatedSmLayout = layout.map(newItem => {
+        const existingItem = currentSmLayout.find(oldItem => oldItem.i === newItem.i);
+        return { ...(existingItem || {}), ...newItem };
+      });
+
+      const updatedLayouts = { ...prev.layouts };
+      Object.keys(updatedLayouts).forEach(bp => {
+        updatedLayouts[bp] = updatedSmLayout.map(l => ({ ...l }));
+      });
+
+      return {
+        ...prev,
+        layouts: updatedLayouts,
+        widgets: prev.widgets.map(widget => {
+          const newLayoutItem = layout.find(l => l.i === widget.id);
+          if (newLayoutItem) {
+            return {
+              ...widget,
+              layout: { ...widget.layout, ...newLayoutItem }
+            };
+          }
+          return widget;
+        })
+      };
+    });
   };
 
   const handleRemoveWidget = (id: string) => {
