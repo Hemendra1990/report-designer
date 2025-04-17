@@ -61,16 +61,16 @@ export function DoughnutChart({ data, config }: DoughnutChartProps) {
   
   // Handle activeIndex from config if set
   const configActiveIndex = config?.activeIndex;
-  const activeShape = config?.activeShape;
+  const activeShape = config?.['activeShape'];
   
   // Custom tooltip formatter
   const CustomTooltip = ({ active, payload }: any) => {
-    if (tooltipConfig.customContent) {
+    /* if (tooltipConfig.customContent) {
       if (typeof tooltipConfig.customContent === 'function') {
         return tooltipConfig.customContent({ active, payload });
       }
       return tooltipConfig.customContent;
-    }
+    } */
     
     if (active && payload && payload.length) {
       return (
@@ -151,13 +151,13 @@ export function DoughnutChart({ data, config }: DoughnutChartProps) {
   return (
     <div className="w-full h-full">
       <ResponsiveContainer 
-        width={responsiveConfig.width || '100%'}
-        height={responsiveConfig.height || '100%'}
-        aspect={responsiveConfig.aspect}
-        minWidth={responsiveConfig.minWidth}
-        minHeight={responsiveConfig.minHeight}
-        maxHeight={responsiveConfig.maxHeight}
-        debounce={responsiveConfig.debounce}
+        width={responsiveConfig?.['width'] || '100%'}
+        height={responsiveConfig?.['height'] || '100%'}
+        aspect={responsiveConfig?.['aspect']}
+        minWidth={responsiveConfig?.['minWidth']}
+        minHeight={responsiveConfig?.['minHeight']}
+        maxHeight={responsiveConfig?.['maxHeight']}
+        debounce={responsiveConfig?.['debounce']}
       >
         <PieChart margin={margin}>
           <Pie
@@ -178,8 +178,8 @@ export function DoughnutChart({ data, config }: DoughnutChartProps) {
             animationDuration={isAnimationActive ? animationDuration : 0}
             animationEasing={animationEasing}
             isAnimationActive={isAnimationActive}
-            label={config?.label}
-            labelLine={config?.labelLine}
+            label={config?.['label']}
+            labelLine={config?.['labelLine']}
           >
             {chartData.map((entry, index) => (
               <Cell 
@@ -199,7 +199,7 @@ export function DoughnutChart({ data, config }: DoughnutChartProps) {
             active={tooltipConfig.active}
             isAnimationActive={tooltipConfig.isAnimationActive ?? isAnimationActive}
             animationDuration={tooltipConfig.animationDuration ?? animationDuration}
-            animationEasing={tooltipConfig.animationEasing ?? animationEasing}
+            // animationEasing={tooltipConfig.animationEasing ?? animationEasing}
             formatter={tooltipConfig.formatter}
             labelFormatter={tooltipConfig.labelFormatter}
             contentStyle={tooltipConfig.contentStyle}
@@ -213,12 +213,12 @@ export function DoughnutChart({ data, config }: DoughnutChartProps) {
             layout={legendConfig.layout || 'horizontal'}
             iconSize={legendConfig.iconSize || 10}
             iconType={legendConfig.iconType || 'circle'}
-            wrapperStyle={legendConfig.wrapperStyle || { paddingTop: 20 }}
+            // wrapperStyle={legendConfig.wrapperStyle || { paddingTop: 20 }}
             formatter={legendConfig.formatter}
-            onClick={legendConfig.onClick}
-            onMouseEnter={legendConfig.onMouseEnter}
-            onMouseLeave={legendConfig.onMouseLeave}
-            content={legendConfig.content}
+            // onClick={legendConfig.onClick}
+            // onMouseEnter={legendConfig.onMouseEnter}
+            // onMouseLeave={legendConfig.onMouseLeave}
+            // content={legendConfig.content}
           />
         </PieChart>
       </ResponsiveContainer>

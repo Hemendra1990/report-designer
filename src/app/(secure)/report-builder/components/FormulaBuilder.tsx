@@ -12,15 +12,8 @@ import FormulaEditor from './formula/FormulaEditor';
 import FormulaSettings from './formula/FormulaSettings';
 import SqlPreview from './formula/SqlPreview';
 import {ApiReportField} from "@/app/(secure)/report-builder/services/api-types";
+import { Field } from '../model/Field';
 
-// Define the types needed
-type Field = {
-  id: string;
-  name: string;
-  type: string;
-  category: string;
-  icon: React.ReactNode;
-};
 
 type Function = {
   name: string;
@@ -44,7 +37,7 @@ interface FormulaBuilderProps {
     alias: string;
     isFormula: boolean;
   }) => void;
-  fieldsByCategory: Record<string, ApiReportField[]>;
+  fieldsByCategory: Record<string, Field[]>;
   formulaFunctions: FunctionCategory[];
   expandedCategories: Record<string, boolean>;
   toggleCategory: (category: string) => void;

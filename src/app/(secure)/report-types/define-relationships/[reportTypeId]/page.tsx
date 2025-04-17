@@ -1,10 +1,11 @@
+'use client';
 import DefineRelationshipsForm from "@/components/report-type/define-relationship-form";
+import { Suspense } from "react";
 
-export default async function SelectRelationshipPage({ params }: { params: Promise<{ reportTypeId: string }> }) {
-
-  const { reportTypeId } = await params
-  if (!reportTypeId) {
-    return <div>Loading...</div> // or handle gracefully
-  }
-  return <DefineRelationshipsForm reportTypeId={reportTypeId as string} ></DefineRelationshipsForm>
+export default function DefineRelationshipsFormWrapper({ params }: { params: any }) {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <DefineRelationshipsForm reportTypeId={params?.reportTypeId} />
+    </Suspense>
+  );
 }

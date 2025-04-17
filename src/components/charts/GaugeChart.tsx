@@ -19,6 +19,7 @@ interface ChartData {
 
 interface GaugeChartProps {
   data: ChartData;
+  config: any;
 }
 
 interface ViewBoxType {
@@ -60,7 +61,7 @@ const ValueText = ({ x, y, value }: { x: number; y: number; value: number }) => 
   );
 };
 
-export function GaugeChart({ data }: GaugeChartProps) {
+export function GaugeChart({ data, config }: GaugeChartProps) {
   // Use the first value from the dataset as the gauge value (0-100)
   const gaugeValue = Math.min(100, Math.max(0, data.datasets[0]?.data[0] || 0));
   

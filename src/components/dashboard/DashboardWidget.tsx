@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { X, Image as ImageIcon } from 'lucide-react';
 import { ChartPreview } from '@/components/ChartPreview';
-import { DashboardWidget as WidgetType, ChartData } from '@/types/dashboard';
+import { DashboardWidget as WidgetType, ChartData, ChartType } from '@/types/dashboard';
 import { fetchChartData } from '@/services/chartService';
 
 interface WidgetProps {
@@ -120,7 +120,7 @@ export const DashboardWidget = ({ widget, onRemove, isPreview = false, onContent
               ) : chartData ? (
                 <div className="w-full h-full">
                   <ChartPreview 
-                    type={widget.chartType || 'bar'} 
+                    type={widget.chartType || 'bar' as any} 
                     data={chartData}
                     width={dimensions.width}
                     height={dimensions.height}

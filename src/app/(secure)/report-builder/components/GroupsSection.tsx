@@ -6,7 +6,7 @@ import {GroupingState} from "@tanstack/react-table";
 import {Field, FormulaColumn} from "@/app/(secure)/report-builder/model/Field";
 
 interface GroupsSectionProps {
-  selectedColumns: Array<Field | FormulaColumn>;
+  selectedColumns: (Field | FormulaColumn | any)[];
   groupSearchTerm: string;
   setGroupSearchTerm: (value: string) => void;
   showGroupDropdown: boolean;

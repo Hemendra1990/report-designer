@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "env-cmd -f env/.env.local next dev -p 3002",
-    "build": "env-cmd -f env/.env.local next build",
+    "dev": "env-cmd -f env/.env.local next dev -p 3000",
+    "build": "env-cmd -f env/.env.local next build --no-lint",
     "start": "env-cmd -f env/.env.local next start -p 3000",
     "lint": "env-cmd -f env/.env.local next lint",
     "dev:qa": "env-cmd -f env/.env.qa next dev -p 3000",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useReportType, createReportType } from '@/contexts/ReportTypeContext';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,14 @@ import ReportTypeDetails from './steps/ReportTypeDetails';
 import DefineRelationships from './steps/DefineRelationships';
 import ConfigureFilters from './steps/ConfigureFilters';
 
-export default function CreateReportType() {
+export default function CreateReportTypePage () {
+  
+  return <Suspense fallback={<div>Loading...</div>}>
+    <CreateReportType />
+  </Suspense>
+}
+
+function CreateReportType() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { state, dispatch } = useReportType();

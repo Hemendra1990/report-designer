@@ -20,7 +20,7 @@ const data = [
   { name: 'Jun 2024', product: 38000, service: 20000, subscription: 17000 },
 ];
 
-export function StackedBarChart() {
+export function StackedBarChart({ data, config }) {
   return (
     <ResponsiveContainer width="100%" height={300}>
       <BarChart data={data}>

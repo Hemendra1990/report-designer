@@ -1,12 +1,14 @@
+"use client";
 import React, { createContext, useContext, ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { RecentReportType } from '../model/ReportType';
 import { getReportTypes, getReportTypeFields } from '../services/reportTypeService';
 import { ApiReportField } from '../services/api-types';
 import { activeLayoutColumnListByReportId, getAllReportTypes, layoutColumnListByReportId } from '@/services/report-type/report-type-service';
+import { ReportType } from '@/components/model/report-type';
 
 interface ReportTypesContextType {
-  reportTypes: RecentReportType[];
+  reportTypes: ReportType[];
   isLoading: boolean;
   error: Error | null;
   selectedReportTypeId: string | null;
@@ -27,9 +29,9 @@ export const ReportTypesProvider: React.FC<{ children: ReactNode }> = ({ childre
     data: reportTypes = [], 
     isLoading, 
     error 
-  } = useQuery({
+  } = useQuery<ReportType[]>({
     queryKey: ['reportTypes'],
-    queryFn: getAllReportTypes,
+    queryFn: () => getAllReportTypes().then(res => res.data),
   });
 
   // Fetch fields for the selected report type

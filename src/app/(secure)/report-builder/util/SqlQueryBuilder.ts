@@ -73,18 +73,18 @@ function buildPivotSqlQueries(selectedColumns: Field[], groupByFields: string[],
  * Builds a valid DuckDB SQL query based on the report configuration
  */
 export function buildSqlQuery(options: {
-  selectedReportType: ReportTypeTemplate;
+  selectedReportType?: ReportTypeTemplate;
   reportType: string;
   selectedColumns: (Field | FormulaColumn)[];
   groupByFields: string[];
   filters: Filter[];
   filterLogic: "and" | "or" | "custom";
   customFilterFormula: string;
-  isPivotActive: boolean;
-  pivotColumnIds: string[];
-  pivotValues: string[];
-  selectedAggregations: Record<string, string>;
-  cteQuery: any
+  isPivotActive?: boolean;
+  pivotColumnIds?: string[];
+  pivotValues?: string[];
+  selectedAggregations?: Record<string, string>;
+  cteQuery?: any
 }): string {
   const {
     selectedReportType,

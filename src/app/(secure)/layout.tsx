@@ -7,6 +7,7 @@ import { ReportTypeFormProvider } from "@/contexts/report-type-form-context";
 import ClientIdProviders from "@/contexts/client-id-provider";
 import { AuthProvider } from "@/contexts/auth-provider";
 import { TodoProvider } from "@/contexts/TodoContext";
+import { Suspense } from "react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,7 +36,8 @@ export default function RootLayout({
       >
         <div className="min-h-screen bg-gray-50">
           <ClientQueryProviders>
-            <ClientIdProviders>
+          <Suspense fallback={<div>Loading client info...</div>}>
+          <ClientIdProviders>
               <AuthProvider>
                 <ReportTypeFormProvider>
                   <TodoProvider>
@@ -45,6 +47,7 @@ export default function RootLayout({
                 </ReportTypeFormProvider>
               </AuthProvider>
             </ClientIdProviders>
+          </Suspense>
           </ClientQueryProviders>
         </div>
       </body>

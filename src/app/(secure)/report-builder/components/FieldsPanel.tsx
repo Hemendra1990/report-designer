@@ -4,6 +4,7 @@ import { ChevronDownIcon, ChevronLeftIcon, PlusIcon, SearchIcon } from "@/compon
 import { FormulaIcon } from "@/components/icons/ReportIcons";
 import { useReportTypes } from '../context/ReportTypesContext';
 import { getFieldTypeIcon } from '../utils/fieldUtils';
+import { Field } from '../model/Field';
 
 // Custom scrollbar styles
 const scrollbarStyles = `
@@ -31,16 +32,7 @@ const scrollbarStyles = `
   }
 `;
 
-// Match the field type to the one in accountFields
-interface Field {
-  id: string;
-  name: string;
-  type: string;
-  category: string;
-  icon?: string;
-  isFormula?: boolean;
-  isSummaryFormula?: boolean;
-}
+
 
 interface FieldsByCategory {
   [category: string]: Field[];

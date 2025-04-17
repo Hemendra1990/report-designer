@@ -1590,7 +1590,7 @@ function ReportBuilderPage() {
             setFilterLogic={setFilterLogic}
             customFormula={customFormula}
             setCustomFormula={setCustomFormula}
-            accountFields={fieldsForPanel}
+            // accountFields={fieldsForPanel}
             addFilter={addFilter}
             removeFilter={removeFilter}
             updateFilter={updateFilter}

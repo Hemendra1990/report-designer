@@ -12,6 +12,7 @@ import FilterLogicSelector from "./FilterLogicSelector";
 import { FilterRow } from "./FilterRow";
 import QuickFilterSelector from "./QuickFilterSelector";
 import PivotOptions from "./PivotOptions";
+import { Field, FormulaColumn } from '../model/Field';
 
 interface Column {
   id: string;
@@ -33,7 +34,7 @@ interface ReportBuilderPanelProps {
   showGroupDropdown: boolean;
   setShowGroupDropdown: (show: boolean) => void;
   setSelectedGroup: (id: string | null) => void;
-  handleGroupBy: (fieldId: string) => void;
+  handleGroupBy: (fieldId: Field) => void;
   grouping: GroupingState;
   groupSearchRef: MutableRefObject<HTMLDivElement | null>;
   addSummaryFormulaColumn?: () => void;
@@ -60,13 +61,6 @@ interface ReportBuilderPanelProps {
   setFilterLogic: (value: 'and' | 'or' | 'custom') => void;
   customFormula: string;
   setCustomFormula: (value: string) => void;
-  accountFields: Array<{
-    id: string;
-    name: string;
-    type: string;
-    category: string;
-    icon: string;
-  }>;
   addFilter: (field: any) => void;
   removeFilter: (filterId: string) => void;
   updateFilter: (filterId: string, updates: Partial<Filter>) => void;
@@ -126,7 +120,6 @@ const ReportBuilderPanel: React.FC<ReportBuilderPanelProps> = ({
   setFilterLogic,
   customFormula,
   setCustomFormula,
-  accountFields,
   addFilter,
   removeFilter,
   updateFilter,

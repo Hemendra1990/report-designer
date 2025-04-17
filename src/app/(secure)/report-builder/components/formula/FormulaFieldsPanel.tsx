@@ -1,17 +1,11 @@
 import React from 'react';
 import { ChevronDownIcon } from "@/components/icons";
 import {ApiReportField} from "@/app/(secure)/report-builder/services/api-types";
+import { Field } from '../../model/Field';
 
-type Field = {
-  id: string;
-  name: string;
-  type: string;
-  category: string;
-  icon: React.ReactNode;
-};
 
 interface FormulaFieldsPanelProps {
-  fieldsByCategory: Record<string, ApiReportField[]>;
+  fieldsByCategory: Record<string, Field[]>;
   expandedCategories: Record<string, boolean>;
   toggleCategory: (category: string) => void;
   searchTerm: string;

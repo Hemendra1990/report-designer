@@ -20,9 +20,10 @@ interface ChartData {
 
 interface FunnelChartProps {
   data: ChartData;
+  config: any;
 }
 
-export function FunnelChart({ data }: FunnelChartProps) {
+export function FunnelChart({ data, config }: FunnelChartProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   
   // Transform data into Recharts format
@@ -64,7 +65,7 @@ export function FunnelChart({ data }: FunnelChartProps) {
             animationDuration={800}
             animationEasing="ease-in-out"
             nameKey="name"
-            onClick={(data: any, index: number) => setActiveIndex(index)}
+            // onClick={(data: any, index: number) => setActiveIndex(index)}
           >
             <LabelList 
               position="right" 

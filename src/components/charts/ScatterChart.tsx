@@ -22,6 +22,7 @@ interface ChartData {
 
 interface ScatterChartProps {
   data: ChartData;
+  config: any
 }
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
@@ -49,7 +50,7 @@ const CustomTooltip = ({ active, payload }: any) => {
   return null;
 };
 
-export function ScatterChart({ data }: ScatterChartProps) {
+export function ScatterChart({ data, config }: ScatterChartProps) {
   // Transform the data for the scatter chart
   // We'll use pairs of values from each dataset
   const transformData = () => {

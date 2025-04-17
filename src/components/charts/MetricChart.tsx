@@ -13,9 +13,10 @@ interface ChartData {
 
 interface MetricChartProps {
   data: ChartData;
+  config: any;
 }
 
-export function MetricChart({ data }: MetricChartProps) {
+export function MetricChart({ data, config }: MetricChartProps) {
   const [currentValue, setCurrentValue] = useState(0);
   
   // Get metric value from data

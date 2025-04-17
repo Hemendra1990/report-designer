@@ -13,9 +13,10 @@ interface ChartData {
 
 interface DataTableProps {
   data: ChartData;
+  config: any;
 }
 
-export function DataTable({ data }: DataTableProps) {
+export function DataTable({ data, config }: DataTableProps) {
   const [sortConfig, setSortConfig] = useState<{
     key: string;
     direction: 'asc' | 'desc';

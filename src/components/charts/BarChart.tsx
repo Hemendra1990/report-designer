@@ -57,13 +57,13 @@ export function BarChart({ data, config }: BarChartProps) {
   return (
     <div style={{ width: '100%', height: '100%' }}>
       <ResponsiveContainer 
-        width={responsiveConfig.width || '100%'} 
-        height={responsiveConfig.height || '100%'}
-        aspect={responsiveConfig.aspect}
-        minWidth={responsiveConfig.minWidth}
-        minHeight={responsiveConfig.minHeight}
-        maxHeight={responsiveConfig.maxHeight}
-        debounce={responsiveConfig.debounce}
+        width={responsiveConfig?.['width'] || '100%'} 
+        height={responsiveConfig?.['height'] || '100%'}
+        aspect={responsiveConfig?.['aspect']}
+        minWidth={responsiveConfig?.['minWidth']}
+        minHeight={responsiveConfig?.['minHeight']}
+        maxHeight={responsiveConfig?.['maxHeight']}
+        debounce={responsiveConfig?.['debounce']}
       >
         <RechartsBarChart
           data={chartData}
@@ -80,33 +80,33 @@ export function BarChart({ data, config }: BarChartProps) {
           {/* Grid Configuration */}
           <CartesianGrid 
             strokeDasharray="3 3" 
-            horizontal={gridConfig.horizontal}
-            vertical={gridConfig.vertical}
-            stroke={gridConfig.stroke || '#E5E7EB'}
-            strokeWidth={gridConfig.strokeWidth}
+            horizontal={gridConfig?.['horizontal']}
+            vertical={gridConfig?.['vertical']}
+            stroke={gridConfig?.['stroke'] || '#E5E7EB'}
+            strokeWidth={gridConfig?.['strokeWidth']}
           />
           
           {/* X-Axis Configuration */}
           <XAxis 
             dataKey="name" 
             axisLine={xAxisConfig.axisLine || { stroke: '#D1D5DB' }}
-            tickLine={xAxisConfig.tickLine}
+            tickLine={xAxisConfig?.['tickLine']}
             tick={xAxisConfig.tick || { fill: '#6B7280', fontSize: 12 }}
             domain={xAxisConfig.domain || ['auto', 'auto']}
-            padding={xAxisConfig.padding}
-            allowDataOverflow={xAxisConfig.allowDataOverflow}
-            allowDecimals={xAxisConfig.allowDecimals}
-            hide={xAxisConfig.hide}
-            tickCount={xAxisConfig.tickCount}
-            minTickGap={xAxisConfig.minTickGap}
-            interval={xAxisConfig.interval}
-            reversed={xAxisConfig.reversed}
+            padding={xAxisConfig?.['padding']}
+            allowDataOverflow={xAxisConfig?.['allowDataOverflow']}
+            allowDecimals={xAxisConfig?.['allowDecimals']}
+            hide={xAxisConfig?.['hide']}
+            tickCount={xAxisConfig?.['tickCount']}
+            minTickGap={xAxisConfig?.['minTickGap']}
+            interval={xAxisConfig?.['interval']}
+            reversed={xAxisConfig?.['reversed']}
           >
             {xAxisConfig.label && (
               <Label 
                 value={typeof xAxisConfig.label === 'string' || typeof xAxisConfig.label === 'number' 
                   ? xAxisConfig.label 
-                  : xAxisConfig.label.value}
+                  : xAxisConfig.label?.['value']}
                 position="insideBottom"
                 offset={-5}
                 style={{ textAnchor: 'middle', fontSize: 12, fill: '#6B7280' }}
@@ -120,23 +120,23 @@ export function BarChart({ data, config }: BarChartProps) {
           {/* Y-Axis Configuration */}
           <YAxis 
             axisLine={yAxisConfig.axisLine || { stroke: '#D1D5DB' }}
-            tickLine={yAxisConfig.tickLine}
+            tickLine={yAxisConfig?.['tickLine']}
             tick={yAxisConfig.tick || { fill: '#6B7280', fontSize: 12 }}
             domain={yAxisConfig.domain || ['auto', 'auto']}
-            padding={yAxisConfig.padding}
-            allowDataOverflow={yAxisConfig.allowDataOverflow}
-            allowDecimals={yAxisConfig.allowDecimals}
-            hide={yAxisConfig.hide}
-            tickCount={yAxisConfig.tickCount}
-            minTickGap={yAxisConfig.minTickGap}
-            interval={yAxisConfig.interval}
-            reversed={yAxisConfig.reversed}
+            padding={yAxisConfig?.['padding']}
+            allowDataOverflow={yAxisConfig?.['allowDataOverflow']}
+            allowDecimals={yAxisConfig?.['allowDecimals']}
+            hide={yAxisConfig?.['hide']}
+            tickCount={yAxisConfig?.['tickCount']}
+            minTickGap={yAxisConfig?.['minTickGap']}
+            interval={yAxisConfig?.['interval']}
+            reversed={yAxisConfig?.['reversed']}
           >
             {yAxisConfig.label && (
               <Label 
                 value={typeof yAxisConfig.label === 'string' || typeof yAxisConfig.label === 'number' 
                   ? yAxisConfig.label 
-                  : yAxisConfig.label.value}
+                  : yAxisConfig.label?.['value']}
                 angle={-90}
                 position="insideLeft"
                 style={{ textAnchor: 'middle', fontSize: 12, fill: '#6B7280' }}
@@ -165,7 +165,7 @@ export function BarChart({ data, config }: BarChartProps) {
             active={tooltipConfig.active}
             isAnimationActive={tooltipConfig.isAnimationActive}
             animationDuration={tooltipConfig.animationDuration}
-            animationEasing={tooltipConfig.animationEasing}
+            // animationEasing={tooltipConfig.animationEasing}
           />
           
           {/* Legend Configuration */}
@@ -175,11 +175,11 @@ export function BarChart({ data, config }: BarChartProps) {
             layout={legendConfig.layout || 'horizontal'}
             iconSize={legendConfig.iconSize || 10}
             iconType={legendConfig.iconType || 'square'}
-            wrapperStyle={legendConfig.wrapperStyle || { paddingTop: 20 }}
+            wrapperStyle={legendConfig?.['wrapperStyle'] || { paddingTop: 20 }}
             formatter={legendConfig.formatter}
-            onClick={legendConfig.onClick}
-            onMouseEnter={legendConfig.onMouseEnter}
-            onMouseLeave={legendConfig.onMouseLeave}
+            onClick={legendConfig?.['onClick']}
+            onMouseEnter={legendConfig?.['onMouseEnter']}
+            onMouseLeave={legendConfig?.['onMouseLeave']}
           />
           
           {/* Dataset Bars */}

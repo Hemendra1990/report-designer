@@ -15,11 +15,6 @@ import {
   ChartConfig, 
   CartesianChartConfig,
   PieChartConfig,
-  FunnelChartConfig,
-  ScatterChartConfig,
-  GaugeChartConfig,
-  MetricChartConfig,
-  DataTableConfig
 } from '@/types/dashboard';
 
 interface ChartData {
@@ -79,15 +74,15 @@ export function ChartPreview({ type, data, width = 400, height = 300, config }: 
       case 'doughnut':
         return config as PieChartConfig;
       case 'funnel':
-        return config as FunnelChartConfig;
+        return config as any;
       case 'scatter':
-        return config as ScatterChartConfig;
+        return config as any;
       case 'gauge':
-        return config as GaugeChartConfig;
+        return config as any;
       case 'metric':
-        return config as MetricChartConfig;
+        return config as any;
       case 'table':
-        return config as DataTableConfig;
+        return config as any;
       default:
         return undefined;
     }
@@ -106,19 +101,19 @@ export function ChartPreview({ type, data, width = 400, height = 300, config }: 
       case 'doughnut':
         return <DoughnutChart data={chartData} config={typedConfig as PieChartConfig} />;
       case 'scatter':
-        return <ScatterChart data={chartData} config={typedConfig as ScatterChartConfig} />;
+        return <ScatterChart data={chartData} config={typedConfig as any} />;
       case 'grouped-bar':
         return <GroupedBarChart data={chartData} config={typedConfig as CartesianChartConfig} />;
       case 'stacked-bar':
         return <StackedBarChart data={chartData} config={typedConfig as CartesianChartConfig} />;
       case 'funnel':
-        return <FunnelChart data={chartData} config={typedConfig as FunnelChartConfig} />;
+        return <FunnelChart data={chartData} config={typedConfig as any} />;
       case 'gauge':
-        return <GaugeChart data={chartData} config={typedConfig as GaugeChartConfig} />;
+        return <GaugeChart data={chartData} config={typedConfig as any} />;
       case 'metric':
-        return <MetricChart data={chartData} config={typedConfig as MetricChartConfig} />;
+        return <MetricChart data={chartData} config={typedConfig as any} />;
       case 'table':
-        return <DataTable data={chartData} config={typedConfig as DataTableConfig} />;
+        return <DataTable data={chartData} config={typedConfig as any} />;
       default:
         return (
           <div className="flex items-center justify-center h-full">

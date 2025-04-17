@@ -216,8 +216,8 @@ const generateReportTypeFields = (reportTypeId: string): ApiReportField[] => {
         columnType: commonField.type,
         tableName,
         tableId,
-        active: true
-      });
+        active: true,
+      } as ApiReportField);
     });
     
     totalFieldCount += commonFields.length;
@@ -246,7 +246,7 @@ const generateReportTypeFields = (reportTypeId: string): ApiReportField[] => {
             tableName,
             tableId,
             active: true
-          });
+          } as ApiReportField);
           
           tableFieldsCount++;
           totalFieldCount++;
@@ -271,7 +271,7 @@ const generateReportTypeFields = (reportTypeId: string): ApiReportField[] => {
             tableName,
             tableId,
             active: true
-          });
+          }  as ApiReportField);
           
           tableFieldsCount++;
           totalFieldCount++;
@@ -310,7 +310,7 @@ const generateReportTypeFields = (reportTypeId: string): ApiReportField[] => {
             tableName,
             tableId,
             active: true
-          });
+          }  as ApiReportField);
           
           tableFieldsCount++;
           totalFieldCount++;
@@ -344,7 +344,7 @@ const generateReportTypeFields = (reportTypeId: string): ApiReportField[] => {
           tableName,
           tableId,
           active: true
-        });
+        }  as ApiReportField);
         
         tableFieldsCount++;
         totalFieldCount++;
@@ -374,7 +374,7 @@ const generateReportTypeFields = (reportTypeId: string): ApiReportField[] => {
         tableName: mainTable,
         tableId,
         active: true
-      });
+      }  as ApiReportField);
     }
   }
   

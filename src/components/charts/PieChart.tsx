@@ -18,7 +18,7 @@ const data = [
 
 const COLORS = ['#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe'];
 
-export function PieChart() {
+export function PieChart({ data, config }) {
   return (
     <ResponsiveContainer width="100%" height={300}>
       <RechartsPieChart>
